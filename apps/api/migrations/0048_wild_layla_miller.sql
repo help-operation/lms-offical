@@ -1,0 +1,1 @@
+ALTER TABLE "tracking_settings" ADD COLUMN "event_page_view" boolean DEFAULT true NOT NULL;

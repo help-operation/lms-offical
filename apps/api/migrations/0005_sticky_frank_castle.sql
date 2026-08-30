@@ -1,0 +1,1 @@
+ALTER TYPE "public"."course_level" ADD VALUE 'beginner_to_advanced';

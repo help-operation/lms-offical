@@ -1,0 +1,1 @@
+ALTER TYPE "public"."lead_status" ADD VALUE 'complete' BEFORE 'paid';

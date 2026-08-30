@@ -1,0 +1,1 @@
+ALTER TABLE "courses" ADD COLUMN "template" varchar(5) DEFAULT '1' NOT NULL;

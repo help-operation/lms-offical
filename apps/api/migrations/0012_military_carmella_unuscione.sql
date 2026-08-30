@@ -1,0 +1,1 @@
+ALTER TYPE "public"."lead_source" ADD VALUE 'failed_payment';

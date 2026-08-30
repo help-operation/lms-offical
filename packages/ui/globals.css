@@ -1,0 +1,287 @@
+@theme {
+    --color-border: hsl(var(--border));
+    --color-input: hsl(var(--input));
+    --color-ring: hsl(var(--ring));
+    --color-background: hsl(var(--background));
+    --color-foreground: hsl(var(--foreground));
+
+    --color-primary: hsl(var(--primary));
+    --color-primary-foreground: hsl(var(--primary-foreground));
+
+    --color-secondary: hsl(var(--secondary));
+    --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+    --color-muted: hsl(var(--muted));
+    --color-muted-foreground: hsl(var(--muted-foreground));
+
+    --color-popover: hsl(var(--popover));
+    --color-popover-foreground: hsl(var(--popover-foreground));
+
+    --color-card: hsl(var(--card));
+    --color-card-foreground: hsl(var(--card-foreground));
+
+    --color-accent: hsl(var(--accent));
+    --color-accent-foreground: hsl(var(--accent-foreground));
+
+    --color-destructive: hsl(var(--destructive));
+    --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+    --color-brick: hsl(var(--brick));
+    --color-success: hsl(var(--success));
+    --color-warning: hsl(var(--warning));
+    --color-orange: hsl(var(--orange));
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+}
+
+@layer components {
+    .container {
+        margin-left: auto;
+        margin-right: auto;
+
+        padding-left: 1rem;
+        padding-right: 1rem;
+
+        @media (min-width: 96rem) {
+            max-width: 96rem;
+        }
+    }
+}
+
+@layer base {
+    :root {
+        --background: 30 25% 98%;
+        --foreground: 20 10% 15%;
+        --card: 0 0% 100%;
+        --card-foreground: 20 10% 15%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 20 10% 15%;
+        --primary: 25 75% 35%;
+        --primary-foreground: 30 25% 98%;
+        --secondary: 30 15% 92%;
+        --secondary-foreground: 25 75% 30%;
+        --muted: 30 15% 94%;
+        --muted-foreground: 20 10% 45%;
+        --accent: 180 25% 25%;
+        --accent-foreground: 30 25% 98%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 30 20% 88%;
+        --input: 30 20% 88%;
+        --ring: 25 75% 35%;
+        --radius: 0.5rem;
+        --brick: 15 70% 45%;
+        --success: 142 76% 36%;
+        --warning: 38 92% 50%;
+        --orange: 25 95% 53%;
+    }
+
+    .dark {
+        --background: 20 15% 10%;
+        --foreground: 30 15% 92%;
+        --card: 20 15% 13%;
+        --card-foreground: 30 15% 92%;
+        --popover: 20 15% 13%;
+        --popover-foreground: 30 15% 92%;
+        --primary: 25 80% 55%;
+        --primary-foreground: 20 15% 10%;
+        --secondary: 20 15% 18%;
+        --secondary-foreground: 30 15% 90%;
+        --muted: 20 15% 18%;
+        --muted-foreground: 30 10% 60%;
+        --accent: 180 35% 40%;
+        --accent-foreground: 30 25% 98%;
+        --destructive: 0 62% 50%;
+        --border: 20 15% 20%;
+        --input: 20 15% 20%;
+        --ring: 25 80% 55%;
+        --brick: 15 75% 55%;
+        --success: 142 70% 45%;
+        --warning: 38 92% 55%;
+        --orange: 25 95% 58%;
+    }
+}
+
+@layer base {
+    * {
+        /* V4-এ border-border এরর ফিক্স করতে এটি ডাইরেক্ট ভেরিয়েবল ব্যবহার করে */
+        border-color: hsl(var(--border));
+    }
+
+    body {
+        @apply bg-background text-foreground antialiased;
+    }
+
+    button:not(:disabled) {
+        cursor: pointer;
+    }
+}
+
+@layer utilities {
+    .text-gradient-primary {
+        @apply bg-gradient-to-r from-primary to-brick bg-clip-text text-transparent;
+    }
+
+    .bg-gradient-hero {
+        @apply bg-gradient-to-br from-background via-secondary/50 to-background;
+    }
+
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Eye-catching pulsing glow ring for urgency/live badges.
+   --glow-rgb is a space-separated "R G B" triplet set per usage; defaults to red. */
+@keyframes badgeGlow {
+    0% {
+        box-shadow: 0 0 0 0 rgb(var(--glow-rgb, 220 38 38) / 55%);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgb(var(--glow-rgb, 220 38 38) / 0%);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgb(var(--glow-rgb, 220 38 38) / 0%);
+    }
+}
+
+.badge-glow {
+    animation: badgeGlow 1.8s ease-out infinite;
+}
+
+/* Premium sticky-CTA treatment: a soft breathing glow pulse plus a light
+   sweep that glides across the button every cycle. --cta-rgb sets the glow
+   tint (space-separated "R G B"); defaults to red. */
+@keyframes ctaBreathe {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgb(var(--cta-rgb, 220 38 38) / 45%);
+    }
+    50% {
+        transform: scale(1.035);
+        box-shadow: 0 0 18px 3px rgb(var(--cta-rgb, 220 38 38) / 40%);
+    }
+}
+
+@keyframes ctaShine {
+    0%, 40% {
+        left: -60%;
+    }
+    100% {
+        left: 130%;
+    }
+}
+
+.cta-premium {
+    position: relative;
+    overflow: hidden;
+    animation: ctaBreathe 2.4s ease-in-out infinite;
+}
+
+.cta-premium::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(115deg, transparent, rgb(255 255 255 / 55%), transparent);
+    transform: skewX(-20deg);
+    animation: ctaShine 2.4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* ── Draggable pricing card hint animations ── */
+
+@keyframes t6FadeIn {
+    0% { opacity: 0; transform: translateX(12px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes t6ArrowSway {
+    0%, 100% { transform: translateX(0) rotate(0deg); }
+    25% { transform: translateX(6px) rotate(2deg); }
+    75% { transform: translateX(-6px) rotate(-2deg); }
+}
+
+@keyframes t6Float {
+    0%, 100% {
+        transform: translateY(0);
+        box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.1);
+    }
+    50% {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 32px -6px rgba(0, 0, 0, 0.18);
+    }
+}
+
+.animate-t6-fade-in {
+    animation: t6FadeIn 0.4s ease-out both;
+}
+
+.animate-t6-arrow-sway {
+    animation: t6ArrowSway 2s ease-in-out infinite;
+}
+
+.animate-t6-float {
+    animation: t6Float 3s ease-in-out infinite;
+}
+
+/* ── Mobile finger tutorial animations ── */
+
+@keyframes t6FingerPress {
+    0% { transform: translateY(-8px); opacity: 0; }
+    40% { transform: translateY(0); opacity: 1; }
+    60% { transform: translateY(2px) scale(0.95); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes t6FingerHold {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(1px) scale(0.96); }
+}
+
+@keyframes t6FingerDrag {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    30% { transform: translate(2px, 18px) rotate(-5deg); }
+    70% { transform: translate(-8px, 46px) rotate(-12deg); }
+    100% { transform: translate(-14px, 62px) rotate(-15deg); }
+}
+
+@keyframes t6DrawPath {
+    0% { stroke-dashoffset: 120; }
+    100% { stroke-dashoffset: 0; }
+}
+
+@keyframes t6PulseBorder {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+.animate-t6-finger-press {
+    animation: t6FingerPress 0.8s ease-out forwards;
+}
+
+.animate-t6-finger-hold {
+    animation: t6FingerHold 0.8s ease-in-out infinite;
+}
+
+.animate-t6-finger-drag {
+    animation: t6FingerDrag 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-t6-draw-path {
+    animation: t6DrawPath 1.4s ease-out forwards;
+    stroke-dashoffset: 120;
+}
+
+.animate-t6-pulse-border {
+    animation: t6PulseBorder 1.2s ease-in-out infinite;
+}
+

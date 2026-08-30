@@ -1,0 +1,1 @@
+ALTER TABLE "live_courses" ADD COLUMN "show_badge" boolean DEFAULT true NOT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE "courses" ADD COLUMN "require_sequential_progress" boolean DEFAULT false NOT NULL;

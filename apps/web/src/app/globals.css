@@ -1,0 +1,227 @@
+@import "tailwindcss";
+@import "@repo/ui/globals.css";
+
+/* Enable manual (class-based) dark mode — does not change any token values */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* ── Typography ─────────────────────────────────────────── */
+  /* --font-sans and --font-bengali are overridden at runtime via inline
+     style on the root element. Fallbacks ensure readability before hydration. */
+  --font-bengali: ui-sans-serif, system-ui, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+
+  /* ── Motion ─────────────────────────────────────────────── */
+  --animate-marquee: marquee 30s linear infinite;
+
+  /* ── Brand palette ──────────────────────────────────────── */
+  --color-brand: #a64dff;          /* primary purple / gradient start */
+  --color-brand-from: #a64dff;     /* brand gradient start */
+  --color-brand-to: #bb6bff;       /* brand gradient end / solid brand */
+  --color-brand-solid: #a64dff;    /* solid brand buttons */
+  --color-brand-hover: #8d3fe6;    /* solid brand hover */
+  --color-brand-shadow: #6f2db8;   /* pressed CTA drop shadow */
+  --color-brand-ring: #b873ff;     /* spinning play ring */
+  --color-brand-tint: #e4d1ff;     /* soft brand ring/border tint */
+  --color-accent: #ffbf00;         /* golden heading highlight */
+
+  /* ── Brand scale (purple ramp, anchored at #a64dff) ─────────
+     Numeric scale so components can use bg-brand-600, text-brand-700,
+     ring-brand-300, etc. — the brand equivalent of Tailwind's color
+     scale. Use these instead of green-* for any brand-coloured UI. */
+  --color-brand-50: #f6f0ff;
+  --color-brand-100: #ece0ff;
+  --color-brand-200: #d9c2ff;
+  --color-brand-300: #c29bff;
+  --color-brand-400: #b275ff;
+  --color-brand-500: #a64dff;
+  --color-brand-600: #8d3fe6;
+  --color-brand-700: #7728cc;
+  --color-brand-800: #6021a3;
+  --color-brand-900: #4d1c80;
+  --color-brand-950: #2f0f52;
+
+  /* ── Text / ink ─────────────────────────────────────────── */
+  --color-ink: #313131;            /* primary headings */
+  --color-ink-soft: #797878;       /* body / subtitles */
+  --color-ink-strong: #1a2e35;     /* hamburger / strong marks */
+  --color-ink-muted: #8a8a8a;      /* placeholders */
+
+  /* ── Surfaces ───────────────────────────────────────────── */
+  --color-surface-hero: #ede0ff;       /* hero gradient top (lavender) */
+  --color-surface-soft: #f3f4f6;       /* search field bg */
+  --color-surface-teal: #5e2da8;       /* purple section bg */
+  --color-surface-maroon: #5c1a2b;     /* "Our Courses" container */
+  --color-surface-maroon-dark: #3f1220;
+  --color-surface-cta: #2f0f52;        /* CTA gradient start (deep purple) */
+  --color-surface-cta-mid: #4d1c80;    /* CTA gradient mid (purple) */
+  --color-surface-cream: #f7f6ec;      /* certificate body */
+  --color-cream-frame: #2f3a2f;        /* certificate dark frame */
+  --color-cream-gold: #c9b682;         /* certificate gold inner line */
+  --color-map-dot: #d9c2ff;            /* dotted world map (light purple) */
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Shimmer/shine sweep for the availability label (live course card) */
+@keyframes shine {
+  from {
+    background-position: 0% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+
+/* Premium skeleton shimmer sweep — a soft highlight band moving left to
+   right over a skeleton block, layered on top of its base animate-pulse. */
+@keyframes skeletonSweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: skeletonSweep 1.8s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+/* Eye-catching pulsing glow ring for "Live" badges */
+@keyframes liveGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+
+.live-badge-glow {
+  animation: liveGlow 1.6s ease-out infinite;
+}
+
+/* Subtle fade+rise used when server-fetched content replaces a skeleton
+   loading state, so the swap doesn't feel like an abrupt pop-in. */
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-content-in {
+  animation: contentFadeIn 0.45s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-content-in {
+    animation: none;
+  }
+}
+
+/* ── Bengali font auto-detection ──────────────────────────────────────────────
+   Apply the Bengali font to text containing Bengali characters.
+   This uses CSS @font-face unicode-range set by next/font/google. */
+[lang="bn"], [lang="bn-BD"] {
+  font-family: var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* For mixed content, apply Bengali font to spans/divs with Bengali text */
+.bengali, [data-lang="bn"] {
+  font-family: var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes labelFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Shifting gradient color animation for the checkout Confirm button */
+@keyframes ctaGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.btn-cta-animate {
+  background-size: 200% 200%;
+  animation: ctaGradientShift 3s ease infinite;
+}
+
+.text-shimmer-green {
+  background: linear-gradient(
+    100deg,
+    #16a34a 0%,
+    #16a34a 40%,
+    #4ade80 50%,
+    #16a34a 60%,
+    #16a34a 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  animation:
+    shine 2.5s linear infinite,
+    labelFadeIn 0.45s ease;
+}
+
+@keyframes draw-highlight {
+  0% { stroke-dashoffset: 1500; opacity: 0; }
+  8% { opacity: 1; }
+  55% { stroke-dashoffset: 0; opacity: 1; }
+  80% { stroke-dashoffset: 0; opacity: 1; }
+  92% { opacity: 0; }
+  100% { stroke-dashoffset: 1500; opacity: 0; }
+}
+
+/* Tell Tailwind to scan the app, features and UI package for classes */
+@source "..";
+@source "../../../../packages/ui/**/*.{ts,tsx}";
+
+/* ── Mastery template: hide the main site header ───────────────────────────
+   When a Mastery course page mounts, it sets data-mastery-page="true" on
+   <body>. This CSS hides the <header> (PublicHeader) so only the sticky
+   offer bar is visible at the top. */
+body[data-mastery-page="true"] > header,
+body[data-mastery-page="true"] header.sticky {
+  display: none !important;
+}
+
+
+html, body {
+  overflow-x: clip;
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "assignment_submissions" DROP COLUMN "file_url";

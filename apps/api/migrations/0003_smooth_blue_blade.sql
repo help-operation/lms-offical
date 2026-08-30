@@ -1,0 +1,1 @@
+ALTER TABLE "live_courses" ADD COLUMN "total_modules" varchar(20);
