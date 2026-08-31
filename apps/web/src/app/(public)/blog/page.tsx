@@ -93,6 +93,7 @@ export default async function BlogPage() {
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft dark:text-gray-400 md:text-base">
             {heroSubtitle}
           </p>
+          Testing 
         </div>
       </section>
 
