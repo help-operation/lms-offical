@@ -29,22 +29,18 @@ export function DistributionChart({ data, visitorActivity }: { data: DashboardOv
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none p-5 relative overflow-hidden flex flex-col h-full">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none p-5 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-brand-50/60 to-transparent rounded-bl-full dark:from-brand-500/5" />
       <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-4 relative z-10">Distribution</h2>
-      <div className="relative z-10 flex-1">
-        <ResponsiveContainer width="100%" height="100%" minHeight={260}>
-          <BarChart data={chartData} barSize={24}>
+      <div className="relative z-10">
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={chartData} barSize={32}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #f0f0f0)" vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 9, fill: "var(--chart-tick, #9ca3af)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick, #9ca3af)" }}
               axisLine={false}
               tickLine={false}
-              interval={0}
-              angle={-30}
-              textAnchor="end"
-              height={50}
             />
             <YAxis
               tick={{ fontSize: 11, fill: "var(--chart-tick, #9ca3af)" }}
