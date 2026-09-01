@@ -158,7 +158,7 @@ export function DashboardV2Client() {
           <TopSummaryStrip data={data} period={applied.period} />
 
           {/* Student Overview: 65% + Distribution: 35% */}
-          <div className="flex flex-col xl:flex-row gap-4">
+          <div className="flex flex-col xl:flex-row gap-4 items-start">
             <div className="xl:w-[65%]">
               <StudentOverviewCard data={data} />
             </div>
