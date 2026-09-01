@@ -73,13 +73,13 @@ export function StatCard({ card }: { card: StatCardDef }) {
 export function StatCardGrid({ title, accentColor, cards, columns }: { title: string; accentColor: string; cards: StatCardDef[]; columns?: number }) {
   const colClass = columns === 4 ? "grid-cols-2 sm:grid-cols-4" : columns === 5 ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-2 sm:grid-cols-3";
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 h-full flex flex-col">
       <div className="flex items-center gap-2">
         <div className={`h-5 w-1 rounded-full ${accentColor.includes("brand") ? "bg-brand-500" : accentColor.includes("blue") ? "bg-blue-500" : accentColor.includes("green") ? "bg-emerald-500" : accentColor.includes("pink") ? "bg-pink-500" : "bg-brand-500"}`} />
         <span className={`text-xs font-bold ${accentColor} dark:text-brand uppercase tracking-wider`}>{title}</span>
         <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent dark:from-slate-700" />
       </div>
-      <div className={`grid ${colClass} gap-3`}>
+      <div className={`grid ${colClass} gap-3 flex-1 content-start`}>
         {cards.map((card) => (
           <StatCard key={card.label} card={card} />
         ))}

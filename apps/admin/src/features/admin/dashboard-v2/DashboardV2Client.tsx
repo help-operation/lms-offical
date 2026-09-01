@@ -102,8 +102,8 @@ export function DashboardV2Client() {
             <div className="xl:col-span-2">
               <StudentOverviewCard data={data} />
             </div>
-            <div className="xl:col-span-1">
-              <DistributionChart data={data.studentOverview} />
+            <div className="xl:col-span-1 flex">
+              <DistributionChart data={data.studentOverview} visitorActivity={data.visitorActivity} />
             </div>
           </div>
 
