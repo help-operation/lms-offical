@@ -34,6 +34,7 @@ import { InvoiceNumberService } from 'src/common/invoice-number/invoice-number.s
 import { computeEnrollmentExpiry } from 'src/common/utils/access-expiry.util';
 import { MetaCapiService } from 'src/integrations/meta-capi/meta-capi.service';
 import { RevenueEventsService } from 'src/events/revenue-events.service';
+import { DashboardEventsService } from 'src/events/dashboard-events.service';
 
 @Injectable()
 export class OrdersService {
@@ -51,6 +52,7 @@ export class OrdersService {
     private readonly invoiceNumbers: InvoiceNumberService,
     private readonly metaCapi: MetaCapiService,
     private readonly revenueEvents: RevenueEventsService,
+    private readonly dashboardEvents: DashboardEventsService,
   ) {}
 
   /**
@@ -505,6 +507,8 @@ export class OrdersService {
         userEmail: null,
       },
     });
+
+    this.dashboardEvents.emit({ type: 'order_created', meta: { orderId: order.id, userId } });
 
     return order;
   }
@@ -1023,6 +1027,9 @@ export class OrdersService {
         userEmail,
       },
     });
+
+    this.dashboardEvents.emit({ type: 'order_paid', meta: { orderId: order.id, userId: order.userId } });
+    this.dashboardEvents.emit({ type: 'payment_completed', meta: { orderId: order.id, amount } });
   }
 
   async getOrderById(userId: number, orderId: number) {

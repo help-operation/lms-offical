@@ -62,6 +62,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { FontsModule } from './fonts/fonts.module';
 import { EventsModule } from './events/events.module';
 import { RevenueGateway } from './events/revenue.gateway';
+import { DashboardGateway } from './events/dashboard.gateway';
 
 @Module({
   imports: [
@@ -133,6 +134,7 @@ import { RevenueGateway } from './events/revenue.gateway';
   providers: [
     AppService,
     RevenueGateway,
+    DashboardGateway,
     // Apply the throttler globally so every route is covered by the default
     // bucket unless it opts into a stricter (or skipped) limit.
     { provide: APP_GUARD, useClass: ThrottlerGuard },

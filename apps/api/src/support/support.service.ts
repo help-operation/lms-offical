@@ -14,6 +14,7 @@ import {
   formatPaginatedResponse,
   type TableQueryInput,
 } from '../common/utils/table-query.util';
+import { DashboardEventsService } from '../events/dashboard-events.service';
 
 const { supportTickets, supportMessages, users, adminUsers, cannedResponses } = schema;
 
@@ -42,6 +43,7 @@ export class SupportService {
     private emailTemplates: EmailTemplatesService,
     private push: PushService,
     private uploadService: UploadService,
+    private readonly dashboardEvents: DashboardEventsService,
   ) {}
 
   // ── Student: create ticket ───────────────────────────────────────────────────
@@ -58,6 +60,8 @@ export class SupportService {
       .insert(supportTickets)
       .values({ userId, subject, category, priority, updatedAt: now, lastStudentReadAt: now })
       .returning();
+
+    this.dashboardEvents.emit({ type: 'support_ticket_created', meta: { ticketId: ticket.id } });
 
     await this.db.insert(supportMessages).values({ ticketId: ticket.id, userId, message, isInternal: false });
 
@@ -192,9 +196,13 @@ export class SupportService {
         this.push.sendToUser(ticket.userId, {
           title: `Support reply — "${ticket.subject}"`,
           body: message.slice(0, 100), url: '/student/support',
-        }).catch(() => {});
-      }
+      }).catch(() => {});
     }
+
+    this.dashboardEvents.emit({ type: 'support_ticket_resolved', meta: { ticketId, status } });
+
+    return ticket;
+  }
     return msg;
   }
 

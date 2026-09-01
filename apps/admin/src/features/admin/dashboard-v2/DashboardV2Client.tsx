@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { dashboardApi, type DashboardOverview } from "./api";
 import { FilterBar, DEFAULT_FILTERS, toApiFilters, type DraftFilters } from "./FilterBar";
+import { useDashboardSocket } from "@/hooks/use-dashboard-socket";
 import { TopSummaryStrip } from "./sections/TopSummaryStrip";
 import { StudentOverviewCard } from "./sections/StudentOverviewCard";
 import { CourseCountDonut } from "./sections/CourseCountDonut";
@@ -24,34 +25,58 @@ export function DashboardV2Client() {
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const appliedRef = useRef(applied);
+  appliedRef.current = applied;
+
+  const fetchData = useCallback(async (filters: DraftFilters) => {
+    try {
+      const res = await dashboardApi.overview(toApiFilters(filters));
+      setData(res.data);
+      setLastUpdate(new Date());
+    } catch (err) {
+      console.error("Dashboard overview fetch failed:", err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     setError(false);
-    dashboardApi
-      .overview(toApiFilters(applied))
-      .then((res) => setData(res.data))
-      .catch((err) => {
-        console.error("Dashboard overview fetch failed:", err);
-        setError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [applied]);
+    fetchData(applied);
+  }, [applied, fetchData]);
+
+  // --- Socket: re-fetch on any dashboard event ---
+  const handleDashboardUpdate = useCallback(() => {
+    fetchData(appliedRef.current);
+  }, [fetchData]);
+
+  const { connected } = useDashboardSocket({ onDashboardUpdate: handleDashboardUpdate });
 
   return (
     <div className="space-y-6">
-      <FilterBar
-        draft={draft}
-        onChange={setDraft}
-        onReset={() => {
-          setDraft(DEFAULT_FILTERS);
-          setApplied(DEFAULT_FILTERS);
-        }}
-        onApply={() => setApplied(draft)}
-        onPeriodChange={(p) => {
-          if (p !== "custom") setApplied((prev) => ({ ...prev, period: p }));
-        }}
-      />
+      <div className="flex items-center justify-between">
+        <FilterBar
+          draft={draft}
+          onChange={setDraft}
+          onReset={() => {
+            setDraft(DEFAULT_FILTERS);
+            setApplied(DEFAULT_FILTERS);
+          }}
+          onApply={() => setApplied(draft)}
+          onPeriodChange={(p) => {
+            if (p !== "custom") setApplied((prev) => ({ ...prev, period: p }));
+          }}
+        />
+        {connected && (
+          <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full ml-3 shrink-0">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            LIVE
+          </span>
+        )}
+      </div>
 
       {loading && !data && (
         <div className="flex items-center justify-center py-16">
