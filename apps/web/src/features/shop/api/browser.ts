@@ -64,15 +64,15 @@ export const shopOrdersBrowser = {
       { method: "POST", body: JSON.stringify({ code, subtotal }) }
     ),
 
-  initiatePaystation: (orderId: number, callbackUrl: string) =>
+  initiatePaystation: (orderId: number, callbackUrl: string, phone: string) =>
     apiRequestBrowser<{ paymentUrl: string; invoiceNumber: string }>(
       `/shop/orders/${orderId}/pay/paystation`,
-      { method: "POST", body: JSON.stringify({ callbackUrl }) }
+      { method: "POST", body: JSON.stringify({ callbackUrl, phone }) }
     ),
 
-  confirmBkash: (orderId: number, bkashTrxId: string) =>
+  confirmBkash: (orderId: number, bkashTrxId: string, phone: string) =>
     apiRequestBrowser<{ orderId: number; status: string }>(
       `/shop/orders/${orderId}/pay/bkash`,
-      { method: "POST", body: JSON.stringify({ bkashTrxId }) }
+      { method: "POST", body: JSON.stringify({ bkashTrxId, phone }) }
     ),
 };

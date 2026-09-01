@@ -24,6 +24,7 @@ import {
   users,
 } from 'src/db/schema';
 import { paymentSummaryFrom, type PaymentSummary } from 'src/common/utils/payment-summary.util';
+import { DashboardEventsService } from 'src/events/dashboard-events.service';
 
 /** Unified row shape for the student "My Courses" list (recorded + live). */
 type MyEnrollment = {
@@ -51,7 +52,10 @@ type MyEnrollment = {
 
 @Injectable()
 export class EnrollmentsService {
-  constructor(@Inject(DB_TOKEN) private readonly db: DB) {}
+  constructor(
+    @Inject(DB_TOKEN) private readonly db: DB,
+    private readonly dashboardEvents: DashboardEventsService,
+  ) {}
 
   async enroll(userId: number, courseId: number) {
     const [course] = await this.db
@@ -84,6 +88,8 @@ export class EnrollmentsService {
       .returning();
 
     await this.ensureStudentRole(userId);
+
+    this.dashboardEvents.emit({ type: 'enrollment_created', meta: { courseId, userId } });
 
     return enrollment;
   }

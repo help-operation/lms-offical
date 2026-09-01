@@ -24,6 +24,8 @@ export function ShopCheckoutClient() {
   const [step, setStep] = useState<Step>("info");
   const [form, setForm] = useState<GuestForm>({ name: "", email: "", phone: "", address: "" });
   const [errors, setErrors] = useState<Partial<GuestForm>>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [couponInput, setCouponInput] = useState("");
   const [showCoupon, setShowCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState("");
@@ -51,7 +53,9 @@ export function ShopCheckoutClient() {
     if (!form.email.trim()) e.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Invalid email";
     if (!form.phone.trim()) e.phone = "Phone is required";
+    else if (!/^(\+?880|0)?1[3-9]\d{8}$/.test(form.phone.replace(/\s/g, ""))) e.phone = "Invalid phone number";
     setErrors(e);
+    setGeneralError(null);
     return Object.keys(e).length === 0;
   };
 
@@ -76,6 +80,7 @@ export function ShopCheckoutClient() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    if (!acceptedTerms) { setGeneralError("Please accept the terms and conditions"); return; }
     if (items.length === 0) return;
 
     startTransition(async () => {
@@ -97,14 +102,14 @@ export function ShopCheckoutClient() {
         setStep("redirecting");
 
         const callbackUrl = `${API_BASE}/paystation/shop-callback`;
-        const payRes = await shopOrdersBrowser.initiatePaystation(orderId, callbackUrl);
+        const payRes = await shopOrdersBrowser.initiatePaystation(orderId, callbackUrl, form.phone);
 
         if (payRes.data?.paymentUrl) {
           window.location.href = payRes.data.paymentUrl;
         }
       } catch (err: unknown) {
         const e = err as { message?: string };
-        setErrors({ name: e?.message ?? "Something went wrong. Please try again." });
+        setGeneralError(e?.message ?? "Something went wrong. Please try again.");
         setStep("info");
       }
     });
@@ -146,6 +151,13 @@ export function ShopCheckoutClient() {
         </Link>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Checkout</h1>
+
+        {generalError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 8v4m0 4h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            <p className="text-sm text-red-700">{generalError}</p>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Form */}
@@ -198,7 +210,20 @@ export function ShopCheckoutClient() {
                     className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand-500"
                     onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
                   />
-                  <button
+              <div className="flex gap-2 items-start mb-4">
+                <input
+                  type="checkbox"
+                  id="shopAcceptTerms"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 border-gray-300 rounded accent-brand-600"
+                />
+                <label htmlFor="shopAcceptTerms" className="text-xs text-gray-500 leading-snug">
+                  I accept the <a href="/terms" className="text-brand-600 hover:underline">Terms &amp; Conditions</a>, <a href="/privacy" className="text-brand-600 hover:underline">Privacy Policy</a> &amp; <a href="/refund-policy" className="text-brand-600 hover:underline">Refund Policy</a>
+                </label>
+              </div>
+
+              <button
                     onClick={applyCoupon}
                     disabled={isPending}
                     className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"

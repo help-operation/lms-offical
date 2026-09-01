@@ -23,6 +23,7 @@ import { CartModule } from './cart/cart.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { OrdersModule } from './orders/orders.module';
 import { AdminModule } from './admin/admin.module';
+import { PaymentManagementModule } from './admin/payment-management/payment-management.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SupportModule } from './support/support.module';
@@ -60,6 +61,9 @@ import { ShopCouponsModule } from './shop-coupons/shop-coupons.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { FontsModule } from './fonts/fonts.module';
+import { EventsModule } from './events/events.module';
+import { RevenueGateway } from './events/revenue.gateway';
+import { DashboardGateway } from './events/dashboard.gateway';
 
 @Module({
   imports: [
@@ -91,6 +95,7 @@ import { FontsModule } from './fonts/fonts.module';
     WishlistModule,
     OrdersModule,
     AdminModule,
+    PaymentManagementModule,
     CouponsModule,
     NotificationsModule,
     SupportModule,
@@ -125,10 +130,13 @@ import { FontsModule } from './fonts/fonts.module';
     TrackingModule,
     DashboardModule,
     FontsModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    RevenueGateway,
+    DashboardGateway,
     // Apply the throttler globally so every route is covered by the default
     // bucket unless it opts into a stricter (or skipped) limit.
     { provide: APP_GUARD, useClass: ThrottlerGuard },

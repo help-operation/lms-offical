@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import {
   MagnifyingGlass,
   User,
@@ -18,6 +18,9 @@ import {
   CalendarBlank,
   Envelope,
   IdentificationCard,
+  ArrowsDownUp,
+  CaretUp,
+  CaretDown,
 } from "@phosphor-icons/react";
 import type { ActivityLogRow, ActivityLogsResponse } from "./types";
 import { ACTION_LABELS } from "./types";
@@ -58,13 +61,23 @@ function actorInitials(log: ActivityLogRow): string {
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
+// ─── Debounce Hook ────────────────────────────────────────────────────────────
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 
 function LogDetailModal({ log, onClose }: { log: ActivityLogRow; onClose: () => void }) {
   const isAdmin = !!log.adminUserId;
   const { formatDateTime } = useLocalization();
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
@@ -78,12 +91,9 @@ function LogDetailModal({ log, onClose }: { log: ActivityLogRow; onClose: () => 
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Panel */}
       <div className="relative z-10 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        {/* Header */}
         <div className={`px-6 py-5 ${isAdmin ? "bg-brand" : "bg-blue-600"}`}>
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
@@ -111,9 +121,7 @@ function LogDetailModal({ log, onClose }: { log: ActivityLogRow; onClose: () => 
           </div>
         </div>
 
-        {/* Body */}
         <div className="p-6 space-y-5">
-          {/* Action */}
           <div>
             <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Action</p>
             <div className="flex items-center gap-2">
@@ -123,7 +131,6 @@ function LogDetailModal({ log, onClose }: { log: ActivityLogRow; onClose: () => 
             </div>
           </div>
 
-          {/* Entity */}
           {log.entity && (
             <div>
               <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Entity</p>
@@ -140,10 +147,8 @@ function LogDetailModal({ log, onClose }: { log: ActivityLogRow; onClose: () => 
             </div>
           )}
 
-          {/* Divider */}
           <div className="border-t border-gray-100 dark:border-slate-800" />
 
-          {/* Actor details */}
           <div>
             <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-3">Actor</p>
             <div className="space-y-2">
@@ -164,7 +169,6 @@ function LogDetailModal({ log, onClose }: { log: ActivityLogRow; onClose: () => 
             </div>
           </div>
 
-          {/* Timestamp */}
           <div>
             <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Timestamp</p>
             <div className="flex items-start gap-2.5">
@@ -173,7 +177,6 @@ function LogDetailModal({ log, onClose }: { log: ActivityLogRow; onClose: () => 
             </div>
           </div>
 
-          {/* Meta */}
           {metaEntries.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-3">Details</p>
@@ -197,7 +200,6 @@ function LogDetailModal({ log, onClose }: { log: ActivityLogRow; onClose: () => 
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-6 pb-5">
           <button
             onClick={onClose}
@@ -238,14 +240,12 @@ function LogRow({ log, onClick }: { log: ActivityLogRow; onClick: () => void }) 
       className="flex items-start gap-3.5 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer border-b border-gray-50 dark:border-slate-800 last:border-0"
       onClick={onClick}
     >
-      {/* Avatar */}
       <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
         isAdmin ? "bg-brand-100 text-brand-700 dark:bg-brand/15 dark:text-brand" : "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400"
       }`}>
         {actorInitials(log)}
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <span className="text-sm font-medium text-gray-900 dark:text-white">{actorName(log)}</span>
@@ -270,7 +270,6 @@ function LogRow({ log, onClick }: { log: ActivityLogRow; onClick: () => void }) 
         )}
       </div>
 
-      {/* Time */}
       <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-slate-500 shrink-0">
         <Clock size={12} />
         <span>{relativeDate(log.createdAt, formatDate)}</span>
@@ -287,44 +286,99 @@ interface Props {
 
 export function ActivityLogsClient({ initial }: Props) {
   const [data, setData]               = useState(initial);
-  const [search, setSearch]           = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [actor, setActor]             = useState("");
   const [page, setPage]               = useState(1);
+  const [perPage, setPerPage]         = useState(30);
+  const [sortField, setSortField]     = useState("createdAt");
+  const [sortDir, setSortDir]         = useState<"asc" | "desc">("desc");
+  const [dateFrom, setDateFrom]       = useState("");
+  const [dateTo, setDateTo]           = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedLog, setSelectedLog] = useState<ActivityLogRow | null>(null);
   const [isPending, startTransition]  = useTransition();
+  const abortRef = useRef<AbortController | null>(null);
 
-  function reload(opts: { search?: string; actor?: string; page?: number }) {
+  const debouncedSearch = useDebounce(searchInput, 350);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchLogs = useCallback((opts: {
+    search?: string; actor?: string; page?: number; per_page?: number;
+    sort_field?: string; sort_direction?: string; date_from?: string; date_to?: string;
+  }) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     startTransition(async () => {
-      const s = opts.search ?? search;
-      const a = opts.actor  ?? actor;
-      const p = opts.page   ?? page;
-      const res = await getActivityLogsAction({ search: s, actor: a, page: p });
-      if (res.success) setData(res.data);
+      const res = await getActivityLogsAction({
+        search:         opts.search ?? debouncedSearch,
+        actor:          opts.actor  ?? actor,
+        page:           opts.page   ?? page,
+        per_page:       opts.per_page ?? perPage,
+        sort_field:     opts.sort_field ?? sortField,
+        sort_direction: opts.sort_direction ?? sortDir,
+        date_from:      opts.date_from ?? dateFrom,
+        date_to:        opts.date_to ?? dateTo,
+      });
+      if (res.success && !controller.signal.aborted) {
+        setData(res.data);
+      }
     });
-  }
+  }, [debouncedSearch, actor, page, perPage, sortField, sortDir, dateFrom, dateTo]);
 
-  function handleSearch(value: string) {
-    setSearch(value);
+  // Debounced search triggers fetch
+  useEffect(() => {
     setPage(1);
-    reload({ search: value, page: 1 });
-  }
+    fetchLogs({ search: debouncedSearch, page: 1 });
+  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleActor(value: string) {
     setActor(value);
     setPage(1);
-    reload({ actor: value, page: 1 });
+    fetchLogs({ actor: value, page: 1 });
   }
 
   function handlePage(p: number) {
     setPage(p);
-    reload({ page: p });
+    fetchLogs({ page: p });
+  }
+
+  function handlePerPage(value: number) {
+    setPerPage(value);
+    setPage(1);
+    fetchLogs({ per_page: value, page: 1 });
+  }
+
+  function handleSort(field: string) {
+    const newDir = sortField === field && sortDir === "desc" ? "asc" : "desc";
+    setSortField(field);
+    setSortDir(newDir);
+    setPage(1);
+    fetchLogs({ sort_field: field, sort_direction: newDir, page: 1 });
+  }
+
+  function handleApplyDateFilter() {
+    setPage(1);
+    fetchLogs({ date_from: dateFrom, date_to: dateTo, page: 1 });
+  }
+
+  function handleClearFilters() {
+    setSearchInput("");
+    setActor("");
+    setDateFrom("");
+    setDateTo("");
+    setSortField("createdAt");
+    setSortDir("desc");
+    setPage(1);
+    fetchLogs({ search: "", actor: "", date_from: "", date_to: "", sort_field: "createdAt", sort_direction: "desc", page: 1 });
   }
 
   const { data: logs, pagination, stats } = data;
+  const hasActiveFilter = searchInput || actor || dateFrom || dateTo;
 
   return (
     <>
-      {/* Detail Modal */}
       {selectedLog && (
         <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
       )}
@@ -337,7 +391,7 @@ export function ActivityLogsClient({ initial }: Props) {
             <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Full audit trail of admin and student actions</p>
           </div>
           <button
-            onClick={() => reload({})}
+            onClick={() => fetchLogs({})}
             disabled={isPending}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium transition-colors disabled:opacity-60"
           >
@@ -360,8 +414,8 @@ export function ActivityLogsClient({ initial }: Props) {
             <input
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 dark:focus:ring-brand/20"
               placeholder="Search actions, entities, names…"
-              value={search}
-              onChange={e => handleSearch(e.target.value)}
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
             />
           </div>
 
@@ -377,10 +431,85 @@ export function ActivityLogsClient({ initial }: Props) {
               <option value="user">Students only</option>
             </select>
           </div>
+
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
+              showFilters || hasActiveFilter
+                ? "bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand/10 dark:border-brand/30 dark:text-brand"
+                : "border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
+            }`}
+          >
+            <FunnelSimple size={14} />
+            Filters
+            {hasActiveFilter && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+          </button>
+
+          <select
+            value={perPage}
+            onChange={e => handlePerPage(Number(e.target.value))}
+            className="px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-300 dark:focus:ring-brand/20"
+          >
+            <option value={10}>10 / page</option>
+            <option value={30}>30 / page</option>
+            <option value={50}>50 / page</option>
+            <option value={100}>100 / page</option>
+          </select>
         </div>
+
+        {/* Expanded Filters */}
+        {showFilters && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 p-4 flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Date From</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-300 dark:focus:ring-brand/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Date To</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-300 dark:focus:ring-brand/20"
+              />
+            </div>
+            <button
+              onClick={handleApplyDateFilter}
+              className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-medium transition-colors"
+            >
+              Apply
+            </button>
+            {hasActiveFilter && (
+              <button
+                onClick={handleClearFilters}
+                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 font-medium transition-colors"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Log Table */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
+          {/* Sort Header */}
+          <div className="flex items-center gap-4 px-5 py-3 border-b border-gray-100 dark:border-slate-800 text-xs font-semibold text-gray-500 dark:text-slate-400">
+            <button onClick={() => handleSort("action")} className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-white transition-colors">
+              Action
+              {sortField === "action" ? (sortDir === "asc" ? <CaretUp size={12} /> : <CaretDown size={12} />) : <ArrowsDownUp size={12} className="opacity-40" />}
+            </button>
+            <span className="flex-1" />
+            <button onClick={() => handleSort("createdAt")} className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-white transition-colors">
+              Date
+              {sortField === "createdAt" ? (sortDir === "asc" ? <CaretUp size={12} /> : <CaretDown size={12} />) : <ArrowsDownUp size={12} className="opacity-40" />}
+            </button>
+          </div>
+
           {isPending ? (
             <div className="py-16 text-center text-sm text-gray-400 dark:text-slate-500">Loading…</div>
           ) : logs.length === 0 ? (

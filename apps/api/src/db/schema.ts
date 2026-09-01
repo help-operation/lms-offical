@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   json,
   jsonb,
@@ -1220,7 +1221,11 @@ export const activityLogs = pgTable('activity_logs', {
   entityId:     integer('entity_id'),
   meta:         json('meta').$type<Record<string, unknown>>(),
   createdAt:    timestamp('created_at').defaultNow(),
-});
+}, (table) => [
+  index('activity_logs_created_at_idx').on(table.createdAt),
+  index('activity_logs_admin_user_id_idx').on(table.adminUserId),
+  index('activity_logs_user_id_idx').on(table.userId),
+]);
 
 export const systemSettings = pgTable('system_settings', {
   id: serial('id').primaryKey(),

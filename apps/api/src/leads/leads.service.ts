@@ -31,6 +31,7 @@ import type {
   CreateInterestLeadDto,
   CreateCallbackLeadDto,
 } from './dto/lead.dto';
+import { DashboardEventsService } from 'src/events/dashboard-events.service';
 
 @Injectable()
 export class LeadsService {
@@ -44,6 +45,7 @@ export class LeadsService {
     private readonly adminNotifications: AdminNotificationsService,
     private readonly smsTemplates: SmsTemplatesService,
     private readonly invoiceNumbers: InvoiceNumberService,
+    private readonly dashboardEvents: DashboardEventsService,
   ) {}
 
   /**
@@ -119,6 +121,8 @@ export class LeadsService {
     await this.smsTemplates.send('lead_callback_ack', row.phone, {
       name: row.name ?? 'there',
     });
+
+    this.dashboardEvents.emit({ type: 'lead_created', meta: { source: 'checkout' } });
 
     return row;
   }

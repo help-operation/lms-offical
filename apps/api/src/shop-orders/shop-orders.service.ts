@@ -50,7 +50,7 @@ export class ShopOrdersService {
     private readonly invoiceNumbers: InvoiceNumberService,
   ) {}
 
-  async validateCoupon(code: string, subtotal: number) {
+  async validateCoupon(code: string, subtotal: number, userId?: number, phone?: string) {
     const [coupon] = await this.db
       .select()
       .from(shopCoupons)
@@ -63,6 +63,20 @@ export class ShopOrdersService {
     }
     if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
       throw new BadRequestException('Coupon usage limit reached');
+    }
+
+    if (userId || phone) {
+      const [existingUsage] = await this.db
+        .select({ id: shopCouponUsages.id })
+        .from(shopCouponUsages)
+        .where(
+          and(
+            eq(shopCouponUsages.couponId, coupon.id),
+            userId ? eq(shopCouponUsages.userId, userId) : eq(shopCouponUsages.userId, -1),
+          ),
+        )
+        .limit(1);
+      if (existingUsage) throw new BadRequestException('You have already used this coupon');
     }
 
     const discountAmount =
@@ -110,7 +124,9 @@ export class ShopOrdersService {
     let discountAmount = 0;
 
     if (dto.couponCode) {
-      const { coupon, discountAmount: d } = await this.validateCoupon(dto.couponCode, totalAmount);
+      const { coupon, discountAmount: d } = await this.validateCoupon(
+        dto.couponCode, totalAmount, dto.userId, dto.phone,
+      );
       couponId = coupon.id;
       discountAmount = d;
     }
@@ -152,54 +168,75 @@ export class ShopOrdersService {
       }
     }
 
-    let order: typeof shopOrders.$inferSelect;
+    let order: typeof shopOrders.$inferSelect = reusedOrder!;
     if (reusedOrder) {
       order = reusedOrder;
     } else {
-      [order] = await this.db
-        .insert(shopOrders)
-        .values({
-          userId: dto.userId ?? null,
-          name: dto.name,
-          email: dto.email,
-          phone: dto.phone,
-          address: dto.address,
-          totalAmount: String(totalAmount),
-          discountAmount: String(discountAmount),
-          finalAmount: String(finalAmount),
-          couponId: couponId ?? null,
-          status: 'pending',
-        })
-        .returning();
+      // ── Atomic stock check & decrement inside a transaction ──────────────
+      await this.db.transaction(async (tx) => {
+        for (const item of dto.productIds) {
+          if (item.quantity <= 0) continue;
+          const result = await tx.execute<{stock: number | null}>(
+            sql`SELECT stock FROM shop_products WHERE id = ${item.productId} FOR UPDATE`,
+          );
+          const row = (result as any).rows?.[0] as {stock: number | null} | undefined;
+          if (!row) throw new NotFoundException(`Product ${item.productId} not found`);
+          if (row.stock !== null && row.stock < item.quantity) {
+            throw new BadRequestException(`Insufficient stock for product ${item.productId}`);
+          }
+          if (row.stock !== null) {
+            await tx.execute(
+              sql`UPDATE shop_products SET stock = stock - ${item.quantity} WHERE id = ${item.productId}`,
+            );
+          }
+        }
 
-      await this.db.insert(shopOrderItems).values(
-        dto.productIds.map((item) => {
-          const product = productRows.find((p) => p.id === item.productId)!;
-          const price = product.discountPrice
-            ? parseFloat(product.discountPrice)
-            : parseFloat(product.price);
-          return {
-            orderId: order.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: String(price),
-            title: product.title,
-          };
-        }),
-      );
+        const [inserted] = await tx
+          .insert(shopOrders)
+          .values({
+            userId: dto.userId ?? null,
+            name: dto.name,
+            email: dto.email,
+            phone: dto.phone,
+            address: dto.address,
+            totalAmount: String(totalAmount),
+            discountAmount: String(discountAmount),
+            finalAmount: String(finalAmount),
+            couponId: couponId ?? null,
+            status: 'pending',
+          })
+          .returning();
 
-      // Record coupon usage
-      if (couponId) {
-        await this.db.insert(shopCouponUsages).values({
-          couponId,
-          userId: dto.userId ?? null,
-          orderId: order.id,
-        });
-        await this.db
-          .update(shopCoupons)
-          .set({ usedCount: sql`${shopCoupons.usedCount} + 1` })
-          .where(eq(shopCoupons.id, couponId));
-      }
+        await tx.insert(shopOrderItems).values(
+          dto.productIds.map((item) => {
+            const product = productRows.find((p) => p.id === item.productId)!;
+            const price = product.discountPrice
+              ? parseFloat(product.discountPrice)
+              : parseFloat(product.price);
+            return {
+              orderId: inserted.id,
+              productId: item.productId,
+              quantity: item.quantity,
+              price: String(price),
+              title: product.title,
+            };
+          }),
+        );
+
+        if (couponId) {
+          await tx.insert(shopCouponUsages).values({
+            couponId,
+            userId: dto.userId ?? null,
+            orderId: inserted.id,
+          });
+          await tx
+            .update(shopCoupons)
+            .set({ usedCount: sql`${shopCoupons.usedCount} + 1` })
+            .where(eq(shopCoupons.id, couponId));
+        }
+
+        order = inserted;
+      });
     }
 
     // Clear user / guest cart
@@ -212,7 +249,7 @@ export class ShopOrdersService {
     return { order, items: dto.productIds };
   }
 
-  async initiatePaystationPayment(orderId: number, callbackUrl: string) {
+  async initiatePaystationPayment(orderId: number, callbackUrl: string, ownerPhone: string, userId?: number) {
     const [order] = await this.db
       .select()
       .from(shopOrders)
@@ -220,6 +257,12 @@ export class ShopOrdersService {
       .limit(1);
     if (!order) throw new NotFoundException('Order not found');
     if (order.status !== 'pending') throw new BadRequestException('Order already processed');
+
+    if (userId) {
+      if (order.userId !== userId) throw new BadRequestException('Unauthorized');
+    } else {
+      if (order.phone !== ownerPhone) throw new BadRequestException('Unauthorized');
+    }
 
     const amount = parseFloat(order.finalAmount);
     const gateway = await this.paymentGateway.getActiveGateway();
@@ -262,7 +305,7 @@ export class ShopOrdersService {
     return result;
   }
 
-  async confirmBkashPayment(orderId: number, bkashTrxId: string) {
+  async confirmBkashPayment(orderId: number, bkashTrxId: string, ownerPhone: string, userId?: number) {
     const [order] = await this.db
       .select()
       .from(shopOrders)
@@ -270,6 +313,12 @@ export class ShopOrdersService {
       .limit(1);
     if (!order) throw new NotFoundException('Order not found');
     if (order.status !== 'pending') throw new BadRequestException('Order already processed');
+
+    if (userId) {
+      if (order.userId !== userId) throw new BadRequestException('Unauthorized');
+    } else {
+      if (order.phone !== ownerPhone) throw new BadRequestException('Unauthorized');
+    }
 
     await this.db
       .update(shopOrders)
@@ -309,6 +358,11 @@ export class ShopOrdersService {
       trxData.data?.trx_status === 'successful';
 
     if (!succeeded) throw new BadRequestException('Payment not confirmed');
+
+    const paidAmount = parseFloat(trxData.data?.payment_amount ?? '0');
+    if (paidAmount > 0 && Math.abs(paidAmount - parseFloat(order.finalAmount)) > 1) {
+      throw new BadRequestException(`Payment amount mismatch: expected ${order.finalAmount}, got ${paidAmount}`);
+    }
 
     await this.db
       .update(shopOrders)

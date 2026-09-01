@@ -3,9 +3,7 @@ import { PaymentManagementClient } from "@/features/admin/payments/PaymentManage
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Failed Payment" };
-
-export default async function FailedPaymentPage() {
+export default async function PaymentManagementPage() {
   let stats = null;
   let courses: { id: number; title: string }[] = [];
 
@@ -20,5 +18,5 @@ export default async function FailedPaymentPage() {
     // render with empty data; client will show error/empty states
   }
 
-  return <PaymentManagementClient initialStats={stats} courseList={courses} defaultStatus="failed" />;
+  return <PaymentManagementClient initialStats={stats} courseList={courses} />;
 }

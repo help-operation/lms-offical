@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { desc, asc, eq, ilike, or, sql, and, gte, lte, type SQL } from 'drizzle-orm';
 import type { DB } from 'src/db';
 import { DB_TOKEN } from 'src/db/db.module';
 import { activityLogs, adminUsers, users } from 'src/db/schema';
@@ -41,34 +41,46 @@ export class ActivityLogsService {
     const perPage = Math.min(100, Number(params.per_page) || 30);
     const offset  = (page - 1) * perPage;
     const search  = (params.search as string | undefined)?.trim() ?? '';
-    const actor   = (params.actor  as string | undefined)?.trim() ?? ''; // 'admin' | 'user' | ''
+    const actor   = (params.actor  as string | undefined)?.trim() ?? '';
+    const sortField = (params.sort_field as string | undefined)?.trim() ?? 'createdAt';
+    const sortDir = (params.sort_direction as string | undefined)?.trim()?.toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const dateFrom = (params.date_from as string | undefined)?.trim() ?? '';
+    const dateTo   = (params.date_to as string | undefined)?.trim() ?? '';
 
-    // WHERE: filter by actor type
-    const actorFilter =
-      actor === 'admin' ? sql`${activityLogs.adminUserId} IS NOT NULL`
-      : actor === 'user' ? sql`${activityLogs.userId} IS NOT NULL`
-      : undefined;
+    const conditions: SQL[] = [];
 
-    // WHERE: search across action, entity, actor names
-    const searchFilter = search
-      ? or(
-          ilike(activityLogs.action, `%${search}%`),
-          ilike(activityLogs.entity, `%${search}%`),
-          ilike(adminUsers.firstName, `%${search}%`),
-          ilike(adminUsers.lastName,  `%${search}%`),
-          ilike(users.firstName, `%${search}%`),
-          ilike(users.lastName,  `%${search}%`),
-        )
-      : undefined;
+    // Actor filter
+    if (actor === 'admin') {
+      conditions.push(sql`${activityLogs.adminUserId} IS NOT NULL`);
+    } else if (actor === 'user') {
+      conditions.push(sql`${activityLogs.userId} IS NOT NULL`);
+    }
 
-    const where =
-      actorFilter && searchFilter ? sql`${actorFilter} AND (${searchFilter})`
-      : actorFilter               ? actorFilter
-      : searchFilter              ? searchFilter
-      : undefined;
+    // Date range filter
+    if (dateFrom) {
+      conditions.push(gte(activityLogs.createdAt, new Date(dateFrom)));
+    }
+    if (dateTo) {
+      conditions.push(lte(activityLogs.createdAt, new Date(dateTo + 'T23:59:59')));
+    }
 
-    const adminUsersAlias = adminUsers;
-    const usersAlias      = users;
+    // Search filter
+    if (search) {
+      const term = `%${search}%`;
+      conditions.push(or(
+        ilike(activityLogs.action, term),
+        ilike(activityLogs.entity, term),
+        ilike(adminUsers.firstName, term),
+        ilike(adminUsers.lastName,  term),
+        ilike(users.firstName, term),
+        ilike(users.lastName,  term),
+      ) as SQL);
+    }
+
+    const where = conditions.length ? and(...conditions) : undefined;
+
+    const orderCol = sortField === 'action' ? activityLogs.action
+      : activityLogs.createdAt;
 
     const [rows, [countRow]] = await Promise.all([
       this.db
@@ -79,37 +91,43 @@ export class ActivityLogsService {
           entityId:        activityLogs.entityId,
           meta:            activityLogs.meta,
           createdAt:       activityLogs.createdAt,
-          // Admin actor
           adminUserId:     activityLogs.adminUserId,
-          adminFirstName:  adminUsersAlias.firstName,
-          adminLastName:   adminUsersAlias.lastName,
-          adminEmail:      adminUsersAlias.email,
-          adminRole:       adminUsersAlias.role,
-          adminAvatar:     adminUsersAlias.avatar,
-          // User actor
+          adminFirstName:  adminUsers.firstName,
+          adminLastName:   adminUsers.lastName,
+          adminEmail:      adminUsers.email,
+          adminRole:       adminUsers.role,
+          adminAvatar:     adminUsers.avatar,
           userId:          activityLogs.userId,
-          userFirstName:   usersAlias.firstName,
-          userLastName:    usersAlias.lastName,
-          userEmail:       usersAlias.email,
-          userAvatar:      usersAlias.avatar,
+          userFirstName:   users.firstName,
+          userLastName:    users.lastName,
+          userEmail:       users.email,
+          userAvatar:      users.avatar,
         })
         .from(activityLogs)
-        .leftJoin(adminUsersAlias, eq(activityLogs.adminUserId, adminUsersAlias.id))
-        .leftJoin(usersAlias,      eq(activityLogs.userId,      usersAlias.id))
+        .leftJoin(adminUsers, eq(activityLogs.adminUserId, adminUsers.id))
+        .leftJoin(users,      eq(activityLogs.userId,      users.id))
         .where(where)
-        .orderBy(desc(activityLogs.createdAt))
+        .orderBy(sortDir === 'asc' ? asc(orderCol) : desc(orderCol))
         .limit(perPage)
         .offset(offset),
 
       this.db
         .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
         .from(activityLogs)
-        .leftJoin(adminUsersAlias, eq(activityLogs.adminUserId, adminUsersAlias.id))
-        .leftJoin(usersAlias,      eq(activityLogs.userId,      usersAlias.id))
+        .leftJoin(adminUsers, eq(activityLogs.adminUserId, adminUsers.id))
+        .leftJoin(users,      eq(activityLogs.userId,      users.id))
         .where(where),
     ]);
 
-    // Stats
+    return {
+      ...formatPaginatedResponse(rows, countRow?.count ?? 0, page, perPage),
+      stats: await this.getStats(),
+    };
+  }
+
+  // ─── Stats (cached per-request via sequential call) ──────────────────────
+
+  private async getStats() {
     const [[totalRow], [adminActionsRow], [userActionsRow]] = await Promise.all([
       this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(activityLogs),
       this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(activityLogs)
@@ -119,12 +137,9 @@ export class ActivityLogsService {
     ]);
 
     return {
-      ...formatPaginatedResponse(rows, countRow?.count ?? 0, page, perPage),
-      stats: {
-        total:        totalRow?.count       ?? 0,
-        adminActions: adminActionsRow?.count ?? 0,
-        userActions:  userActionsRow?.count  ?? 0,
-      },
+      total:        totalRow?.count       ?? 0,
+      adminActions: adminActionsRow?.count ?? 0,
+      userActions:  userActionsRow?.count  ?? 0,
     };
   }
 }

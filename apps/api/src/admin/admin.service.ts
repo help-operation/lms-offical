@@ -2313,68 +2313,6 @@ export class AdminService {
       .orderBy(desc(liveEnrollments.createdAt));
   }
 
-  /**
-   * Combined Complete/Failed Payment list — merges recorded-course `payments`
-   * (via `orders`) and live-course `liveEnrollments` into one list, backing
-   * the admin Complete Payment / Failed Payment pages. Completed rows are
-   * dated by `paidAt` (when they actually succeeded); failed rows never get
-   * a `paidAt`, so they're dated by `createdAt` (when the attempt happened).
-   */
-  async getPaymentsByStatus(status: 'completed' | 'failed') {
-    const recDateCol = status === 'completed' ? payments.paidAt : payments.createdAt;
-    const liveDateCol = status === 'completed' ? liveEnrollments.paidAt : liveEnrollments.createdAt;
-
-    const [recorded, live] = await Promise.all([
-      this.db
-        .select({
-          id: payments.id,
-          invoiceNumber: payments.displayInvoiceNumber,
-          courseType: sql<'recorded'>`'recorded'`,
-          courseTitles: sql<string | null>`(
-            SELECT string_agg(c.title, ', ') FROM order_items oi
-            JOIN courses c ON c.id = oi.course_id
-            WHERE oi.order_id = ${payments.orderId}
-          )`,
-          userFirstName: users.firstName,
-          userLastName: users.lastName,
-          userEmail: users.email,
-          amount: payments.amount,
-          // `paystationMethod` is varchar but `method` is the payment_method enum —
-          // cast to text so Postgres can COALESCE between the two mismatched types.
-          method: sql<string | null>`COALESCE(${payments.paystationMethod}, ${payments.method}::text)`,
-          date: recDateCol,
-        })
-        .from(payments)
-        .innerJoin(orders, eq(orders.id, payments.orderId))
-        .leftJoin(users, eq(users.id, orders.userId))
-        .where(eq(payments.status, status))
-        .orderBy(desc(recDateCol)),
-      this.db
-        .select({
-          id: liveEnrollments.id,
-          invoiceNumber: liveEnrollments.displayInvoiceNumber,
-          courseType: sql<'live'>`'live'`,
-          courseTitles: liveCourses.title,
-          userFirstName: liveEnrollments.name,
-          userLastName: sql<string>`''`,
-          userEmail: liveEnrollments.email,
-          amount: liveEnrollments.amount,
-          method: liveEnrollments.paystationMethod,
-          date: liveDateCol,
-        })
-        .from(liveEnrollments)
-        .innerJoin(liveCourses, eq(liveCourses.id, liveEnrollments.liveCourseId))
-        .where(eq(liveEnrollments.status, status))
-        .orderBy(desc(liveDateCol)),
-    ]);
-
-    return [...recorded, ...live].sort((a, b) => {
-      const at = a.date ? new Date(a.date).getTime() : 0;
-      const bt = b.date ? new Date(b.date).getTime() : 0;
-      return bt - at;
-    });
-  }
-
   // ─── Teacher Management ───────────────────────────────────────────────────
 
   async getTeacher(id: number) {

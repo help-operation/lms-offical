@@ -35,4 +35,16 @@ export class DashboardController {
   getFilters() {
     return this.svc.getFilters();
   }
+
+  @Get('enrollment-trend')
+  @Message('Enrollment trend fetched')
+  getEnrollmentTrend(@Query() query: DashboardQueryInput) {
+    return this.svc.getEnrollmentTrend(query);
+  }
+
+  @Get('revenue-by-course')
+  @Message('Revenue by course fetched')
+  getRevenueByCourse(@Query() query: DashboardQueryInput) {
+    return this.svc.getRevenueByCourse(query);
+  }
 }

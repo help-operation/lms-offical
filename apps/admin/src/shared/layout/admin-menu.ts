@@ -48,7 +48,6 @@ import {
   ChartBar,
   Code,
   Wrench,
-  CheckCircle,
   XCircle,
   CloudArrowUp,
 } from "@phosphor-icons/react";
@@ -81,7 +80,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { href: "/admin/dashboard", label: "Dashboard", icon: SquaresFour, color: "bg-violet-500", perm: "view_dashboard" },
       { href: "/admin/revenue", label: "Revenue", icon: ChartLineUp, color: "bg-cyan-500", perm: "view_revenue" },
-      { href: "/admin/complete-payment", label: "Complete Payment", icon: CheckCircle, color: "bg-green-500", perm: "view_revenue" },
+      { href: "/admin/payments", label: "Payment Management", icon: CreditCard, color: "bg-emerald-500", perm: "view_revenue" },
       { href: "/admin/failed-payment", label: "Failed Payment", icon: XCircle, color: "bg-red-500", perm: "view_revenue" },
       { href: "/admin/activity", label: "Activity Log", icon: ClockCounterClockwise, color: "bg-slate-500", perm: "view_activity_log" },
     ],

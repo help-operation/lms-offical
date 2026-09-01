@@ -344,20 +344,6 @@ export class AdminController {
     return this.adminService.getLiveRevenueReport();
   }
 
-  @Get('payments/completed')
-  @RequirePermissions('view_revenue')
-  @Message('Completed payments fetched')
-  getCompletedPayments() {
-    return this.adminService.getPaymentsByStatus('completed');
-  }
-
-  @Get('payments/failed')
-  @RequirePermissions('view_revenue')
-  @Message('Failed payments fetched')
-  getFailedPayments() {
-    return this.adminService.getPaymentsByStatus('failed');
-  }
-
   @Get('invoices')
   @RequirePermissions('view_invoices')
   @Message('Invoices fetched')

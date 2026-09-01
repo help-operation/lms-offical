@@ -33,6 +33,8 @@ import { ActivityLogsService } from 'src/activity-logs/activity-logs.service';
 import { InvoiceNumberService } from 'src/common/invoice-number/invoice-number.service';
 import { computeEnrollmentExpiry } from 'src/common/utils/access-expiry.util';
 import { MetaCapiService } from 'src/integrations/meta-capi/meta-capi.service';
+import { RevenueEventsService } from 'src/events/revenue-events.service';
+import { DashboardEventsService } from 'src/events/dashboard-events.service';
 
 @Injectable()
 export class OrdersService {
@@ -49,6 +51,8 @@ export class OrdersService {
     private readonly activityLogs: ActivityLogsService,
     private readonly invoiceNumbers: InvoiceNumberService,
     private readonly metaCapi: MetaCapiService,
+    private readonly revenueEvents: RevenueEventsService,
+    private readonly dashboardEvents: DashboardEventsService,
   ) {}
 
   /**
@@ -488,6 +492,24 @@ export class OrdersService {
     }
 
     void this.activityLogs.log({ userId, action: 'order_created', entity: 'order', entityId: order.id, meta: { finalAmount: order.finalAmount, courseIds, couponCode } });
+
+    this.revenueEvents.emit({
+      type: 'order_created',
+      source: 'recorded',
+      payload: {
+        id: order.id,
+        status: order.status,
+        finalAmount: order.finalAmount,
+        createdAt: order.createdAt?.toISOString?.() ?? String(order.createdAt),
+        userId,
+        userFirstName: '',
+        userLastName: '',
+        userEmail: null,
+      },
+    });
+
+    this.dashboardEvents.emit({ type: 'order_created', meta: { orderId: order.id, userId } });
+
     return order;
   }
 
@@ -552,6 +574,9 @@ export class OrdersService {
     await this.db.delete(cartItems).where(eq(cartItems.userId, userId));
 
     void this.activityLogs.log({ userId, action: 'payment_confirmed_bkash', entity: 'order', entityId: orderId, meta: { bkashTrxId, amount: order.finalAmount } });
+
+    void this.emitOrderPaid(order, String(order.finalAmount));
+
     return { paid: true, orderId };
   }
 
@@ -963,11 +988,48 @@ export class OrdersService {
       }
     }
 
+    void this.emitOrderPaid(order, payment.amount);
+
     return {
       paid: true,
       orderId: order.id,
       firstCourseSlug: courses_[0]?.slug ?? null,
     };
+  }
+
+  private async emitOrderPaid(order: typeof orders.$inferSelect, amount: string) {
+    let userFirstName = '';
+    let userLastName = '';
+    let userEmail: string | null = null;
+
+    if (order.userId) {
+      const [userRow] = await this.db
+        .select({ firstName: users.firstName, lastName: users.lastName, email: users.email })
+        .from(users)
+        .where(eq(users.id, order.userId))
+        .limit(1);
+      userFirstName = userRow?.firstName ?? '';
+      userLastName = userRow?.lastName ?? '';
+      userEmail = userRow?.email ?? null;
+    }
+
+    this.revenueEvents.emit({
+      type: 'order_paid',
+      source: 'recorded',
+      payload: {
+        id: order.id,
+        status: 'paid',
+        finalAmount: amount,
+        createdAt: order.createdAt?.toISOString?.() ?? String(order.createdAt),
+        userId: order.userId,
+        userFirstName,
+        userLastName,
+        userEmail,
+      },
+    });
+
+    this.dashboardEvents.emit({ type: 'order_paid', meta: { orderId: order.id, userId: order.userId } });
+    this.dashboardEvents.emit({ type: 'payment_completed', meta: { orderId: order.id, amount } });
   }
 
   async getOrderById(userId: number, orderId: number) {
