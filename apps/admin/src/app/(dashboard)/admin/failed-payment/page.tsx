@@ -1,9 +1,24 @@
-import { adminApi } from "@/features/admin/api";
-import { PaymentListClient } from "@/features/admin/payments/PaymentListClient";
+import { paymentsApi } from "@/features/admin/payments/api";
+import { PaymentManagementClient } from "@/features/admin/payments/PaymentManagementClient";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Failed Payment" };
 
 export default async function FailedPaymentPage() {
-  const res = await adminApi.failedPayments().catch(() => null);
-  return <PaymentListClient title="Failed Payment" records={res?.data ?? []} status="failed" />;
+  let stats = null;
+  let courses: { id: number; title: string }[] = [];
+
+  try {
+    const [statsRes, coursesRes] = await Promise.all([
+      paymentsApi.stats(),
+      paymentsApi.courses(),
+    ]);
+    stats = statsRes.data;
+    courses = coursesRes.data;
+  } catch {
+    // render with empty data; client will show error/empty states
+  }
+
+  return <PaymentManagementClient initialStats={stats} courseList={courses} defaultStatus="failed" />;
 }

@@ -69,19 +69,6 @@ export interface RevenueOrder {
   userEmail: string | null;
 }
 
-export interface PaymentRecord {
-  id: number;
-  invoiceNumber: string | null;
-  courseType: "recorded" | "live";
-  courseTitles: string | null;
-  userFirstName: string | null;
-  userLastName: string | null;
-  userEmail: string | null;
-  amount: string;
-  method: string | null;
-  date: string | null;
-}
-
 export interface AdminCourse {
   id: number;
   title: string;
@@ -199,7 +186,6 @@ export const adminApi = {
 
   revenue: () => apiRequest<RevenueOrder[]>("/admin/revenue"),
   liveRevenue: () => apiRequest<RevenueOrder[]>("/admin/live-revenue"),
-  failedPayments: () => apiRequest<PaymentRecord[]>("/admin/payments/failed"),
 
   courses: (params?: TableQueryParams) => {
     const q = new URLSearchParams();

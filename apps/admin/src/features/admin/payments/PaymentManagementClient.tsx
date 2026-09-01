@@ -62,16 +62,17 @@ type ViewMode = "payments" | "reports" | "analytics";
 interface Props {
   initialStats: PaymentStats | null;
   courseList: { id: number; title: string }[];
+  defaultStatus?: string;
 }
 
 const PER_PAGE_OPTIONS = [10, 20, 50, 100];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function PaymentManagementClient({ initialStats, courseList }: Props) {
+export function PaymentManagementClient({ initialStats, courseList, defaultStatus }: Props) {
   const [stats, setStats] = useState<PaymentStats | null>(initialStats);
   const [view, setView] = useState<ViewMode>("payments");
-  const [tab, setTab] = useState<string>("all");
+  const [tab, setTab] = useState<string>(defaultStatus ?? "all");
   const [search, setSearch] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
   const [courseFilter, setCourseFilter] = useState<number | "">("");
