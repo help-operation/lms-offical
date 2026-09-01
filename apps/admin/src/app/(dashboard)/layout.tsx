@@ -3,6 +3,7 @@ import { Suspense, type CSSProperties, type ReactNode } from "react";
 import { authApi } from "@/features/auth/api";
 import { generalSettingsApi } from "@/features/general-settings/api";
 import { AdminSidebar } from "@/shared/layout/AdminSidebar";
+import { MobileSidebar } from "@/shared/layout/MobileSidebar";
 import { RouteGuard } from "@/shared/layout/RouteGuard";
 import { AdminTopHeader } from "@/shared/layout/AdminTopHeader";
 import { SidebarProvider } from "@/shared/layout/SidebarContext";
@@ -99,6 +100,11 @@ async function DashboardLayoutContent({
             <AdminSidebar siteName={settings.general_site_name} />
           ) : (
             <AdminSidebar permissions={permissions} siteName={settings.general_site_name} />
+          )}
+          {role === "SUPER_ADMIN" ? (
+            <MobileSidebar siteName={settings.general_site_name} />
+          ) : (
+            <MobileSidebar permissions={permissions} siteName={settings.general_site_name} />
           )}
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">
             <AdminTopHeader userName={fullName} userInitial={initial} role={role} />

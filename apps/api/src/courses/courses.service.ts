@@ -1245,7 +1245,9 @@ export class CoursesService {
   // ─── Admin ────────────────────────────────────────────────────────────────
 
   async findAllAdmin(params: TableQueryInput = {}, adminUserId?: number, isAdmin = false) {
-    const q = buildTableQuery(params, {
+    // Extract custom filters before passing to buildTableQuery
+    const { category, template, ...restParams } = params;
+    const q = buildTableQuery(restParams, {
       searchable: [courses.title, courses.slug],
       sortable: {
         title: courses.title,
@@ -1271,7 +1273,10 @@ export class CoursesService {
     // Trash is hidden from the default list — only shown when explicitly
     // filtering status=trash (the admin's dedicated Trash view).
     const trashCondition = params.status ? undefined : ne(courses.status, 'trash');
-    const where = and(...[q.where, scopeCondition, trashCondition].filter(Boolean) as SQL[]);
+    // Category and template filters
+    const categoryCondition = category ? eq(categories.name, category as string) : undefined;
+    const templateCondition = template ? eq(courses.template, template as string) : undefined;
+    const where = and(...[q.where, scopeCondition, trashCondition, categoryCondition, templateCondition].filter(Boolean) as SQL[]);
 
     const [rows, [countRow]] = await Promise.all([
       this.db

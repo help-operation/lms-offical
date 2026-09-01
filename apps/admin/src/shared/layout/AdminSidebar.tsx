@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   SignOut,
   CaretRight,
+  List,
 } from "@phosphor-icons/react";
 import { GraduationCap } from "lucide-react";
 import { formLogoutAction } from "@/features/auth/actions/auth.actions";
@@ -16,16 +17,22 @@ import { menuGroups } from "./admin-menu";
 
 export { requiredPermissionFor, firstAllowedPath } from "./admin-menu";
 
+const COLLAPSED_WIDTH = 72;
+const EXPANDED_WIDTH = 256;
+
 /**
  * The single admin sidebar, driven by one `menuGroups` definition.
  *
  * - No `permissions` prop → Super Admin: every item is shown (full access).
  * - `permissions` provided → custom role / instructor: only items whose `perm`
  *   the role was granted appear.
+ *
+ * Collapsed mode: sidebar shrinks to icon-only strip (w-[72px]).
+ * Expanded mode: full sidebar with labels (w-64).
  */
 export function AdminSidebar({ permissions, siteName }: { permissions?: string[]; siteName?: string }) {
   const pathname = usePathname();
-  const { collapsed } = useSidebar();
+  const { collapsed, toggle } = useSidebar();
 
   const showAll = permissions === undefined;
   const groups = menuGroups
@@ -53,13 +60,28 @@ export function AdminSidebar({ permissions, siteName }: { permissions?: string[]
   }
 
   return (
-    <aside className={`flex h-full flex-col bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 shadow-[4px_0_24px_-8px_rgba(15,23,42,0.06)] dark:shadow-none shrink-0 transition-all duration-300 overflow-hidden ${collapsed ? "w-0" : "w-64"}`}>
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-2.5 px-5 border-b border-gray-100 dark:border-slate-800">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand shadow-md shadow-brand/25">
-          <GraduationCap className="h-4 w-4 text-white" />
+    <aside
+      className="flex h-full flex-col bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 shadow-[4px_0_24px_-8px_rgba(15,23,42,0.06)] dark:shadow-none shrink-0 transition-all duration-300 overflow-hidden max-sm:hidden"
+      style={{ width: collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH }}
+    >
+      {/* Logo + Toggle */}
+      <div className="flex h-16 items-center border-b border-gray-100 dark:border-slate-800 shrink-0">
+        <div className="flex flex-1 items-center gap-2.5 px-4 min-w-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand shadow-md shadow-brand/25 shrink-0">
+            <GraduationCap className="h-4 w-4 text-white" />
+          </div>
+          {!collapsed && (
+            <span className="text-base font-bold text-gray-900 dark:text-white whitespace-nowrap truncate">{siteName || "Skillkoro"}</span>
+          )}
         </div>
-        <span className="text-base font-bold text-gray-900 dark:text-white">{siteName || "Skillkoro"}</span>
+        {/* Toggle button — top right of sidebar */}
+        <button
+          onClick={toggle}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex h-8 w-8 items-center justify-center mr-3 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-all duration-200 shrink-0"
+        >
+          <List size={16} weight="bold" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -71,6 +93,41 @@ export function AdminSidebar({ permissions, siteName }: { permissions?: string[]
             (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
           );
 
+          // ──── Collapsed: icon-only strip ────
+          if (collapsed) {
+            return (
+              <div key={group.label} className="relative group">
+                <button
+                  onClick={() => {
+                    setOpenCategory(group.label);
+                    if (collapsed) toggle();
+                  }}
+                  title={group.label}
+                  className={`relative w-full flex items-center justify-center rounded-lg p-2.5 transition-all duration-200 ${
+                    categoryActive
+                      ? "bg-brand/8 text-brand dark:bg-brand/10"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {categoryActive && (
+                    <span className="absolute -left-0.5 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-brand" />
+                  )}
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 transition-all ${
+                    categoryActive ? `${group.color} shadow-sm` : getTint(group.color).tint
+                  }`}>
+                    <GroupIcon size={15} weight="fill" className={categoryActive ? "text-white" : getTint(group.color).icon} />
+                  </span>
+                </button>
+                {/* Tooltip */}
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 rounded-md bg-gray-900 dark:bg-slate-700 text-white text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50 shadow-lg">
+                  {group.label}
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-slate-700" />
+                </div>
+              </div>
+            );
+          }
+
+          // ──── Expanded: full menu with labels ────
           return (
             <div key={group.label}>
               {/* Category parent toggle */}
@@ -132,16 +189,17 @@ export function AdminSidebar({ permissions, siteName }: { permissions?: string[]
       </nav>
 
       {/* Logout */}
-      <div className="border-t border-gray-100 dark:border-slate-800 p-3">
+      <div className="border-t border-gray-100 dark:border-slate-800 p-3 shrink-0">
         <form action={formLogoutAction}>
           <button
             type="submit"
+            title={collapsed ? "Sign out" : undefined}
             className="group flex w-full items-center gap-2.5 rounded-lg bg-gray-50 dark:bg-slate-800 px-3 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-all duration-200"
           >
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 dark:bg-red-500/10 shrink-0 group-hover:scale-105 transition-transform duration-200">
               <SignOut size={14} weight="fill" className="text-red-500 dark:text-red-400" />
             </span>
-            Sign out
+            {!collapsed && "Sign out"}
           </button>
         </form>
       </div>

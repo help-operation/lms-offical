@@ -11,7 +11,7 @@ import { ConsentBanner } from "@/shared/components/ConsentBanner";
 import { UserContext } from "@/shared/components/UserContext";
 import { getPublicSiteSettings } from "@/features/cms/api/settings";
 import { generateBrandScale, brandScaleToCssVars, isHexColor } from "@/shared/utils/color";
-import { getFontClassName, getFontCssVar } from "@/shared/utils/font-registry";
+import { buildFontLinks } from "@/shared/utils/font-registry";
 
 // Built-in per-template default color, keyed by `general_home_template` id.
 // Applies only when the admin hasn't picked an explicit color for that
@@ -182,18 +182,16 @@ export default async function RootLayout({
   // Font settings — apply selected fonts via CSS custom properties
   const englishFont = settings?.general_english_font || "Poppins";
   const banglaFont = settings?.general_bangla_font || "Hind Siliguri";
-  const englishFontClass = getFontClassName(englishFont);
-  const banglaFontClass = getFontClassName(banglaFont);
   const fontFamilyFallback = "ui-sans-serif, system-ui, sans-serif";
-  // Include both fonts in the font stack — next/font/google sets up @font-face
-  // with unicode-range so the browser automatically picks the right font per script.
-  // English font first (primary), Bengali font second (for Bengali characters).
   const fontStyle: React.CSSProperties = {
     "--font-sans": `'${englishFont}', '${banglaFont}', ${fontFamilyFallback}`,
     "--font-bengali": `'${banglaFont}', '${englishFont}', ${fontFamilyFallback}`,
     "--font-family-heading": `'${englishFont}', ${fontFamilyFallback}`,
     "--font-family-body": `'${englishFont}', '${banglaFont}', ${fontFamilyFallback}`,
   } as React.CSSProperties;
+
+  // Google Fonts CDN links (replaces next/font/google which breaks Turbopack)
+  const fontCdnLinks = buildFontLinks(englishFont, banglaFont);
 
   const gtmId = isOn("gtm") ? configId("gtm") : null;
   const ga4Id = isOn("ga4") ? configId("ga4") : null;
@@ -205,6 +203,11 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="scroll-smooth" style={{ ...brandStyle, ...fontStyle }}>
       <head>
+        {/* Google Fonts — loaded via CDN (no next/font/google needed) */}
+        {fontCdnLinks.map((href) => (
+          <link key={href} rel="stylesheet" href={href} />
+        ))}
+
         {/* Theme flash prevention */}
         <script
           dangerouslySetInnerHTML={{
@@ -274,7 +277,7 @@ export default async function RootLayout({
         )}
       </head>
 
-      <body className={`${englishFontClass} ${banglaFontClass} font-sans`}>
+      <body className="font-sans">
         {/* Cookie-dependent tracking pushes — isolated in their own Suspense boundaries
             (same reason as CodeSnippets/PageviewTracker below) so reading cookies() here
             doesn't force the whole root layout dynamic. Placed first in body so these

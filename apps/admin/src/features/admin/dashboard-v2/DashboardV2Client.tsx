@@ -14,6 +14,9 @@ import { SystemHealthCard } from "./sections/SystemHealthCard";
 import { PaymentMethodBreakdown } from "./sections/PaymentMethodBreakdown";
 import { LocationBarCharts } from "./sections/LocationBarCharts";
 import { DeviceDonut, GenderDonut } from "./sections/DeviceGenderDonuts";
+import { StudentGrowthChart } from "./sections/StudentGrowthChart";
+import { RevenuePerformanceChart } from "./sections/RevenuePerformanceChart";
+import { DistributionChart } from "./sections/DistributionChart";
 
 export function DashboardV2Client() {
   const [draft, setDraft] = useState<DraftFilters>(DEFAULT_FILTERS);
@@ -46,21 +49,43 @@ export function DashboardV2Client() {
         }}
         onApply={() => setApplied(draft)}
         onPeriodChange={(p) => {
-          // Instant-apply presets (Today/Week/Month/Year) so the cards update
-          // right away. "Custom" still needs a date range picked + Filter/Update
-          // clicked, since period=custom alone has no window to fetch yet.
           if (p !== "custom") setApplied((prev) => ({ ...prev, period: p }));
         }}
       />
 
-      {loading && !data && <div className="text-sm text-gray-400 dark:text-slate-500 py-10 text-center">Loading dashboard…</div>}
-      {error && <div className="text-sm text-red-500 dark:text-red-400 py-10 text-center">Couldn&apos;t load the dashboard. Please try again.</div>}
+      {loading && !data && (
+        <div className="flex items-center justify-center py-16">
+          <div className="flex items-center gap-3 text-sm text-gray-400 dark:text-slate-500">
+            <div className="h-5 w-5 border-2 border-brand-300 dark:border-brand-500 border-t-transparent rounded-full animate-spin" />
+            Loading dashboard…
+          </div>
+        </div>
+      )}
+      {error && (
+        <div className="flex items-center justify-center py-16">
+          <div className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-4 py-2 rounded-xl border border-red-100 dark:border-red-500/20">
+            Couldn&apos;t load the dashboard. Please try again.
+          </div>
+        </div>
+      )}
 
       {data && (
         <>
           <TopSummaryStrip data={data} period={applied.period} />
 
-          <StudentOverviewCard data={data.studentOverview} />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="xl:col-span-2">
+              <StudentOverviewCard data={data} />
+            </div>
+            <div className="xl:col-span-1">
+              <DistributionChart data={data.studentOverview} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <StudentGrowthChart data={data.studentOverview} />
+            <RevenuePerformanceChart data={data} />
+          </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <CourseCountDonut data={data.courseCount} />

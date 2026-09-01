@@ -106,6 +106,7 @@ export interface AdminCategory {
   description: string | null;
   icon: string | null;
   isActive: boolean;
+  createdAt: string | null;
 }
 
 export type CouponScope =

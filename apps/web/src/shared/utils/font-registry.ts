@@ -1,38 +1,11 @@
-import {
-  Poppins,
-  Inter,
-  Roboto,
-  Open_Sans,
-  Lato,
-  Montserrat,
-  Nunito,
-  Source_Sans_3,
-  Work_Sans,
-  Outfit,
-  Roboto_Slab,
-  Merriweather,
-  Playfair_Display,
-  Raleway,
-  Hind_Siliguri,
-  Noto_Sans_Bengali,
-  Baloo_Da_2,
-  Tiro_Bangla,
-} from "next/font/google";
-
-// ── Font Types ──────────────────────────────────────────────────────────────
+// ─── Font Metadata (no next/font/google — loaded via CDN links) ──────────────
 
 export interface FontMetadata {
   family: string;
   category: string;
   weights: number[];
   subsets: string[];
-  style: string;
   source: "google" | "custom";
-  format?: string;
-  filePath?: string;
-  fileSize?: number;
-  fileHash?: string;
-  isActive?: boolean;
 }
 
 export interface FontOption {
@@ -42,162 +15,32 @@ export interface FontOption {
   source: "google" | "custom";
 }
 
-// ── Static Font Imports (Fallback) ──────────────────────────────────────────
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-poppins",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  variable: "--font-roboto",
-  display: "swap",
-});
-
-const openSans = Open_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-open-sans",
-  display: "swap",
-});
-
-const lato = Lato({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"],
-  variable: "--font-lato",
-  display: "swap",
-});
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-montserrat",
-  display: "swap",
-});
-
-const nunito = Nunito({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-nunito",
-  display: "swap",
-});
-
-const sourceSans3 = Source_Sans_3({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-source-sans-3",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-work-sans",
-  display: "swap",
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-outfit",
-  display: "swap",
-});
-
-const robotoSlab = Roboto_Slab({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-roboto-slab",
-  display: "swap",
-});
-
-const merriweather = Merriweather({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"],
-  variable: "--font-merriweather",
-  display: "swap",
-});
-
-const playfairDisplay = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-playfair-display",
-  display: "swap",
-});
-
-const raleway = Raleway({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-raleway",
-  display: "swap",
-});
-
-const hindSiliguri = Hind_Siliguri({
-  subsets: ["bengali", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-hind-siliguri",
-  display: "swap",
-});
-
-const notoSansBengali = Noto_Sans_Bengali({
-  subsets: ["bengali", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-noto-sans-bengali",
-  display: "swap",
-});
-
-const balooDa2 = Baloo_Da_2({
-  subsets: ["bengali", "latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-baloo-da-2",
-  display: "swap",
-});
-
-const tiroBangla = Tiro_Bangla({
-  subsets: ["bengali", "latin"],
-  weight: ["400"],
-  variable: "--font-tiro-bangla",
-  display: "swap",
-});
-
-// ── Font Registry (Static Fallback) ─────────────────────────────────────────
+// ── Font Registry ────────────────────────────────────────────────────────────
 
 export interface FontEntry {
   family: string;
-  className: string;
   cssVarName: string;
-  font: typeof poppins;
 }
 
 export const FONT_REGISTRY: Record<string, FontEntry> = {
-  Poppins: { family: "Poppins", className: poppins.variable, cssVarName: "--font-poppins", font: poppins },
-  Inter: { family: "Inter", className: inter.variable, cssVarName: "--font-inter", font: inter },
-  Roboto: { family: "Roboto", className: roboto.variable, cssVarName: "--font-roboto", font: roboto },
-  "Open Sans": { family: "Open Sans", className: openSans.variable, cssVarName: "--font-open-sans", font: openSans },
-  Lato: { family: "Lato", className: lato.variable, cssVarName: "--font-lato", font: lato },
-  Montserrat: { family: "Montserrat", className: montserrat.variable, cssVarName: "--font-montserrat", font: montserrat },
-  Nunito: { family: "Nunito", className: nunito.variable, cssVarName: "--font-nunito", font: nunito },
-  "Source Sans 3": { family: "Source Sans 3", className: sourceSans3.variable, cssVarName: "--font-source-sans-3", font: sourceSans3 },
-  "Work Sans": { family: "Work Sans", className: workSans.variable, cssVarName: "--font-work-sans", font: workSans },
-  Outfit: { family: "Outfit", className: outfit.variable, cssVarName: "--font-outfit", font: outfit },
-  "Roboto Slab": { family: "Roboto Slab", className: robotoSlab.variable, cssVarName: "--font-roboto-slab", font: robotoSlab },
-  Merriweather: { family: "Merriweather", className: merriweather.variable, cssVarName: "--font-merriweather", font: merriweather },
-  "Playfair Display": { family: "Playfair Display", className: playfairDisplay.variable, cssVarName: "--font-playfair-display", font: playfairDisplay },
-  Raleway: { family: "Raleway", className: raleway.variable, cssVarName: "--font-raleway", font: raleway },
-  "Hind Siliguri": { family: "Hind Siliguri", className: hindSiliguri.variable, cssVarName: "--font-hind-siliguri", font: hindSiliguri },
-  "Noto Sans Bengali": { family: "Noto Sans Bengali", className: notoSansBengali.variable, cssVarName: "--font-noto-sans-bengali", font: notoSansBengali },
-  "Baloo Da 2": { family: "Baloo Da 2", className: balooDa2.variable, cssVarName: "--font-baloo-da-2", font: balooDa2 },
-  "Tiro Bangla": { family: "Tiro Bangla", className: tiroBangla.variable, cssVarName: "--font-tiro-bangla", font: tiroBangla },
+  Poppins:            { family: "Poppins",            cssVarName: "--font-poppins" },
+  Inter:              { family: "Inter",              cssVarName: "--font-inter" },
+  Roboto:             { family: "Roboto",             cssVarName: "--font-roboto" },
+  "Open Sans":        { family: "Open Sans",          cssVarName: "--font-open-sans" },
+  Lato:               { family: "Lato",               cssVarName: "--font-lato" },
+  Montserrat:         { family: "Montserrat",         cssVarName: "--font-montserrat" },
+  Nunito:             { family: "Nunito",             cssVarName: "--font-nunito" },
+  "Source Sans 3":    { family: "Source Sans 3",      cssVarName: "--font-source-sans-3" },
+  "Work Sans":        { family: "Work Sans",          cssVarName: "--font-work-sans" },
+  Outfit:             { family: "Outfit",             cssVarName: "--font-outfit" },
+  "Roboto Slab":      { family: "Roboto Slab",        cssVarName: "--font-roboto-slab" },
+  Merriweather:       { family: "Merriweather",       cssVarName: "--font-merriweather" },
+  "Playfair Display": { family: "Playfair Display",   cssVarName: "--font-playfair-display" },
+  Raleway:            { family: "Raleway",            cssVarName: "--font-raleway" },
+  "Hind Siliguri":    { family: "Hind Siliguri",      cssVarName: "--font-hind-siliguri" },
+  "Noto Sans Bengali":{ family: "Noto Sans Bengali",  cssVarName: "--font-noto-sans-bengali" },
+  "Baloo Da 2":       { family: "Baloo Da 2",         cssVarName: "--font-baloo-da-2" },
+  "Tiro Bangla":      { family: "Tiro Bangla",        cssVarName: "--font-tiro-bangla" },
 };
 
 // ── Static Fallback Lists ───────────────────────────────────────────────────
@@ -239,7 +82,6 @@ export async function fetchFontsFromAPI(): Promise<{
   banglaFonts: FontOption[];
 }> {
   try {
-    // Check cache
     if (fontCache && Date.now() - cacheTimestamp < CACHE_TTL) {
       return formatFontsFromCache(fontCache);
     }
@@ -256,7 +98,6 @@ export async function fetchFontsFromAPI(): Promise<{
     const latinFonts: FontMetadata[] = await latinRes.json();
     const bengaliFonts: FontMetadata[] = await bengaliRes.json();
 
-    // Update cache
     fontCache = [...latinFonts, ...bengaliFonts];
     cacheTimestamp = Date.now();
 
@@ -310,8 +151,8 @@ function formatFontsFromCache(cache: FontMetadata[]): {
 
 // ── Helper Functions ────────────────────────────────────────────────────────
 
-export function getFontClassName(fontName: string): string {
-  return FONT_REGISTRY[fontName]?.className ?? "";
+export function getFontClassName(_fontName: string): string {
+  return "";
 }
 
 export function getFontCssVar(fontName: string): string {
@@ -321,28 +162,36 @@ export function getFontCssVar(fontName: string): string {
 
 export function getGoogleFontsCssUrl(
   family: string,
-  weights: number[] = [400, 500, 600, 700]
+  weights: number[] = [300, 400, 500, 600, 700]
 ): string {
   const weightStr = weights.join(";");
   return `https://fonts.googleapis.com/css2?family=${family.replace(/\s+/g, "+")}:wght@${weightStr}&display=swap`;
 }
 
+/**
+ * Build the Google Fonts CSS link URLs for the two active fonts (English + Bangla).
+ * Used by layout.tsx to inject <link rel="stylesheet"> in <head>.
+ */
+export function buildFontLinks(englishFont: string, banglaFont: string): string[] {
+  const families = new Set<string>([englishFont, banglaFont]);
+  return Array.from(families).map((f) => getGoogleFontsCssUrl(f));
+}
+
 export function generatePreloadLinks(
   font: FontMetadata
 ): { rel: string; href: string; as?: string; type?: string; crossorigin?: boolean }[] {
-  if (font.source === "custom" && font.filePath) {
+  if (font.source === "custom" && "filePath" in font && (font as any).filePath) {
     return [
       {
         rel: "preload",
-        href: font.filePath,
+        href: (font as any).filePath,
         as: "font",
-        type: `font/${font.format}`,
+        type: `font/${(font as any).format ?? "woff2"}`,
         crossorigin: true,
       },
     ];
   }
 
-  // Google Fonts
   return [
     { rel: "preconnect", href: "https://fonts.googleapis.com" },
     { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: true },
@@ -368,6 +217,6 @@ export async function getBanglaFonts(): Promise<FontOption[]> {
   return banglaFonts;
 }
 
-// For backward compatibility - these will be populated on first use
+// For backward compatibility
 export const ENGLISH_FONTS: FontOption[] = STATIC_ENGLISH_FONTS;
 export const BANGLA_FONTS: FontOption[] = STATIC_BANGLA_FONTS;
