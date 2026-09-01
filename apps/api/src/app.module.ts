@@ -23,6 +23,7 @@ import { CartModule } from './cart/cart.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { OrdersModule } from './orders/orders.module';
 import { AdminModule } from './admin/admin.module';
+import { PaymentManagementModule } from './admin/payment-management/payment-management.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SupportModule } from './support/support.module';
@@ -94,6 +95,7 @@ import { DashboardGateway } from './events/dashboard.gateway';
     WishlistModule,
     OrdersModule,
     AdminModule,
+    PaymentManagementModule,
     CouponsModule,
     NotificationsModule,
     SupportModule,
