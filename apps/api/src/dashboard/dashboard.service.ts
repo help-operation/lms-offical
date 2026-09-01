@@ -887,4 +887,128 @@ export class DashboardService {
       status: pingMs < 500 ? 'healthy' : 'degraded',
     };
   }
+
+  // ─── Enrollment Trend (filtered by date range) ──────────────────────────────
+
+  async getEnrollmentTrend(q: DashboardQueryInput) {
+    const window = this.resolveWindow(q);
+    const daysDiff = Math.ceil((window.to.getTime() - window.from.getTime()) / 86400000);
+
+    let groupByExpr: SQL;
+    let labelExpr: SQL;
+
+    if (daysDiff <= 31) {
+      // Daily grouping
+      groupByExpr = sql`DATE(${enrollments.enrolledAt})`;
+      labelExpr = sql`TO_CHAR(${enrollments.enrolledAt}, 'Mon DD')`;
+    } else if (daysDiff <= 365) {
+      // Weekly grouping
+      groupByExpr = sql`DATE_TRUNC('week', ${enrollments.enrolledAt})`;
+      labelExpr = sql`TO_CHAR(DATE_TRUNC('week', ${enrollments.enrolledAt}), 'Mon DD')`;
+    } else {
+      // Monthly grouping
+      groupByExpr = sql`DATE_TRUNC('month', ${enrollments.enrolledAt})`;
+      labelExpr = sql`TO_CHAR(DATE_TRUNC('month', ${enrollments.enrolledAt}), 'Mon YYYY')`;
+    }
+
+    const recordedEnrollments = await this.db
+      .select({
+        label: labelExpr,
+        group: groupByExpr,
+        count: sql<number>`COUNT(*)`.mapWith(Number),
+      })
+      .from(enrollments)
+      .where(and(gte(enrollments.enrolledAt, window.from), lte(enrollments.enrolledAt, window.to)))
+      .groupBy(groupByExpr, labelExpr)
+      .orderBy(groupByExpr);
+
+    const liveEnrollData = await this.db
+      .select({
+        label: sql`TO_CHAR(${liveEnrollments.createdAt}, 'Mon DD')`,
+        count: sql<number>`COUNT(*)`.mapWith(Number),
+      })
+      .from(liveEnrollments)
+      .where(and(
+        gte(liveEnrollments.createdAt, window.from),
+        lte(liveEnrollments.createdAt, window.to),
+        sql`${liveEnrollments.userId} IS NOT NULL`,
+      ))
+      .groupBy(sql`TO_CHAR(${liveEnrollments.createdAt}, 'Mon DD')`)
+      .orderBy(sql`MIN(${liveEnrollments.createdAt})`);
+
+    // Merge recorded and live by label
+    const merged = new Map<string, { label: string; recorded: number; live: number; total: number }>();
+    for (const row of recordedEnrollments) {
+      const key = String(row.label);
+      const existing = merged.get(key) ?? { label: key, recorded: 0, live: 0, total: 0 };
+      existing.recorded = row.count;
+      existing.total = existing.recorded + existing.live;
+      merged.set(key, existing);
+    }
+    for (const row of liveEnrollData) {
+      const key = String(row.label);
+      const existing = merged.get(key) ?? { label: key, recorded: 0, live: 0, total: 0 };
+      existing.live = row.count;
+      existing.total = existing.recorded + existing.live;
+      merged.set(key, existing);
+    }
+
+    return Array.from(merged.values());
+  }
+
+  // ─── Revenue by Course (filtered by date range) ─────────────────────────────
+
+  async getRevenueByCourse(q: DashboardQueryInput) {
+    const window = this.resolveWindow(q);
+
+    // Recorded course revenue
+    const recordedRevenue = await this.db
+      .select({
+        courseTitle: courses.title,
+        revenue: sql<string>`COALESCE(SUM(${orderItems.price}), 0)`,
+      })
+      .from(orderItems)
+      .innerJoin(payments, eq(payments.orderId, orderItems.orderId))
+      .innerJoin(courses, eq(courses.id, orderItems.courseId))
+      .where(and(
+        eq(payments.status, 'completed'),
+        gte(payments.paidAt, window.from),
+        lte(payments.paidAt, window.to),
+      ))
+      .groupBy(courses.title)
+      .orderBy(sql`SUM(${orderItems.price}) DESC`);
+
+    // Live course revenue
+    const liveRevenue = await this.db
+      .select({
+        courseTitle: liveCourses.title,
+        revenue: sql<string>`COALESCE(SUM(${liveEnrollments.amount}), 0)`,
+      })
+      .from(liveEnrollments)
+      .innerJoin(liveCourses, eq(liveCourses.id, liveEnrollments.liveCourseId))
+      .where(and(
+        eq(liveEnrollments.status, 'completed'),
+        gte(liveEnrollments.paidAt, window.from),
+        lte(liveEnrollments.paidAt, window.to),
+      ))
+      .groupBy(liveCourses.title)
+      .orderBy(sql`SUM(${liveEnrollments.amount}) DESC`);
+
+    // Merge and sort
+    const merged = new Map<string, { course: string; revenue: number }>();
+    for (const row of recordedRevenue) {
+      const key = row.courseTitle;
+      const existing = merged.get(key) ?? { course: key, revenue: 0 };
+      existing.revenue += Number(row.revenue);
+      merged.set(key, existing);
+    }
+    for (const row of liveRevenue) {
+      const key = row.courseTitle;
+      const existing = merged.get(key) ?? { course: key, revenue: 0 };
+      existing.revenue += Number(row.revenue);
+      merged.set(key, existing);
+    }
+
+    return Array.from(merged.values()).sort((a, b) => b.revenue - a.revenue);
+  }
 }

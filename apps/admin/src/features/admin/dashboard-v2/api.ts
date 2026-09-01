@@ -93,6 +93,18 @@ export interface DashboardFilterOptions {
   sources: string[];
 }
 
+export interface EnrollmentTrendRow {
+  label: string;
+  recorded: number;
+  live: number;
+  total: number;
+}
+
+export interface RevenueByCourseRow {
+  course: string;
+  revenue: number;
+}
+
 function buildQuery(filters: DashboardFilters): string {
   const q = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
@@ -113,4 +125,10 @@ export const dashboardApi = {
 
   filters: () =>
     apiRequestBrowser<DashboardFilterOptions>("/dashboard/filters"),
+
+  enrollmentTrend: (filters: DashboardFilters) =>
+    apiRequestBrowser<EnrollmentTrendRow[]>(`/dashboard/enrollment-trend${buildQuery(filters)}`),
+
+  revenueByCourse: (filters: DashboardFilters) =>
+    apiRequestBrowser<RevenueByCourseRow[]>(`/dashboard/revenue-by-course${buildQuery(filters)}`),
 };

@@ -19,6 +19,10 @@ import { DeviceDonut, GenderDonut } from "./sections/DeviceGenderDonuts";
 import { StudentGrowthChart } from "./sections/StudentGrowthChart";
 import { RevenuePerformanceChart } from "./sections/RevenuePerformanceChart";
 import { DistributionChart } from "./sections/DistributionChart";
+import { StudentsByCourseChart } from "./sections/StudentsByCourseChart";
+import { VisitorsBySourceChart } from "./sections/VisitorsBySourceChart";
+import { EnrollmentTrendChart } from "./sections/EnrollmentTrendChart";
+import { RevenueByCourseChart } from "./sections/RevenueByCourseChart";
 
 const QUICK_ACTIONS = [
   { label: "Students", icon: Users, href: "/admin/students", color: "text-brand-600 bg-brand-50 hover:bg-brand-100 dark:bg-brand/10 dark:hover:bg-brand/20" },
@@ -166,6 +170,18 @@ export function DashboardV2Client() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <StudentGrowthChart data={data.studentOverview} />
             <RevenuePerformanceChart data={data} />
+          </div>
+
+          {/* Row 1: Students by Course + Visitors by Source */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <StudentsByCourseChart filters={toApiFilters(applied)} />
+            <VisitorsBySourceChart data={data.visitorSource} />
+          </div>
+
+          {/* Row 2: Enrollment Trend + Revenue by Course */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <EnrollmentTrendChart filters={toApiFilters(applied)} />
+            <RevenueByCourseChart filters={toApiFilters(applied)} />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
