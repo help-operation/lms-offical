@@ -16,7 +16,6 @@ interface CartPageClientProps {
 export function CartPageClient({ initialItems }: CartPageClientProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
-  const [discount] = useState(0);
   const [isPending, startTransition] = useTransition();
 
   // GTM dataLayer — view_cart, fired once when the cart page mounts with items.
@@ -36,7 +35,7 @@ export function CartPageClient({ initialItems }: CartPageClientProps) {
     const p = item.discountPrice ? parseFloat(item.discountPrice) : parseFloat(item.price);
     return sum + p;
   }, 0);
-  const total = Math.max(0, subtotal - discount);
+  const total = subtotal;
 
   function handleRemove(courseId: number) {
     const item = items.find((i) => i.courseId === courseId);
@@ -153,10 +152,6 @@ export function CartPageClient({ initialItems }: CartPageClientProps) {
             <div className="flex justify-between text-gray-600 dark:text-gray-400">
               <span>Subtotal</span>
               <span>Tk {subtotal.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-green-600 dark:text-green-400">
-              <span>Discount</span>
-              <span>−Tk {discount.toLocaleString()}</span>
             </div>
             <div className="flex justify-between border-t border-gray-100 pt-3 text-base font-bold text-gray-900 dark:border-gray-700 dark:text-white">
               <span>Total</span>

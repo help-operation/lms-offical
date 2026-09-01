@@ -10,6 +10,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from 'src/auth/optional-jwt-auth.guard';
@@ -27,6 +28,7 @@ export class ShopOrdersController {
   constructor(private readonly shopOrdersService: ShopOrdersService) {}
 
   @Post()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Message('Shop order created')
   createOrder(
     @CurrentUser() user: RequestUser | null,
@@ -48,26 +50,33 @@ export class ShopOrdersController {
 
   @Post('validate-coupon')
   @Message('Coupon valid')
-  validateCoupon(@Body() body: { code: string; subtotal: number }) {
-    return this.shopOrdersService.validateCoupon(body.code, body.subtotal);
+  validateCoupon(
+    @CurrentUser() user: RequestUser | null,
+    @Body() body: { code: string; subtotal: number },
+  ) {
+    return this.shopOrdersService.validateCoupon(body.code, body.subtotal, user?.userId, user?.userId ? undefined : undefined);
   }
 
   @Post(':orderId/pay/bkash')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Message('bKash payment recorded')
   confirmBkash(
+    @CurrentUser() user: RequestUser | null,
     @Param('orderId', ParseIntPipe) orderId: number,
-    @Body() body: { bkashTrxId: string },
+    @Body() body: { bkashTrxId: string; phone: string },
   ) {
-    return this.shopOrdersService.confirmBkashPayment(orderId, body.bkashTrxId);
+    return this.shopOrdersService.confirmBkashPayment(orderId, body.bkashTrxId, body.phone, user?.userId);
   }
 
   @Post(':orderId/pay/paystation')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Message('PayStation payment initiated')
   initiatePaystation(
+    @CurrentUser() user: RequestUser | null,
     @Param('orderId', ParseIntPipe) orderId: number,
-    @Body() body: { callbackUrl: string },
+    @Body() body: { callbackUrl: string; phone: string },
   ) {
-    return this.shopOrdersService.initiatePaystationPayment(orderId, body.callbackUrl);
+    return this.shopOrdersService.initiatePaystationPayment(orderId, body.callbackUrl, body.phone, user?.userId);
   }
 
   @Get('my')

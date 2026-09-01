@@ -71,6 +71,7 @@ export function CheckoutClient({
   const [couponPending, startCouponTransition] = useTransition();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Guest info (only used when !isLoggedIn) — restored from sessionStorage if
   // the guest is returning here after a failed payment attempt.
@@ -250,6 +251,7 @@ export function CheckoutClient({
 
   function handleSubmit() {
     setError(null);
+    if (!acceptedTerms) { setError("Please accept the terms and conditions"); return; }
 
     // Guest branch — capture lead, then redirect to PayStation. If the lead
     // capture succeeds but payment initiation fails (e.g. gateway down), we
@@ -357,6 +359,13 @@ export function CheckoutClient({
           COURSE
         </span>
       </div>
+
+      {error && (
+        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 flex items-start gap-3">
+          <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 8v4m0 4h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-2 items-stretch">
         {/* Left column — customer details */}
@@ -473,7 +482,8 @@ export function CheckoutClient({
           <input
             type="checkbox"
             id="acceptTerms"
-            defaultChecked
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
             className="w-[17px] h-[17px] shrink-0 mt-[1px] border-[1.5px] border-[#E9E5F2] dark:border-gray-600 rounded-[5px] cursor-pointer accent-[#A436F1]"
           />
           <label htmlFor="acceptTerms" className="cursor-pointer">

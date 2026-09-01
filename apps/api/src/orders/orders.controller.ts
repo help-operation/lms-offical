@@ -9,6 +9,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -28,6 +29,7 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Message('Order created')
   createOrder(
     @CurrentUser() user: RequestUser,
@@ -37,6 +39,7 @@ export class OrdersController {
   }
 
   @Post(':orderId/pay/bkash')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Message('Payment recorded')
   confirmBkash(
     @CurrentUser() user: RequestUser,
@@ -47,6 +50,7 @@ export class OrdersController {
   }
 
   @Post(':orderId/pay/paystation')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Message('PayStation payment initiated')
   initiatePaystation(
     @CurrentUser() user: RequestUser,
