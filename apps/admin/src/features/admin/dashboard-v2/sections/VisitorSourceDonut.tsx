@@ -4,12 +4,12 @@ import { Donut } from "../shared/donut";
 const SOURCE_META: Record<string, { label: string; color: string }> = {
   facebook: { label: "Facebook", color: "#1877f2" },
   youtube: { label: "YouTube", color: "#ff0000" },
-  website: { label: "Website", color: "#7c3aed" },
+  website: { label: "Website", color: "#a64dff" },
   linkedin: { label: "LinkedIn", color: "#0a66c2" },
   twitter: { label: "Twitter / X", color: "#111827" },
   instagram: { label: "Instagram", color: "#e1306c" },
-  direct: { label: "Direct", color: "#22c55e" },
-  other: { label: "Others", color: "#9ca3af" },
+  direct: { label: "Direct", color: "#10b981" },
+  other: { label: "Others", color: "#94a3b8" },
 };
 
 export function VisitorSourceDonut({ data }: { data: DashboardOverview["visitorSource"] }) {

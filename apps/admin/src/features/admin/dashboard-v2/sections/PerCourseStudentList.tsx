@@ -21,11 +21,12 @@ export function PerCourseStudentList() {
   }, []);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-50 dark:border-slate-800">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden relative">
+      <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-pink-50/60 to-transparent rounded-bl-full dark:from-pink-500/5" />
+      <div className="px-6 py-4 border-b border-gray-50 dark:border-slate-800 relative z-10">
         <h2 className="text-sm font-bold text-gray-900 dark:text-white">Per Course Student List</h2>
       </div>
-      <div className="px-6 pt-5 pb-6">
+      <div className="px-6 pt-5 pb-6 relative z-10">
         <DataTable
           data={rows}
           isLoading={loading}
@@ -39,8 +40,8 @@ export function PerCourseStudentList() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-gray-900 dark:text-white">{r.title}</span>
                   <span
-                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      r.type === "live" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" : "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400"
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      r.type === "live" ? "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400" : "bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400"
                     }`}
                   >
                     {r.type === "live" ? "Live" : "Recorded"}

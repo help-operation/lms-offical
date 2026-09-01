@@ -7,8 +7,8 @@ export function CourseCountDonut({ data }: { data: DashboardOverview["courseCoun
       title="Course Count"
       centerLabel="Total Courses"
       slices={[
-        { label: "Live Course", value: data.live, color: "#22c55e" },
-        { label: "Recorded Course", value: data.recorded, color: "#7c3aed" },
+        { label: "Live Course", value: data.live, color: "#10b981" },
+        { label: "Recorded Course", value: data.recorded, color: "#a64dff" },
         { label: "Free Course", value: data.free, color: "#f59e0b" },
       ]}
     />

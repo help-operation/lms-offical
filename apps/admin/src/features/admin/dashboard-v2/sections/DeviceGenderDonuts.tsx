@@ -9,7 +9,7 @@ export function DeviceDonut({ data }: { data: DashboardOverview["devices"] }) {
       title="Devices"
       centerLabel="Total Visits"
       slices={[
-        { label: "Mobile", value: mobile, color: "#7c3aed" },
+        { label: "Mobile", value: mobile, color: "#a64dff" },
         { label: "Computer / Laptop", value: desktop, color: "#3b82f6" },
       ]}
     />
@@ -25,7 +25,7 @@ export function GenderDonut({ data }: { data: DashboardOverview["gender"] }) {
         { label: "Male", value: data.male ?? 0, color: "#3b82f6" },
         { label: "Female", value: data.female ?? 0, color: "#ec4899" },
         { label: "Other", value: data.other ?? 0, color: "#f59e0b" },
-        { label: "Not specified", value: data.not_specified ?? 0, color: "#9ca3af" },
+        { label: "Not specified", value: data.not_specified ?? 0, color: "#94a3b8" },
       ]}
     />
   );
