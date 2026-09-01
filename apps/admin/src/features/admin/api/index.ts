@@ -199,7 +199,6 @@ export const adminApi = {
 
   revenue: () => apiRequest<RevenueOrder[]>("/admin/revenue"),
   liveRevenue: () => apiRequest<RevenueOrder[]>("/admin/live-revenue"),
-  completedPayments: () => apiRequest<PaymentRecord[]>("/admin/payments/completed"),
   failedPayments: () => apiRequest<PaymentRecord[]>("/admin/payments/failed"),
 
   courses: (params?: TableQueryParams) => {
