@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, ToggleLeft, ToggleRight, Trash2, X, FolderPlus, Pencil } from "lucide-react";
+import { Plus, ToggleLeft, ToggleRight, Trash2, X, FolderPlus, Pencil, Folder, CheckCircle, XCircle } from "lucide-react";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import { DataTable, type Column, type TablePagination, type TableQueryParams } from "@repo/ui/data-table";
 import {
@@ -33,6 +33,10 @@ const ALL_COLS: ColDef<AdminCategory>[] = [
   {
     key: "isActive", header: "Status", defaultVisible: true,
     exportFields: [{ header: "Status", getValue: (c) => c.isActive ? "Active" : "Inactive" }],
+  },
+  {
+    key: "createdAt", header: "Created", defaultVisible: true,
+    exportFields: [{ header: "Created", getValue: (c) => c.createdAt ?? "" }],
   },
 ];
 
@@ -166,6 +170,18 @@ export function CategoriesClient({ initialData }: Props) {
         </span>
       ),
     }] : []),
+    ...(visibleCols.has("createdAt") ? [{
+      key: "createdAt" as const, header: "Created",
+      render: (cat: AdminCategory) => {
+        if (!cat.createdAt) return <span className="text-gray-400 dark:text-slate-500">—</span>;
+        const d = new Date(cat.createdAt);
+        return (
+          <span className="text-xs text-gray-500 dark:text-slate-400">
+            {d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+          </span>
+        );
+      },
+    }] : []),
     {
       key: "id" as const, header: "Actions",
       render: (cat: AdminCategory) => (
@@ -195,13 +211,13 @@ export function CategoriesClient({ initialData }: Props) {
 
   return (
     <>
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Title + Buttons — responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Manage course categories shown on the platform.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">{pagination.total} categories total</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <ColumnsDropdown
             cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
             visible={visibleCols}
@@ -221,11 +237,39 @@ export function CategoriesClient({ initialData }: Props) {
         </div>
       </div>
 
-      {/* DataTable — server-side mode */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 dark:border-slate-800">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">All Categories</h2>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-500/10 dark:to-indigo-500/5 rounded-xl border border-indigo-100 dark:border-indigo-500/20 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-500/20">
+              <Folder className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{pagination.total}</p>
+          <p className="text-xs text-indigo-600/70 dark:text-indigo-400/70 font-medium mt-0.5">Total Categories</p>
         </div>
+        <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-500/10 dark:to-green-500/5 rounded-xl border border-green-100 dark:border-green-500/20 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-500/20">
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{categories.filter(c => c.isActive).length}</p>
+          <p className="text-xs text-green-600/70 dark:text-green-400/70 font-medium mt-0.5">Active</p>
+        </div>
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-500/10 dark:to-amber-500/5 rounded-xl border border-amber-100 dark:border-amber-500/20 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20">
+              <XCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{categories.filter(c => !c.isActive).length}</p>
+          <p className="text-xs text-amber-600/70 dark:text-amber-400/70 font-medium mt-0.5">Inactive</p>
+        </div>
+      </div>
+
+      {/* DataTable */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
         <div className="px-6 pt-5 pb-6">
       <DataTable
         data={categories}

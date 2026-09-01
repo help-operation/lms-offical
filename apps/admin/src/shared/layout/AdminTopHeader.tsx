@@ -13,20 +13,21 @@ interface Props {
 }
 
 export function AdminTopHeader({ userName, userInitial, role }: Props) {
-  const { toggle } = useSidebar();
+  const { openMobile } = useSidebar();
 
   return (
-    <header className="flex h-[70px] items-center gap-4 border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 shrink-0 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      {/* Sidebar toggle + greeting */}
-      <div className="flex items-center gap-3.5 shrink-0">
-        <button
-          onClick={toggle}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-brand/25 hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/35 hover:scale-105 active:scale-95 transition-all duration-200 shrink-0"
-          title="Toggle sidebar"
-        >
-          <List size={18} weight="bold" />
-        </button>
+    <header className="flex h-[70px] items-center gap-4 border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 sm:px-6 shrink-0 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      {/* Mobile hamburger — visible only on small screens */}
+      <button
+        onClick={openMobile}
+        className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all duration-200 shrink-0 sm:hidden"
+        title="Toggle sidebar"
+      >
+        <List size={18} weight="bold" />
+      </button>
 
+      {/* Greeting */}
+      <div className="flex items-center gap-3.5 shrink-0">
         <p className="hidden md:block text-lg font-bold text-gray-900 dark:text-white whitespace-nowrap">
           Welcome back, <span className="text-brand">{userName}!</span>
         </p>

@@ -142,7 +142,7 @@ export interface LiveCourse extends LiveCourseSection {
 
 export type LiveCourseListItem = Pick<
   LiveCourse,
-  "id" | "title" | "slug" | "status" | "publishAt" | "price" | "originalPrice" | "createdAt" | "updatedAt"
+  "id" | "title" | "slug" | "status" | "publishAt" | "price" | "originalPrice" | "createdAt" | "updatedAt" | "template"
 >;
 
 export type UpsertLiveCourseDto = Omit<LiveCourse, "id" | "createdAt" | "updatedAt" | "status" | "publishAt">;

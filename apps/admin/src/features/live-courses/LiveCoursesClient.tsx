@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Globe, FileEdit, Eye, Copy, ChevronDown, BookOpen, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, Globe, FileEdit, Eye, Copy, ChevronDown, BookOpen, FileText, RotateCcw, TrendingUp, Radio } from "lucide-react";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import {
   toggleLiveCoursePublishAction,
@@ -14,6 +14,7 @@ import {
   purgeLiveCourseAction,
 } from "@/features/live-courses/actions/live-courses.actions";
 import type { LiveCourseListItem } from "@/features/live-courses/api";
+import { TEMPLATES } from "@/features/live-courses/templates";
 import { DataTable, type Column } from "@repo/ui/data-table";
 import { toast } from "@repo/ui/sonner";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
@@ -42,10 +43,14 @@ function getAllCols(formatDate: (d: string | Date) => string): ColDef<LiveCourse
       key: "createdAt", header: "Created", defaultVisible: true,
       exportFields: [{ header: "Created", getValue: (c) => formatDate(c.createdAt) }],
     },
+    {
+      key: "template", header: "Template", defaultVisible: true,
+      exportFields: [{ header: "Template", getValue: (c) => TEMPLATES.find(t => t.dbTemplate === c.template)?.name ?? c.template }],
+    },
   ];
 }
 
-const DEFAULT_VISIBLE = new Set(["title", "price", "status", "createdAt"]);
+const DEFAULT_VISIBLE = new Set(["title", "price", "status", "createdAt", "template"]);
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -176,17 +181,6 @@ export function LiveCoursesClient({ initialCourses }: Props) {
   // unfiltered (non-trash) default list.
   useEffect(() => { if (!statusFilter) setCourses(initialCourses); }, [initialCourses, statusFilter]);
 
-  async function handleStatusFilterChange(status: string) {
-    setStatusFilter(status);
-    setIsFiltering(true);
-    try {
-      const res = await fetchLiveCoursesAction(status || undefined);
-      if (res.data) setCourses(res.data);
-    } finally {
-      setIsFiltering(false);
-    }
-  }
-
   function handleTogglePublish(course: LiveCourseListItem) {
     setToggleTarget(null);
     startTransition(async () => {
@@ -275,67 +269,73 @@ export function LiveCoursesClient({ initialCourses }: Props) {
         <span className="text-xs text-gray-400 dark:text-slate-500">{formatDate(course.createdAt)}</span>
       ),
     }] : []),
+    ...(visibleCols.has("template") ? [{
+      key: "template" as const, header: "Template",
+      render: (course: LiveCourseListItem) => {
+        const tplName = TEMPLATES.find(t => t.dbTemplate === course.template)?.name ?? course.template;
+        return (
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400">
+            {tplName}
+          </span>
+        );
+      },
+    }] : []),
     {
       key: "id" as const, header: "Actions",
       render: (course) =>
         course.status === "trash" ? (
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1">
             <button onClick={() => setRestoreTarget(course)} disabled={isPending}
-              className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium disabled:opacity-50">
-              Restore
+              className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 dark:hover:text-green-400 transition-colors disabled:opacity-50"
+              title="Restore">
+              <RotateCcw size={14} />
             </button>
             <button onClick={() => setPurgeTarget(course)} disabled={isPending}
-              className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium disabled:opacity-50">
-              Delete Forever
+              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+              title="Delete forever">
+              <Trash2 size={14} />
             </button>
           </div>
         ) : (
-        <div className="flex items-center gap-3">
-          {/* Edit */}
+        <div className="flex items-center gap-1">
           <button
             onClick={() => router.push(`/admin/live-courses/${course.id}/edit`)}
             title="Edit"
-            className="text-gray-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand transition-colors"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors"
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil size={14} />
           </button>
-
-          {/* Publish / Unpublish */}
           <button
             onClick={() => setToggleTarget(course)}
             disabled={isPending}
             title={course.status === "published" ? "Unpublish" : "Publish"}
-            className="text-gray-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand transition-colors disabled:opacity-50"
+            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+              course.status === "published"
+                ? "text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 dark:hover:text-green-400"
+                : "text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 dark:hover:text-green-400"
+            }`}
           >
-            {course.status === "published"
-              ? <Globe className="h-4 w-4 text-green-600 dark:text-green-400" />
-              : <FileEdit className="h-4 w-4" />}
+            {course.status === "published" ? <Globe size={14} /> : <FileEdit size={14} />}
           </button>
-
-          {/* Preview (public URL) */}
           {course.status === "published" && (
             <a
               href={`${process.env.NEXT_PUBLIC_WEB_URL ?? "http://localhost:3001"}/${course.slug}`}
               target="_blank"
               rel="noreferrer"
               title="Preview"
-              className="text-gray-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 transition-colors"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye size={14} />
             </a>
           )}
-
-          {/* Duplicate */}
           <DuplicateDropdown course={course} />
-
-          {/* Delete */}
           <button
             onClick={() => setDeleteTarget(course)}
             disabled={isPending}
             title="Move to Trash"
-            className="text-gray-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors disabled:opacity-50"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 size={14} />
           </button>
         </div>
         ),
@@ -398,28 +398,13 @@ export function LiveCoursesClient({ initialCourses }: Props) {
         onClose={() => setPurgeTarget(null)}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Title + Buttons — responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Live Courses</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
-            Template-based landing page courses with enrollment.
-          </p>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">{courses.length} courses total</p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => handleStatusFilterChange(e.target.value)}
-            disabled={isFiltering}
-            className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-2 text-sm text-gray-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
-          >
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-            <option value="inactive">Inactive</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="trash">Trash</option>
-          </select>
+        <div className="flex items-center gap-2 flex-wrap">
           <ColumnsDropdown
             cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
             visible={visibleCols}
@@ -440,10 +425,45 @@ export function LiveCoursesClient({ initialCourses }: Props) {
         </div>
       </div>
 
+      {/* KPI Cards */}
+      {(() => {
+        const published = courses.filter(c => c.status === "published").length;
+        const draft = courses.filter(c => c.status === "draft").length;
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-500/10 dark:to-indigo-500/5 rounded-xl border border-indigo-100 dark:border-indigo-500/20 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-500/20">
+                  <Radio className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{courses.length}</p>
+              <p className="text-xs text-indigo-600/70 dark:text-indigo-400/70 font-medium mt-0.5">Total Live</p>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-500/10 dark:to-green-500/5 rounded-xl border border-green-100 dark:border-green-500/20 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-500/20">
+                  <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{published}</p>
+              <p className="text-xs text-green-600/70 dark:text-green-400/70 font-medium mt-0.5">Published</p>
+            </div>
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-500/10 dark:to-amber-500/5 rounded-xl border border-amber-100 dark:border-amber-500/20 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20">
+                  <FileEdit className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{draft}</p>
+              <p className="text-xs text-amber-600/70 dark:text-amber-400/70 font-medium mt-0.5">Draft</p>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* DataTable */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 dark:border-slate-800">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">All Live Courses</h2>
-        </div>
         <div className="px-6 pt-5 pb-6">
       <DataTable
         data={courses}
@@ -453,6 +473,36 @@ export function LiveCoursesClient({ initialCourses }: Props) {
         searchKeys={["title", "slug"]}
         searchPlaceholder="Search live courses…"
         emptyMessage={statusFilter ? "No live courses match this status." : "No live courses yet. Click &quot;New Live Course&quot; to create one."}
+        dateRangeKey="createdAt"
+        filters={[
+          {
+            key: "status",
+            label: "All Status",
+            options: [
+              { label: "Draft",     value: "draft"     },
+              { label: "Published", value: "published" },
+              { label: "Inactive",  value: "inactive"  },
+              { label: "Scheduled", value: "scheduled" },
+              { label: "Trash",     value: "trash"     },
+            ],
+          },
+          {
+            key: "template",
+            label: "All Templates",
+            options: TEMPLATES.map((t) => ({ label: t.name, value: t.dbTemplate })),
+          },
+        ]}
+        onQueryChange={async (params) => {
+          const status = (params as Record<string, string>).status ?? "";
+          setStatusFilter(status);
+          setIsFiltering(true);
+          try {
+            const res = await fetchLiveCoursesAction(status || undefined);
+            if (res.data) setCourses(res.data);
+          } finally {
+            setIsFiltering(false);
+          }
+        }}
       />
         </div>
       </div>
