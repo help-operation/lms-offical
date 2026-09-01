@@ -60,6 +60,8 @@ import { ShopCouponsModule } from './shop-coupons/shop-coupons.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { FontsModule } from './fonts/fonts.module';
+import { EventsModule } from './events/events.module';
+import { RevenueGateway } from './events/revenue.gateway';
 
 @Module({
   imports: [
@@ -125,10 +127,12 @@ import { FontsModule } from './fonts/fonts.module';
     TrackingModule,
     DashboardModule,
     FontsModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    RevenueGateway,
     // Apply the throttler globally so every route is covered by the default
     // bucket unless it opts into a stricter (or skipped) limit.
     { provide: APP_GUARD, useClass: ThrottlerGuard },

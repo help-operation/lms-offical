@@ -14,6 +14,7 @@ import { EmailTemplatesModule } from 'src/email-templates/email-templates.module
 import { SystemSettingsModule } from 'src/system-settings/system-settings.module';
 import { ActivityLogsModule } from 'src/activity-logs/activity-logs.module';
 import { MetaCapiModule } from 'src/integrations/meta-capi/meta-capi.module';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
   // forwardRef breaks the OrdersModule ↔ LeadsModule cycle: OrdersModule
@@ -27,6 +28,7 @@ import { MetaCapiModule } from 'src/integrations/meta-capi/meta-capi.module';
     SystemSettingsModule,
     ActivityLogsModule,
     MetaCapiModule,
+    EventsModule,
   ],
   controllers: [
     OrdersController,

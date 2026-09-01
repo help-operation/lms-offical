@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -13,6 +13,7 @@ import { DashboardFilterBar, type DashboardPeriod } from "@repo/ui/dashboard-fil
 import type { DateRange } from "@repo/ui/date-range-picker";
 import { useLocalization } from "@/shared/context/LocalizationContext";
 import { Sparkline } from "@/features/admin/dashboard-v2/shared/sparkline";
+import { useRevenueSocket, type RevenueUpdateEvent } from "@/hooks/use-revenue-socket";
 
 const avatarColors = ["bg-pink-400", "bg-violet-400", "bg-blue-400", "bg-amber-400", "bg-emerald-400", "bg-cyan-400"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -105,8 +106,8 @@ type SortField = "amount" | "date" | "id";
 type SortDir = "asc" | "desc";
 
 export function RevenueClient({
-  orders,
-  liveOrders,
+  orders: initialOrders,
+  liveOrders: initialLiveOrders,
   stats: fullStats,
   liveStats,
 }: {
@@ -116,6 +117,51 @@ export function RevenueClient({
   liveStats: Stats;
 }) {
   const { formatDate } = useLocalization();
+
+  // --- Live state ---
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [liveOrders, setLiveOrders] = useState<Order[]>(initialLiveOrders);
+
+  // --- Socket handler ---
+  const handleRevenueUpdate = useCallback((event: RevenueUpdateEvent) => {
+    const p = event.payload;
+    const newOrder: Order = {
+      id: p.id,
+      status: p.status,
+      finalAmount: p.finalAmount,
+      createdAt: p.createdAt,
+      userFirstName: p.userFirstName,
+      userLastName: p.userLastName,
+      userEmail: p.userEmail,
+    };
+
+    if (event.source === "recorded") {
+      setOrders((prev) => {
+        const idx = prev.findIndex((o) => o.id === p.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          const existing = next[idx];
+          next[idx] = { ...existing, status: p.status, finalAmount: p.finalAmount } as Order;
+          return next;
+        }
+        return [newOrder, ...prev];
+      });
+    } else {
+      setLiveOrders((prev) => {
+        const idx = prev.findIndex((o) => o.id === p.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          const existing = next[idx];
+          next[idx] = { ...existing, status: p.status, finalAmount: p.finalAmount } as Order;
+          return next;
+        }
+        return [newOrder, ...prev];
+      });
+    }
+  }, []);
+
+  // --- Connect socket ---
+  const { connected } = useRevenueSocket({ onRevenueUpdate: handleRevenueUpdate });
 
   // Filter state
   const [period, setPeriod] = useState<DashboardPeriod>("month");
@@ -257,9 +303,19 @@ export function RevenueClient({
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Revenue</h1>
-          <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">{filteredOrders.length} orders in selected period</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Revenue</h1>
+              {connected && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  LIVE
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">{filteredOrders.length} orders in selected period</p>
+          </div>
         </div>
         <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-brand-600 dark:text-brand bg-brand-50 dark:bg-brand/10 rounded-xl hover:bg-brand-100 dark:hover:bg-brand/20 transition-colors">
           <Download className="h-3.5 w-3.5" />
