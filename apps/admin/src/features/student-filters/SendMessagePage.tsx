@@ -240,10 +240,10 @@ export function SendMessagePage({
         </div>
       )}
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
-        {/* LEFT — Compose */}
-        <div className="space-y-4">
+      {/* Two-column layout — 40/60 */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_3fr]">
+        {/* LEFT — Compose (40%) */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <ComposePanel
             messageType={messageType}
             onMessageTypeChange={setMessageType}
@@ -276,7 +276,7 @@ export function SendMessagePage({
           <button
             onClick={requestSend}
             disabled={isSending || recipientCount === 0}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:bg-brand-700 hover:shadow-xl disabled:opacity-40 disabled:shadow-none"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:bg-brand-700 hover:shadow-xl disabled:opacity-40 disabled:shadow-none"
           >
             {isSending ? <SpinnerGap size={16} className="animate-spin" /> : <PaperPlaneTilt size={16} weight="fill" />}
             {isSending
@@ -288,10 +288,10 @@ export function SendMessagePage({
           </button>
         </div>
 
-        {/* RIGHT — Recipients / Preview */}
-        <div className="flex flex-col">
+        {/* RIGHT — Recipients / Preview (60%) */}
+        <div className="flex flex-col rounded-2xl border border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-900">
           {/* Tab switcher */}
-          <div className="mb-3 flex gap-1 rounded-xl border border-gray-100 bg-gray-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex gap-1 border-b border-gray-100 p-1 dark:border-slate-800">
             <button
               onClick={() => setRightTab("recipients")}
               className={`flex-1 rounded-lg px-4 py-2 text-xs font-medium transition-all ${
@@ -314,7 +314,7 @@ export function SendMessagePage({
             </button>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 overflow-hidden">
             {rightTab === "recipients" ? (
               <RecipientsPanel
                 allStudents={allStudents}

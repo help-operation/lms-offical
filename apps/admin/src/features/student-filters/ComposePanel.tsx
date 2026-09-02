@@ -96,23 +96,23 @@ export function ComposePanel({
   const activeMessage = channel === "sms" ? smsMessage : emailBody;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Row 1: Message Type + Channel — side by side */}
-      <div className="flex items-end gap-4">
+      <div className="flex items-end gap-3">
         {/* Message Type */}
         <div className="flex-1">
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
             Message Type
           </label>
           <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-slate-700 dark:bg-slate-800">
             {([
               ["template", "Template"],
-              ["custom", "Custom Message"],
+              ["custom", "Custom"],
             ] as const).map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => onMessageTypeChange(val)}
-                className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-all ${
+                className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all ${
                   messageType === val
                     ? "bg-white text-brand-600 shadow-sm dark:bg-slate-700 dark:text-brand-400"
                     : "text-gray-500 hover:text-gray-700 dark:text-slate-400"
@@ -126,18 +126,18 @@ export function ComposePanel({
 
         {/* Channel */}
         <div className="flex-1">
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
             Send Via
           </label>
           <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-slate-700 dark:bg-slate-800">
             {([
               ["sms", "📱 SMS"],
-              ["email", "✉️ Email"],
+              ["email", "✉ Email"],
             ] as const).map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => onChannelChange(val)}
-                className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-all ${
+                className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all ${
                   channel === val
                     ? "bg-white text-brand-600 shadow-sm dark:bg-slate-700 dark:text-brand-400"
                     : "text-gray-500 hover:text-gray-700 dark:text-slate-400"
@@ -153,8 +153,8 @@ export function ComposePanel({
       {/* Template selector (only when messageType === "template") */}
       {messageType === "template" && (
         <div>
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
-            Select Template
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
+            Template
           </label>
           {channel === "sms" ? (
             smsTemplates.length > 0 ? (
@@ -210,8 +210,8 @@ export function ComposePanel({
       {/* Variables */}
       {activeVars.length > 0 && (
         <div>
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
-            Insert Variable
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
+            Variables
           </label>
           <div className="flex flex-wrap gap-1.5">
             {activeVars.map((v) => (
@@ -235,8 +235,8 @@ export function ComposePanel({
 
       {/* Message editor */}
       <div>
-        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
-          {messageType === "template" ? "Message Preview" : "Your Message"}
+        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
+          {messageType === "template" ? "Preview" : "Message"}
         </label>
         {channel === "email" && (
           <input
@@ -271,11 +271,11 @@ export function ComposePanel({
       </div>
 
       {/* Schedule + Interval — grouped */}
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+      <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock size={14} className="text-gray-500 dark:text-slate-400" />
-            <span className="text-sm font-medium text-gray-700 dark:text-slate-200">Schedule</span>
+          <div className="flex items-center gap-1.5">
+            <Clock size={13} className="text-gray-500 dark:text-slate-400" />
+            <span className="text-xs font-medium text-gray-700 dark:text-slate-200">Schedule</span>
           </div>
           <button
             onClick={() => onScheduleToggle(!isScheduled)}
@@ -292,27 +292,17 @@ export function ComposePanel({
         </div>
 
         {isScheduled && (
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Date</label>
-              <input
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => onScheduledDateChange(e.target.value)}
-                className={`w-full text-xs ${inputCls}`}
-              />
+              <label className="mb-0.5 block text-[9px] font-medium text-gray-500 dark:text-slate-400">Date</label>
+              <input type="date" value={scheduledDate} onChange={(e) => onScheduledDateChange(e.target.value)} className={`w-full text-[11px] ${inputCls}`} />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Time</label>
-              <input
-                type="time"
-                value={scheduledTime}
-                onChange={(e) => onScheduledTimeChange(e.target.value)}
-                className={`w-full text-xs ${inputCls}`}
-              />
+              <label className="mb-0.5 block text-[9px] font-medium text-gray-500 dark:text-slate-400">Time</label>
+              <input type="time" value={scheduledTime} onChange={(e) => onScheduledTimeChange(e.target.value)} className={`w-full text-[11px] ${inputCls}`} />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Interval</label>
+              <label className="mb-0.5 block text-[9px] font-medium text-gray-500 dark:text-slate-400">Interval</label>
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -320,9 +310,9 @@ export function ComposePanel({
                   max={3600}
                   value={interval}
                   onChange={(e) => onIntervalChange(Math.max(0, Number(e.target.value)))}
-                  className={`w-16 text-xs ${inputCls}`}
+                  className={`w-14 text-[11px] ${inputCls}`}
                 />
-                <span className="text-[10px] text-gray-400 dark:text-slate-500">sec</span>
+                <span className="text-[9px] text-gray-400">sec</span>
               </div>
             </div>
           </div>
@@ -331,9 +321,9 @@ export function ComposePanel({
 
       {/* Live counter */}
       {channel === "sms" && smsMessage.length > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-900">
           <span className="font-semibold text-gray-900 dark:text-white">
-            {smsInfo.charCount.toLocaleString()} Characters
+            {smsInfo.charCount.toLocaleString()} Chars
           </span>
           <span className="text-gray-300 dark:text-slate-600">|</span>
           <span className={`font-semibold ${smsInfo.segments > 1 ? "text-amber-600 dark:text-amber-400" : "text-gray-900 dark:text-white"}`}>
@@ -341,7 +331,7 @@ export function ComposePanel({
           </span>
           <span className="text-gray-300 dark:text-slate-600">|</span>
           <span className="font-semibold text-brand-600 dark:text-brand-400">
-            {recipientCount.toLocaleString()} Students Selected
+            {recipientCount.toLocaleString()} Students
           </span>
         </div>
       )}
