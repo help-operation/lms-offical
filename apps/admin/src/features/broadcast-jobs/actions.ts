@@ -3,8 +3,6 @@
 import { apiRequest } from "@/lib/api-client";
 import type { BroadcastJob, BroadcastRecipient, RecipientSearchResult, StudentMessageHistoryRow } from "./types";
 
-export type { BroadcastJob, BroadcastRecipient, RecipientSearchResult, StudentMessageHistoryRow };
-
 export async function getBroadcastJobAction(jobId: number) {
   try {
     const res = await apiRequest<BroadcastJob>(`/broadcast-jobs/${jobId}`);

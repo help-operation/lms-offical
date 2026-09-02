@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Calendar, Mail, CheckCircle, XCircle, RefreshCw } from "lucide-react";
-import { listBroadcastJobsAction, type BroadcastJob } from "@/features/broadcast-jobs/actions";
+import { listBroadcastJobsAction } from "@/features/broadcast-jobs/actions";
+import type { BroadcastJob } from "@/features/broadcast-jobs/types";
 
 type Period = "today" | "week" | "month" | "year" | "custom";
 
