@@ -1,18 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "@repo/ui/sonner";
+import { PaperPlaneTilt, SpinnerGap } from "@phosphor-icons/react";
 import type { EnrichedStudent } from "./types";
 import type { SmsTemplate } from "@/features/sms-templates/types";
 import type { EmailTemplate } from "@/features/email-templates/types";
 import { sendSmsToStudentsAction, sendEmailToStudentsAction } from "./actions";
 import { getBroadcastJobAction } from "@/features/broadcast-jobs/actions";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
-import { RecipientsPanel, type Recipient } from "./RecipientsPanel";
 import { ComposePanel } from "./ComposePanel";
+import { RecipientsPanel } from "./RecipientsPanel";
+import { DevicePreview } from "./DevicePreview";
 import type { CsvRecipient } from "./csv-parser";
 
 type Progress = { total: number; sent: number; failed: number; status: "pending" | "running" | "completed" };
+
+type RightTab = "recipients" | "preview";
 
 export function SendMessagePage({
   selectedStudents: initialSelected,
@@ -27,7 +31,9 @@ export function SendMessagePage({
 }) {
   const [selectedStudents, setSelectedStudents] = useState<EnrichedStudent[]>(initialSelected);
   const [csvRecipients, setCsvRecipients] = useState<CsvRecipient[]>([]);
+  const [allStudents, setAllStudents] = useState<EnrichedStudent[]>(initialSelected);
 
+  // Compose state
   const [channel, setChannel] = useState<"sms" | "email">("sms");
   const [selectedSmsTemplate, setSelectedSmsTemplate] = useState(smsTemplates[0]?.eventType ?? "");
   const [smsMessage, setSmsMessage] = useState(smsTemplates[0]?.body ?? "");
@@ -35,6 +41,14 @@ export function SendMessagePage({
   const [emailSubject, setEmailSubject] = useState(emailTemplates[0]?.subject ?? "");
   const [emailBody, setEmailBody] = useState(emailTemplates[0]?.htmlBody ?? "");
 
+  // Schedule
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [interval, setInterval_] = useState(0);
+
+  // UI state
+  const [rightTab, setRightTab] = useState<RightTab>("recipients");
   const [showConfirm, setShowConfirm] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -46,16 +60,41 @@ export function SendMessagePage({
   // Sync initial selected students
   useEffect(() => {
     setSelectedStudents(initialSelected);
+    setAllStudents((prev) => {
+      const existingIds = new Set(prev.map((s) => s.id));
+      const newOnes = initialSelected.filter((s) => !existingIds.has(s.id));
+      return [...prev, ...newOnes];
+    });
   }, [initialSelected]);
 
+  const selectedStudentIds = new Set(selectedStudents.map((s) => s.id));
   const recipientCount = selectedStudents.length + csvRecipients.length;
 
-  function removeStudent(id: number) {
-    setSelectedStudents((prev) => prev.filter((s) => s.id !== id));
-    onRemoveFromParent(id);
+  function toggleStudent(id: number) {
+    setSelectedStudents((prev) => {
+      const exists = prev.some((s) => s.id === id);
+      if (exists) {
+        const student = prev.find((s) => s.id === id);
+        if (student) onRemoveFromParent(student.id);
+        return prev.filter((s) => s.id !== id);
+      } else {
+        const student = allStudents.find((s) => s.id === id);
+        if (student) return [...prev, student];
+        return prev;
+      }
+    });
   }
 
-  function clearStudents() {
+  function selectAll(ids: number[]) {
+    const students = allStudents.filter((s) => ids.includes(s.id));
+    setSelectedStudents((prev) => {
+      const existingIds = new Set(prev.map((s) => s.id));
+      const newOnes = students.filter((s) => !existingIds.has(s.id));
+      return [...prev, ...newOnes];
+    });
+  }
+
+  function deselectAll() {
     selectedStudents.forEach((s) => onRemoveFromParent(s.id));
     setSelectedStudents([]);
   }
@@ -66,10 +105,6 @@ export function SendMessagePage({
 
   function removeCsvRecipient(index: number) {
     setCsvRecipients((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function clearCsv() {
-    setCsvRecipients([]);
   }
 
   function requestSend() {
@@ -97,14 +132,12 @@ export function SendMessagePage({
     setIsSending(true);
 
     const studentIds = selectedStudents.map((s) => s.id);
-    const csvPhoneNumbers = csvRecipients.filter((r) => r.phone).map((r) => r.phone);
-    const csvEmails = csvRecipients.filter((r) => r.email).map((r) => r.email);
 
     const [smsRes, emailRes] = await Promise.all([
-      channel === "sms" && (studentIds.length > 0 || csvPhoneNumbers.length > 0)
+      channel === "sms" && studentIds.length > 0
         ? sendSmsToStudentsAction(studentIds, smsMessage.trim())
         : Promise.resolve(null),
-      channel === "email" && (studentIds.length > 0 || csvEmails.length > 0)
+      channel === "email" && studentIds.length > 0
         ? sendEmailToStudentsAction(studentIds, emailSubject.trim(), emailBody.trim())
         : Promise.resolve(null),
     ]);
@@ -116,6 +149,7 @@ export function SendMessagePage({
       if (smsRes.success) {
         setSmsJobId(smsRes.data.jobId);
         setSmsProgress({ total: smsRes.data.total, sent: 0, failed: 0, status: "pending" });
+        setRightTab("preview");
       } else {
         toast.error(smsRes.message ?? "Failed to send SMS");
       }
@@ -124,16 +158,10 @@ export function SendMessagePage({
       if (emailRes.success) {
         setEmailJobId(emailRes.data.jobId);
         setEmailProgress({ total: emailRes.data.total, sent: 0, failed: 0, status: "pending" });
+        setRightTab("preview");
       } else {
         toast.error(emailRes.message ?? "Failed to send email");
       }
-    }
-
-    if (csvPhoneNumbers.length > 0 && channel === "sms" && !smsRes?.success) {
-      toast.info(`CSV phone numbers (${csvPhoneNumbers.length}) ready for direct SMS (coming soon)`);
-    }
-    if (csvEmails.length > 0 && channel === "email" && !emailRes?.success) {
-      toast.info(`CSV emails (${csvEmails.length}) ready for direct Email (coming soon)`);
     }
   }
 
@@ -171,20 +199,23 @@ export function SendMessagePage({
     return () => clearInterval(interval);
   }, [smsJobId, emailJobId, smsProgress?.status, emailProgress?.status]);
 
-  const channelLabel = channel === "sms" ? "SMS" : "Email";
+  const activeMessage = channel === "sms" ? smsMessage : emailBody;
+  const activeSubject = channel === "email" ? emailSubject : undefined;
 
   return (
     <div className="space-y-4">
       {/* Confirm dialog */}
       <ConfirmModal
         open={showConfirm}
-        title={`Send ${channelLabel}`}
+        title={`Send ${channel === "sms" ? "SMS" : "Email"}`}
         message={
           <>
-            Send {channelLabel} to <strong>{recipientCount} recipient(s)</strong>? This cannot be undone.
+            Send {channel === "sms" ? "SMS" : "Email"} to <strong>{recipientCount} recipient(s)</strong>?
+            {isScheduled && ` Scheduled for ${scheduledDate} ${scheduledTime}.`}
+            {" "}This cannot be undone.
           </>
         }
-        confirmLabel="Yes, send now"
+        confirmLabel={isScheduled ? "Yes, schedule" : "Yes, send now"}
         variant="warning"
         isPending={isSending}
         onConfirm={executeSend}
@@ -199,39 +230,102 @@ export function SendMessagePage({
         </div>
       )}
 
-      {/* Two-panel layout */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
-        {/* Left: Recipients */}
-        <RecipientsPanel
-          selectedStudents={selectedStudents}
-          csvRecipients={csvRecipients}
-          onRemoveStudent={removeStudent}
-          onClearStudents={clearStudents}
-          onAddCsvRecipients={addCsvRecipients}
-          onRemoveCsvRecipient={removeCsvRecipient}
-          onClearCsv={clearCsv}
-        />
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
+        {/* LEFT — Send & Configure */}
+        <div className="space-y-4">
+          <ComposePanel
+            channel={channel}
+            onChannelChange={setChannel}
+            smsTemplates={smsTemplates}
+            emailTemplates={emailTemplates}
+            selectedSmsTemplate={selectedSmsTemplate}
+            onSmsTemplateChange={setSelectedSmsTemplate}
+            smsMessage={smsMessage}
+            onSmsMessageChange={setSmsMessage}
+            selectedEmailTemplate={selectedEmailTemplate}
+            onEmailTemplateChange={setSelectedEmailTemplate}
+            emailSubject={emailSubject}
+            onEmailSubjectChange={setEmailSubject}
+            emailBody={emailBody}
+            onEmailBodyChange={setEmailBody}
+            recipientCount={recipientCount}
+            isScheduled={isScheduled}
+            onScheduleToggle={setIsScheduled}
+            scheduledDate={scheduledDate}
+            onScheduledDateChange={setScheduledDate}
+            scheduledTime={scheduledTime}
+            onScheduledTimeChange={setScheduledTime}
+            interval={interval}
+            onIntervalChange={setInterval_}
+          />
 
-        {/* Right: Compose */}
-        <ComposePanel
-          channel={channel}
-          onChannelChange={setChannel}
-          smsTemplates={smsTemplates}
-          emailTemplates={emailTemplates}
-          selectedSmsTemplate={selectedSmsTemplate}
-          onSmsTemplateChange={setSelectedSmsTemplate}
-          smsMessage={smsMessage}
-          onSmsMessageChange={setSmsMessage}
-          selectedEmailTemplate={selectedEmailTemplate}
-          onEmailTemplateChange={setSelectedEmailTemplate}
-          emailSubject={emailSubject}
-          onEmailSubjectChange={setEmailSubject}
-          emailBody={emailBody}
-          onEmailBodyChange={setEmailBody}
-          recipientCount={recipientCount}
-          onSend={requestSend}
-          isSending={isSending}
-        />
+          {/* Send button */}
+          <button
+            onClick={requestSend}
+            disabled={isSending || recipientCount === 0}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition-all hover:bg-brand-700 hover:shadow-xl disabled:opacity-40 disabled:shadow-none"
+          >
+            {isSending ? <SpinnerGap size={16} className="animate-spin" /> : <PaperPlaneTilt size={16} weight="fill" />}
+            {isSending
+              ? "Sending…"
+              : isScheduled
+                ? `Schedule for ${recipientCount} recipients`
+                : `Send to ${recipientCount} recipients`
+            }
+          </button>
+        </div>
+
+        {/* RIGHT — Recipients / Preview */}
+        <div className="flex flex-col">
+          {/* Right tab switcher */}
+          <div className="mb-3 flex gap-1 rounded-xl border border-gray-100 bg-gray-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+            <button
+              onClick={() => setRightTab("recipients")}
+              className={`flex-1 rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+                rightTab === "recipients"
+                  ? "bg-white text-brand-600 shadow-sm dark:bg-slate-800 dark:text-brand-400"
+                  : "text-gray-500 hover:text-gray-700 dark:text-slate-400"
+              }`}
+            >
+              👥 Recipients {recipientCount > 0 && `(${recipientCount})`}
+            </button>
+            <button
+              onClick={() => setRightTab("preview")}
+              className={`flex-1 rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+                rightTab === "preview"
+                  ? "bg-white text-brand-600 shadow-sm dark:bg-slate-800 dark:text-brand-400"
+                  : "text-gray-500 hover:text-gray-700 dark:text-slate-400"
+              }`}
+            >
+              📱 Preview
+            </button>
+          </div>
+
+          {/* Right panel content */}
+          <div className="flex-1">
+            {rightTab === "recipients" ? (
+              <RecipientsPanel
+                allStudents={allStudents}
+                selectedStudentIds={selectedStudentIds}
+                csvRecipients={csvRecipients}
+                onToggleStudent={toggleStudent}
+                onSelectAll={selectAll}
+                onDeselectAll={deselectAll}
+                onAddCsvRecipients={addCsvRecipients}
+                onRemoveCsvRecipient={removeCsvRecipient}
+                onClearCsv={() => setCsvRecipients([])}
+                onRemoveCsvStudents={() => setCsvRecipients([])}
+              />
+            ) : (
+              <DevicePreview
+                channel={channel}
+                subject={activeSubject}
+                message={activeMessage}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
