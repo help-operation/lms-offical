@@ -2637,3 +2637,15 @@ export type MessageBroadcastJob        = typeof messageBroadcastJobs.$inferSelec
 export type NewMessageBroadcastJob     = typeof messageBroadcastJobs.$inferInsert;
 export type MessageBroadcastRecipient  = typeof messageBroadcastRecipients.$inferSelect;
 export type NewMessageBroadcastRecipient = typeof messageBroadcastRecipients.$inferInsert;
+
+// ─── Communication Balance (SMS / Email) ──────────────────────────────────────
+
+export const communicationBalances = pgTable('communication_balances', {
+  id:        serial('id').primaryKey(),
+  channel:   broadcastChannelEnum('channel').notNull().unique(),
+  balance:   integer('balance').notNull().default(0),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export type CommunicationBalance    = typeof communicationBalances.$inferSelect;
+export type NewCommunicationBalance = typeof communicationBalances.$inferInsert;

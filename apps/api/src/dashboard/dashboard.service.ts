@@ -5,12 +5,15 @@ import { DB_TOKEN } from 'src/db/db.module';
 import {
   adminUsers,
   certificates,
+  communicationBalances,
   courses,
   enrollments,
   leads,
   liveCertificates,
   liveCourses,
   liveEnrollments,
+  messageBroadcastJobs,
+  messageBroadcastRecipients,
   orderItems,
   payments,
   siteVisits,
@@ -1010,5 +1013,203 @@ export class DashboardService {
     }
 
     return Array.from(merged.values()).sort((a, b) => b.revenue - a.revenue);
+  }
+
+  // ─── Student Growth Time-Series ───────────────────────────────────────────
+
+  async getStudentGrowth(q: DashboardQueryInput) {
+    const window = this.resolveWindow(q);
+    const rows = await this.db
+      .select({
+        month: sql<string>`TO_CHAR(${users.createdAt}, 'YYYY-MM')`.mapWith(String),
+        count: sql<number>`COUNT(*)`.mapWith(Number),
+      })
+      .from(users)
+      .where(and(eq(users.role, 'STUDENT'), gte(users.createdAt, window.from), lte(users.createdAt, window.to)))
+      .groupBy(sql`TO_CHAR(${users.createdAt}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${users.createdAt}, 'YYYY-MM')`);
+
+    // Get all-time total for cumulative calculation
+    const [totalRow] = await this.db
+      .select({ total: sql<number>`COUNT(*)`.mapWith(Number) })
+      .from(users)
+      .where(eq(users.role, 'STUDENT'));
+
+    const totalStudents = totalRow?.total ?? 0;
+    let cumulative = 0;
+    return rows.map((r) => {
+      cumulative += r.count;
+      return { label: r.month, newStudents: r.count, totalStudents: cumulative };
+    });
+  }
+
+  // ─── Revenue Time-Series ──────────────────────────────────────────────────
+
+  async getRevenueTimeSeries(q: DashboardQueryInput) {
+    const window = this.resolveWindow(q);
+    const { recordedCourseIds, liveCourseIds, anyCourseScope } = await this.resolveCourseScope(q);
+
+    const recordedRevenuePromise = (!anyCourseScope || recordedCourseIds)
+      ? this.db
+          .select({
+            month: sql<string>`TO_CHAR(${payments.createdAt}, 'YYYY-MM')`.mapWith(String),
+            revenue: sql<number>`SUM(${orderItems.price})`.mapWith(Number),
+          })
+          .from(payments)
+          .innerJoin(orderItems, eq(payments.orderId, orderItems.orderId))
+          .where(and(
+            eq(payments.status, 'completed'),
+            gte(payments.createdAt, window.from),
+            lte(payments.createdAt, window.to),
+            recordedCourseIds ? inArray(orderItems.courseId, recordedCourseIds) : sql`1=1`,
+          ))
+          .groupBy(sql`TO_CHAR(${payments.createdAt}, 'YYYY-MM')`)
+          .orderBy(sql`TO_CHAR(${payments.createdAt}, 'YYYY-MM')`)
+      : Promise.resolve([]);
+
+    const liveRevenuePromise = (!anyCourseScope || liveCourseIds)
+      ? this.db
+          .select({
+            month: sql<string>`TO_CHAR(${liveEnrollments.paidAt}, 'YYYY-MM')`.mapWith(String),
+            revenue: sql<number>`SUM(${liveEnrollments.amount})`.mapWith(Number),
+          })
+          .from(liveEnrollments)
+          .where(and(
+            eq(liveEnrollments.status, 'completed'),
+            gte(liveEnrollments.paidAt, window.from),
+            lte(liveEnrollments.paidAt, window.to),
+            liveCourseIds ? inArray(liveEnrollments.liveCourseId, liveCourseIds) : sql`1=1`,
+          ))
+          .groupBy(sql`TO_CHAR(${liveEnrollments.paidAt}, 'YYYY-MM')`)
+          .orderBy(sql`TO_CHAR(${liveEnrollments.paidAt}, 'YYYY-MM')`)
+      : Promise.resolve([]);
+
+    const [recordedRows, liveRows] = await Promise.all([recordedRevenuePromise, liveRevenuePromise]);
+
+    // Merge by month
+    const monthMap = new Map<string, { recorded: number; live: number }>();
+    for (const r of recordedRows) {
+      const existing = monthMap.get(r.month) ?? { recorded: 0, live: 0 };
+      existing.recorded += Number(r.revenue);
+      monthMap.set(r.month, existing);
+    }
+    for (const r of liveRows) {
+      const existing = monthMap.get(r.month) ?? { recorded: 0, live: 0 };
+      existing.live += Number(r.revenue);
+      monthMap.set(r.month, existing);
+    }
+
+    return Array.from(monthMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, data]) => ({
+        label: month,
+        recorded: data.recorded,
+        live: data.live,
+        total: data.recorded + data.live,
+      }));
+  }
+
+  private async resolveCourseScope(q: DashboardQueryInput): Promise<CourseScope> {
+    const recordedCourseIds = await this.resolveRecordedCourseIds(q);
+    const liveCourseIds = this.resolveLiveCourseIds(q);
+    const anyCourseScope = Boolean(q.course_id || q.instructor_id || q.package_id);
+    return { recordedCourseIds, liveCourseIds, anyCourseScope };
+  }
+
+  // ─── Communication Overview (SMS + Email) ────────────────────────────────────
+
+  async getCommunicationOverview() {
+    const now = new Date();
+    const windows = {
+      today:  { from: this.startOfDay(now), to: now },
+      week:   { from: this.startOfWeek(now), to: now },
+      month:  { from: this.startOfMonth(now), to: now },
+      year:   { from: this.startOfYear(now), to: now },
+    };
+
+    // Get balance for SMS and Email
+    const balanceRows = await this.db
+      .select({ channel: communicationBalances.channel, balance: communicationBalances.balance })
+      .from(communicationBalances);
+
+    const balanceMap: Record<string, number> = {};
+    for (const row of balanceRows) {
+      balanceMap[row.channel] = row.balance;
+    }
+
+    // SMS stats from messageBroadcastJobs + messageBroadcastRecipients
+    const smsJobStats = await this.db
+      .select({
+        today: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastJobs.createdAt} BETWEEN ${windows.today.from} AND ${windows.today.to})`.mapWith(Number),
+        week: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastJobs.createdAt} BETWEEN ${windows.week.from} AND ${windows.week.to})`.mapWith(Number),
+        month: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastJobs.createdAt} BETWEEN ${windows.month.from} AND ${windows.month.to})`.mapWith(Number),
+        year: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastJobs.createdAt} BETWEEN ${windows.year.from} AND ${windows.year.to})`.mapWith(Number),
+        totalSent: sql<number>`COALESCE(SUM(${messageBroadcastJobs.sent}), 0)`.mapWith(Number),
+        totalFailed: sql<number>`COALESCE(SUM(${messageBroadcastJobs.failed}), 0)`.mapWith(Number),
+      })
+      .from(messageBroadcastJobs)
+      .where(eq(messageBroadcastJobs.channel, 'sms'));
+
+    const smsRecipientStats = await this.db
+      .select({
+        today: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.sentAt} BETWEEN ${windows.today.from} AND ${windows.today.to} AND ${messageBroadcastRecipients.status} = 'sent')`.mapWith(Number),
+        week: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.sentAt} BETWEEN ${windows.week.from} AND ${windows.week.to} AND ${messageBroadcastRecipients.status} = 'sent')`.mapWith(Number),
+        month: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.sentAt} BETWEEN ${windows.month.from} AND ${windows.month.to} AND ${messageBroadcastRecipients.status} = 'sent')`.mapWith(Number),
+        year: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.sentAt} BETWEEN ${windows.year.from} AND ${windows.year.to} AND ${messageBroadcastRecipients.status} = 'sent')`.mapWith(Number),
+      })
+      .from(messageBroadcastRecipients)
+      .innerJoin(messageBroadcastJobs, eq(messageBroadcastRecipients.jobId, messageBroadcastJobs.id))
+      .where(eq(messageBroadcastJobs.channel, 'sms'));
+
+    // Email stats
+    const emailJobStats = await this.db
+      .select({
+        today: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastJobs.createdAt} BETWEEN ${windows.today.from} AND ${windows.today.to})`.mapWith(Number),
+        week: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastJobs.createdAt} BETWEEN ${windows.week.from} AND ${windows.week.to})`.mapWith(Number),
+        month: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastJobs.createdAt} BETWEEN ${windows.month.from} AND ${windows.month.to})`.mapWith(Number),
+        year: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastJobs.createdAt} BETWEEN ${windows.year.from} AND ${windows.year.to})`.mapWith(Number),
+        totalSent: sql<number>`COALESCE(SUM(${messageBroadcastJobs.sent}), 0)`.mapWith(Number),
+        totalFailed: sql<number>`COALESCE(SUM(${messageBroadcastJobs.failed}), 0)`.mapWith(Number),
+      })
+      .from(messageBroadcastJobs)
+      .where(eq(messageBroadcastJobs.channel, 'email'));
+
+    const emailRecipientStats = await this.db
+      .select({
+        today: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.sentAt} BETWEEN ${windows.today.from} AND ${windows.today.to} AND ${messageBroadcastRecipients.status} = 'sent')`.mapWith(Number),
+        week: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.sentAt} BETWEEN ${windows.week.from} AND ${windows.week.to} AND ${messageBroadcastRecipients.status} = 'sent')`.mapWith(Number),
+        month: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.sentAt} BETWEEN ${windows.month.from} AND ${windows.month.to} AND ${messageBroadcastRecipients.status} = 'sent')`.mapWith(Number),
+        year: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.sentAt} BETWEEN ${windows.year.from} AND ${windows.year.to} AND ${messageBroadcastRecipients.status} = 'sent')`.mapWith(Number),
+        totalFailed: sql<number>`COUNT(*) FILTER (WHERE ${messageBroadcastRecipients.status} = 'failed')`.mapWith(Number),
+      })
+      .from(messageBroadcastRecipients)
+      .innerJoin(messageBroadcastJobs, eq(messageBroadcastRecipients.jobId, messageBroadcastJobs.id))
+      .where(eq(messageBroadcastJobs.channel, 'email'));
+
+    const smsJobs = smsJobStats[0];
+    const smsRecipients = smsRecipientStats[0];
+    const emailJobs = emailJobStats[0];
+    const emailRecipients = emailRecipientStats[0];
+
+    return {
+      sms: {
+        balance: balanceMap['sms'] ?? 0,
+        today: smsRecipients.today,
+        week: smsRecipients.week,
+        month: smsRecipients.month,
+        year: smsRecipients.year,
+        totalSent: smsJobs.totalSent,
+        totalFailed: smsJobs.totalFailed,
+      },
+      email: {
+        balance: balanceMap['email'] ?? 0,
+        today: emailRecipients.today,
+        week: emailRecipients.week,
+        month: emailRecipients.month,
+        year: emailRecipients.year,
+        totalSent: emailJobs.totalSent,
+        totalFailed: emailJobs.totalFailed,
+      },
+    };
   }
 }

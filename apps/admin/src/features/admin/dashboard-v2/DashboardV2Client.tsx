@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { RefreshCw, Users, ShoppingCart, BarChart3, Settings, FileText, Zap } from "lucide-react";
+import { RefreshCw, Users, ShoppingCart, BarChart3, FileText } from "lucide-react";
 import { dashboardApi, type DashboardOverview } from "./api";
 import { FilterBar, DEFAULT_FILTERS, toApiFilters, type DraftFilters } from "./FilterBar";
 import { useDashboardSocket } from "@/hooks/use-dashboard-socket";
 import { TopSummaryStrip } from "./sections/TopSummaryStrip";
 import { StudentOverviewCard } from "./sections/StudentOverviewCard";
-import { CourseCountDonut } from "./sections/CourseCountDonut";
-import { VisitorSourceDonut } from "./sections/VisitorSourceDonut";
+
 import { PerCourseStudentList } from "./sections/PerCourseStudentList";
 import { SupportOverviewGrid } from "./sections/OverviewStatGrids";
 import { VisitorActivityCard } from "./sections/VisitorActivityCard";
@@ -23,6 +22,8 @@ import { StudentsByCourseChart } from "./sections/StudentsByCourseChart";
 import { VisitorsBySourceChart } from "./sections/VisitorsBySourceChart";
 import { EnrollmentTrendChart } from "./sections/EnrollmentTrendChart";
 import { RevenueByCourseChart } from "./sections/RevenueByCourseChart";
+import { SmsOverviewCard } from "./sections/SmsOverviewCard";
+import { EmailOverviewCard } from "./sections/EmailOverviewCard";
 
 const QUICK_ACTIONS = [
   { label: "Students", icon: Users, href: "/admin/students", color: "text-brand-600 bg-brand-50 hover:bg-brand-100 dark:bg-brand/10 dark:hover:bg-brand/20" },
@@ -168,8 +169,8 @@ export function DashboardV2Client() {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <StudentGrowthChart data={data.studentOverview} />
-            <RevenuePerformanceChart data={data} />
+            <StudentGrowthChart filters={toApiFilters(applied)} />
+            <RevenuePerformanceChart filters={toApiFilters(applied)} />
           </div>
 
           {/* Row 1: Students by Course + Visitors by Source */}
@@ -184,14 +185,12 @@ export function DashboardV2Client() {
             <RevenueByCourseChart filters={toApiFilters(applied)} />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <CourseCountDonut data={data.courseCount} />
-            <VisitorSourceDonut data={data.visitorSource} />
-          </div>
-
           <PerCourseStudentList />
 
           <VisitorActivityCard data={data.visitorActivity} />
+
+          <SmsOverviewCard />
+          <EmailOverviewCard />
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <SystemHealthCard />
