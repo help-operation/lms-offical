@@ -15,7 +15,7 @@ import { DevicePreview } from "./DevicePreview";
 import type { CsvRecipient } from "./csv-parser";
 
 type Progress = { total: number; sent: number; failed: number; status: "pending" | "running" | "completed" };
-
+type MessageType = "template" | "custom";
 type RightTab = "recipients" | "preview";
 
 export function SendMessagePage({
@@ -34,6 +34,7 @@ export function SendMessagePage({
   const [allStudents, setAllStudents] = useState<EnrichedStudent[]>(initialSelected);
 
   // Compose state
+  const [messageType, setMessageType] = useState<MessageType>("template");
   const [channel, setChannel] = useState<"sms" | "email">("sms");
   const [selectedSmsTemplate, setSelectedSmsTemplate] = useState(smsTemplates[0]?.eventType ?? "");
   const [smsMessage, setSmsMessage] = useState(smsTemplates[0]?.body ?? "");
@@ -57,7 +58,6 @@ export function SendMessagePage({
   const [smsProgress, setSmsProgress] = useState<Progress | null>(null);
   const [emailProgress, setEmailProgress] = useState<Progress | null>(null);
 
-  // Sync initial selected students
   useEffect(() => {
     setSelectedStudents(initialSelected);
     setAllStudents((prev) => {
@@ -97,14 +97,6 @@ export function SendMessagePage({
   function deselectAll() {
     selectedStudents.forEach((s) => onRemoveFromParent(s.id));
     setSelectedStudents([]);
-  }
-
-  function addCsvRecipients(recipients: CsvRecipient[]) {
-    setCsvRecipients((prev) => [...prev, ...recipients]);
-  }
-
-  function removeCsvRecipient(index: number) {
-    setCsvRecipients((prev) => prev.filter((_, i) => i !== index));
   }
 
   function requestSend() {
@@ -165,13 +157,12 @@ export function SendMessagePage({
     }
   }
 
-  // Poll progress
   useEffect(() => {
     const smsActive = smsJobId != null && smsProgress?.status !== "completed";
     const emailActive = emailJobId != null && emailProgress?.status !== "completed";
     if (!smsActive && !emailActive) return;
 
-    const interval = setInterval(async () => {
+    const iv = setInterval(async () => {
       if (smsActive && smsJobId != null) {
         const res = await getBroadcastJobAction(smsJobId);
         if (res.success) {
@@ -196,7 +187,7 @@ export function SendMessagePage({
       }
     }, 1200);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, [smsJobId, emailJobId, smsProgress?.status, emailProgress?.status]);
 
   const activeMessage = channel === "sms" ? smsMessage : emailBody;
@@ -204,6 +195,25 @@ export function SendMessagePage({
 
   return (
     <div className="space-y-4">
+      {/* Selection count bar */}
+      <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+            {recipientCount.toLocaleString()} Students Selected
+          </span>
+          {selectedStudents.length > 0 && csvRecipients.length > 0 && (
+            <span className="text-xs text-gray-400 dark:text-slate-500">
+              ({selectedStudents.length} from table, {csvRecipients.length} from CSV)
+            </span>
+          )}
+        </div>
+        {selectedStudentIds.size > 0 && (
+          <button onClick={deselectAll} className="text-xs text-gray-400 hover:text-red-500 dark:text-slate-500">
+            Clear all
+          </button>
+        )}
+      </div>
+
       {/* Confirm dialog */}
       <ConfirmModal
         open={showConfirm}
@@ -232,9 +242,11 @@ export function SendMessagePage({
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
-        {/* LEFT — Send & Configure */}
+        {/* LEFT — Compose */}
         <div className="space-y-4">
           <ComposePanel
+            messageType={messageType}
+            onMessageTypeChange={setMessageType}
             channel={channel}
             onChannelChange={setChannel}
             smsTemplates={smsTemplates}
@@ -278,7 +290,7 @@ export function SendMessagePage({
 
         {/* RIGHT — Recipients / Preview */}
         <div className="flex flex-col">
-          {/* Right tab switcher */}
+          {/* Tab switcher */}
           <div className="mb-3 flex gap-1 rounded-xl border border-gray-100 bg-gray-50 p-1 dark:border-slate-800 dark:bg-slate-900">
             <button
               onClick={() => setRightTab("recipients")}
@@ -302,7 +314,6 @@ export function SendMessagePage({
             </button>
           </div>
 
-          {/* Right panel content */}
           <div className="flex-1">
             {rightTab === "recipients" ? (
               <RecipientsPanel
@@ -312,10 +323,9 @@ export function SendMessagePage({
                 onToggleStudent={toggleStudent}
                 onSelectAll={selectAll}
                 onDeselectAll={deselectAll}
-                onAddCsvRecipients={addCsvRecipients}
-                onRemoveCsvRecipient={removeCsvRecipient}
+                onAddCsvRecipients={(r) => setCsvRecipients((prev) => [...prev, ...r])}
+                onRemoveCsvRecipient={(i) => setCsvRecipients((prev) => prev.filter((_, idx) => idx !== i))}
                 onClearCsv={() => setCsvRecipients([])}
-                onRemoveCsvStudents={() => setCsvRecipients([])}
               />
             ) : (
               <DevicePreview
