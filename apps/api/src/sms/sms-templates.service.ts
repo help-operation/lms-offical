@@ -235,13 +235,26 @@ export class SmsTemplatesService implements OnModuleInit {
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────
 
+  /** Explicit columns to avoid crash if templateType migration hasn't run yet. */
+  private readonly cols = {
+    id: smsTemplates.id,
+    eventType: smsTemplates.eventType,
+    name: smsTemplates.name,
+    section: smsTemplates.section,
+    body: smsTemplates.body,
+    isEnabled: smsTemplates.isEnabled,
+    variables: smsTemplates.variables,
+    createdAt: smsTemplates.createdAt,
+    updatedAt: smsTemplates.updatedAt,
+  };
+
   async findAll() {
-    return this.db.select().from(smsTemplates).orderBy(asc(smsTemplates.id));
+    return this.db.select(this.cols).from(smsTemplates).orderBy(asc(smsTemplates.id));
   }
 
   async findByEvent(eventType: string) {
     const [row] = await this.db
-      .select()
+      .select(this.cols)
       .from(smsTemplates)
       .where(eq(smsTemplates.eventType, eventType))
       .limit(1);
@@ -256,7 +269,7 @@ export class SmsTemplatesService implements OnModuleInit {
       .update(smsTemplates)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(smsTemplates.eventType, eventType))
-      .returning();
+      .returning(this.cols);
     return row;
   }
 
@@ -267,7 +280,7 @@ export class SmsTemplatesService implements OnModuleInit {
       .update(smsTemplates)
       .set({ isEnabled: !tpl.isEnabled, updatedAt: new Date() })
       .where(eq(smsTemplates.eventType, eventType))
-      .returning();
+      .returning(this.cols);
     return row;
   }
 
@@ -283,18 +296,34 @@ export class SmsTemplatesService implements OnModuleInit {
     if (existing) {
       throw new ConflictException(`Template with event type "${data.eventType}" already exists`);
     }
-    const [row] = await this.db
-      .insert(smsTemplates)
-      .values({
-        eventType: data.eventType,
-        name: data.name,
-        section: data.section,
-        templateType: data.templateType ?? 'sms',
-        body: data.body,
-        variables: JSON.stringify(data.variables ?? []),
-      })
-      .returning();
-    return row;
+    const vars = JSON.stringify(data.variables ?? []);
+    // Try with templateType (new column). If column doesn't exist yet, fall back.
+    try {
+      const [row] = await this.db
+        .insert(smsTemplates)
+        .values({
+          eventType: data.eventType,
+          name: data.name,
+          section: data.section,
+          templateType: data.templateType ?? 'sms',
+          body: data.body,
+          variables: vars,
+        })
+        .returning(this.cols);
+      return row;
+    } catch {
+      const [row] = await this.db
+        .insert(smsTemplates)
+        .values({
+          eventType: data.eventType,
+          name: data.name,
+          section: data.section,
+          body: data.body,
+          variables: vars,
+        })
+        .returning(this.cols);
+      return row;
+    }
   }
 
   async delete(eventType: string) {

@@ -519,6 +519,7 @@ export function SmsTemplatesClient({
   const [isTogglingAuto, startToggleAuto] = useTransition();
   const [search, setSearch] = useState("");
   const [sectionFilter, setSectionFilter] = useState("all");
+  const [lang, setLang] = useState<"en" | "bn">("en");
 
   function toggleAutoSms() {
     const next = !autoEnabled;
@@ -610,12 +611,33 @@ export function SmsTemplatesClient({
             <p className="text-sm text-gray-500">Manage event-triggered SMS and bulk broadcast.</p>
           </div>
         </div>
-        <button
-          onClick={() => { setCreating(true); setEditing(null); }}
-          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          <Plus size={16} weight="fill" /> New Template
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Language toggle */}
+          <div className="flex rounded-xl border border-gray-200 bg-white p-0.5">
+            <button
+              onClick={() => setLang("en")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                lang === "en" ? "bg-brand-100 text-brand-700" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLang("bn")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                lang === "bn" ? "bg-brand-100 text-brand-700" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              বাং
+            </button>
+          </div>
+          <button
+            onClick={() => { setCreating(true); setEditing(null); }}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            <Plus size={16} weight="fill" /> New Template
+          </button>
+        </div>
       </div>
 
       {/* Auto SMS toggle */}
@@ -663,6 +685,49 @@ export function SmsTemplatesClient({
         <BroadcastTab counts={counts} />
       ) : (
         <>
+          {/* Usage guide */}
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+            <div className="flex items-start gap-3">
+              <Info size={18} weight="fill" className="mt-0.5 shrink-0 text-blue-500" />
+              <div className="space-y-2 text-xs text-blue-700 leading-relaxed">
+                <p className="font-semibold text-blue-800">
+                  {lang === "bn" ? "কিভাবে কাজ করে" : "How it works"}
+                </p>
+                {lang === "bn" ? (
+                  <>
+                    <p>
+                      প্রতিটি টেমপ্লেট একটি ইভেন্টের সাথে সম্পর্কিত — যেমন ব্যবহারকারী সাইন আপ করলে <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">welcome</code> SMS পাঠানো হয়।
+                      টেমপ্লেটে <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">{"{{variable}}"}</code> ব্যবহার করে ডায়নামিক তথ্য পাঠানো যায়।
+                    </p>
+                    <p>
+                      আপনি বাংলা বা ইংরেজি যেকোনো ভাষায় টেমপ্লেট লিখতে পারবেন। বাংলা অক্ষর দৈর্ঘ্য সিস্টেম বুঝে নিন —
+                      বাংলায় 1 SMS = 70 ক্যারেক্টার, ইংরেজিতে 1 SMS = 160 ক্যারেক্টার।
+                    </p>
+                    <p>
+                      "Automatic SMS" চালু থাকলে ইভেন্ট ঘটলে অটোমেটিক SMS পাঠানো হয়।
+                      বন্ধ করলে শুধু OTP ছাড়া কোনো SMS পাঠানো হবে না।
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Each template is tied to an event — e.g. when a user signs up, the <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">welcome</code> SMS is sent automatically.
+                      Use <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">{"{{variable}}"}</code> syntax to insert dynamic content like names, amounts, and links.
+                    </p>
+                    <p>
+                      You can write templates in Bengali or English. Note the character limits —
+                      Bengali SMS: 70 chars/SMS, English SMS: 160 chars/SMS. The counter below the textarea shows the weighted count.
+                    </p>
+                    <p>
+                      When "Automatic SMS" is ON, event-triggered messages send automatically.
+                      Turn it OFF to pause all auto-sends (OTP always works regardless).
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Search + filter bar */}
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
@@ -696,10 +761,15 @@ export function SmsTemplatesClient({
               if (list.length === 0) return null;
               return (
                 <div key={section.key}>
-                  <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">
-                    {section.label}
-                    <span className="ml-2 text-gray-300">({list.length})</span>
-                  </h2>
+                  <div className="mb-3">
+                    <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                      {section.label}
+                      <span className="ml-2 text-gray-300">({list.length})</span>
+                    </h2>
+                    <p className="mt-1 text-xs text-gray-400 leading-relaxed">
+                      {lang === "bn" ? section.descriptionbn : section.description}
+                    </p>
+                  </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {list.map((t) => (
                       <div
