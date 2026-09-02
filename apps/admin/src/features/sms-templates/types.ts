@@ -3,6 +3,7 @@ export type SmsTemplate = {
   eventType: string;
   name: string;
   section: string;
+  templateType: string;
   body: string;
   isEnabled: boolean;
   variables: string; // JSON string: [{ key, description }]
@@ -29,3 +30,12 @@ export const BROADCAST_SEGMENTS: { key: string; label: string }[] = [
   { key: "leads",            label: "Leads (not converted)" },
   { key: "live_enrollments", label: "Live-course enrollees" },
 ];
+
+export type CreateTemplateInput = {
+  eventType: string;
+  name: string;
+  section: string;
+  templateType: string;
+  body: string;
+  variables: TemplateVariable[];
+};

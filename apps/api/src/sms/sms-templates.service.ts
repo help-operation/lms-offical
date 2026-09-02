@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { asc, eq } from 'drizzle-orm';
 import type { DB } from 'src/db';
 import { DB_TOKEN } from 'src/db/db.module';
@@ -269,6 +269,43 @@ export class SmsTemplatesService implements OnModuleInit {
       .where(eq(smsTemplates.eventType, eventType))
       .returning();
     return row;
+  }
+
+  async create(data: {
+    eventType: string;
+    name: string;
+    section: string;
+    templateType?: string;
+    body: string;
+    variables?: { key: string; description: string }[];
+  }) {
+    const existing = await this.findByEvent(data.eventType);
+    if (existing) {
+      throw new ConflictException(`Template with event type "${data.eventType}" already exists`);
+    }
+    const [row] = await this.db
+      .insert(smsTemplates)
+      .values({
+        eventType: data.eventType,
+        name: data.name,
+        section: data.section,
+        templateType: data.templateType ?? 'sms',
+        body: data.body,
+        variables: JSON.stringify(data.variables ?? []),
+      })
+      .returning();
+    return row;
+  }
+
+  async delete(eventType: string) {
+    const tpl = await this.findByEvent(eventType);
+    if (!tpl) {
+      throw new NotFoundException(`Template "${eventType}" not found`);
+    }
+    await this.db
+      .delete(smsTemplates)
+      .where(eq(smsTemplates.eventType, eventType));
+    return { deleted: true };
   }
 
   // ── Rendering & sending ─────────────────────────────────────────────────────

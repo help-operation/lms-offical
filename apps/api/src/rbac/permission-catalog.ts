@@ -196,7 +196,9 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { slug: 'send_manual_email', name: 'Send Manual Email to Selected Students', group: 'email_templates', type: 'api' },
 
   { slug: 'view_sms_templates', name: 'View SMS Templates', group: 'sms_templates', type: 'page' },
+  { slug: 'create_sms_templates', name: 'Create SMS Templates', group: 'sms_templates', type: 'api' },
   { slug: 'update_sms_templates', name: 'Update SMS Templates', group: 'sms_templates', type: 'api' },
+  { slug: 'delete_sms_templates', name: 'Delete SMS Templates', group: 'sms_templates', type: 'api' },
   { slug: 'send_test_sms', name: 'Send Test SMS', group: 'sms_templates', type: 'api' },
   { slug: 'send_sms_broadcast', name: 'Send SMS Broadcast', group: 'sms_templates', type: 'api' },
   { slug: 'send_manual_sms', name: 'Send Manual SMS to Selected Students', group: 'sms_templates', type: 'api' },
@@ -346,7 +348,7 @@ export const LEGACY_PERMISSION_MIGRATION: Record<string, string[]> = {
   manage_notifications: [],
   manage_announcements: ['create_announcements', 'update_announcements', 'delete_announcements'],
   manage_email_templates: ['update_email_templates', 'send_test_email', 'send_manual_email'],
-  manage_sms_templates: ['update_sms_templates', 'send_test_sms', 'send_sms_broadcast'],
+  manage_sms_templates: ['create_sms_templates', 'update_sms_templates', 'delete_sms_templates', 'send_test_sms', 'send_sms_broadcast'],
   manage_roles: ['create_roles', 'update_roles', 'delete_roles'],
   manage_admins: ['view_admins', 'create_admins', 'update_admins', 'delete_admins'],
   // content split into per-section + per-legal-page

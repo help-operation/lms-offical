@@ -1,7 +1,7 @@
 "use server";
 
 import { apiRequest } from "@/lib/api-client";
-import type { SmsTemplate } from "./types";
+import type { SmsTemplate, CreateTemplateInput } from "./types";
 
 export async function getSmsTemplatesAction() {
   try {
@@ -9,6 +9,18 @@ export async function getSmsTemplatesAction() {
     return { success: true as const, data: res.data ?? [] };
   } catch (err: any) {
     return { success: false as const, message: err?.message ?? "Failed to fetch SMS templates" };
+  }
+}
+
+export async function createSmsTemplateAction(data: CreateTemplateInput) {
+  try {
+    const res = await apiRequest<SmsTemplate>("/sms-templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return { success: true as const, data: res.data! };
+  } catch (err: any) {
+    return { success: false as const, message: err?.message ?? "Failed to create template" };
   }
 }
 
@@ -35,6 +47,15 @@ export async function toggleSmsTemplateAction(eventType: string) {
     return { success: true as const, data: res.data! };
   } catch (err: any) {
     return { success: false as const, message: err?.message ?? "Failed to toggle template" };
+  }
+}
+
+export async function deleteSmsTemplateAction(eventType: string) {
+  try {
+    await apiRequest(`/sms-templates/${eventType}`, { method: "DELETE" });
+    return { success: true as const };
+  } catch (err: any) {
+    return { success: false as const, message: err?.message ?? "Failed to delete template" };
   }
 }
 

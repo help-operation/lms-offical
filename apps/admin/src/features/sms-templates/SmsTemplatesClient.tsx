@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useCallback } from "react";
 import {
   ChatText, PencilSimple, PaperPlaneTilt, SpinnerGap,
-  X, Megaphone, ToggleLeft, ToggleRight, Info,
+  X, Megaphone, ToggleLeft, ToggleRight, Info, Plus, Trash,
+  MagnifyingGlass, FunnelSimple,
 } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import {
+  createSmsTemplateAction,
+  deleteSmsTemplateAction,
   getBroadcastCountsAction,
   sendBroadcastAction,
   sendTestSmsAction,
@@ -17,46 +20,158 @@ import {
 } from "./actions";
 import {
   SECTION_META, BROADCAST_SEGMENTS,
-  type SmsTemplate, type TemplateVariable,
+  type SmsTemplate, type TemplateVariable, type CreateTemplateInput,
 } from "./types";
 
-/** GSM-ish segment estimate. */
-function segments(len: number) {
-  if (len === 0) return 0;
-  return len <= 160 ? 1 : Math.ceil(len / 153);
+// ─── Bengali/English SMS segment calc ──────────────────────────────────────────
+
+const BENGALI_RE = /[\u0980-\u09FF]/;
+
+/** Count weighted chars: Bengali = 2 units, ASCII = 1 unit. */
+function weightedLen(text: string): number {
+  let w = 0;
+  for (const ch of text) {
+    w += BENGALI_RE.test(ch) ? 2 : 1;
+  }
+  return w;
+}
+
+function smsSegments(text: string): number {
+  if (!text) return 0;
+  const w = weightedLen(text);
+  if (w === 0) return 0;
+  // GSM-7: 1 SMS = 153 chars (multipart), first segment 160. For weighted: use 153/160.
+  if (w <= 153) return 1;
+  return Math.ceil(w / 153);
+}
+
+function languageBadge(text: string): { label: string; color: string } {
+  const hasBengali = BENGALI_RE.test(text);
+  const hasLatin = /[a-zA-Z]/.test(text);
+  if (hasBengali && hasLatin) return { label: "Mixed", color: "bg-amber-100 text-amber-700" };
+  if (hasBengali) return { label: "Bengali", color: "bg-blue-100 text-blue-700" };
+  return { label: "English", color: "bg-green-100 text-green-700" };
 }
 
 function parseVars(json: string): TemplateVariable[] {
   try { return JSON.parse(json); } catch { return []; }
 }
 
-// ─── Edit modal ────────────────────────────────────────────────────────────────
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 100);
+}
 
-function EditModal({
-  template, onClose, onSaved,
+function detectVariables(body: string): TemplateVariable[] {
+  const matches = [...body.matchAll(/\{\{\s*(\w+)\s*\}\}/g)];
+  const seen = new Set<string>();
+  const vars: TemplateVariable[] = [];
+  for (const m of matches) {
+    const key = `{{${m[1]}}}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      vars.push({ key, description: "" });
+    }
+  }
+  return vars;
+}
+
+// ─── Create / Edit Modal ─────────────────────────────────────────────────────
+
+function TemplateModal({
+  template,
+  onClose,
+  onSaved,
 }: {
-  template: SmsTemplate;
+  template: SmsTemplate | null;
   onClose: () => void;
   onSaved: (t: SmsTemplate) => void;
 }) {
-  const [body, setBody] = useState(template.body);
+  const isEdit = !!template;
+  const [name, setName] = useState(template?.name ?? "");
+  const [eventType, setEventType] = useState(template?.eventType ?? "");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!template);
+  const [section, setSection] = useState(template?.section ?? SECTION_META[0]!.key);
+  const [templateType] = useState(template?.templateType ?? "sms");
+  const [body, setBody] = useState(template?.body ?? "");
+  const [variables, setVariables] = useState<TemplateVariable[]>(
+    template ? parseVars(template.variables) : []
+  );
+  const [newVarKey, setNewVarKey] = useState("");
+  const [newVarDesc, setNewVarDesc] = useState("");
   const [testPhone, setTestPhone] = useState("");
   const [isSaving, startSave] = useTransition();
   const [isTesting, startTest] = useTransition();
-  const vars = parseVars(template.variables);
+
+  const handleNameChange = useCallback((v: string) => {
+    setName(v);
+    if (!slugManuallyEdited) setEventType(slugify(v));
+  }, [slugManuallyEdited]);
+
+  const handleSlugChange = useCallback((v: string) => {
+    setSlugManuallyEdited(true);
+    setEventType(slugify(v));
+  }, []);
+
+  const detectedVars = useMemo(() => detectVariables(body), [body]);
+  const badge = languageBadge(body);
+  const segs = smsSegments(body);
+  const wLen = weightedLen(body);
+
+  function addVariable() {
+    const key = newVarKey.trim();
+    if (!key) return;
+    const full = key.startsWith("{{") ? key : `{{${key}}}`;
+    if (variables.some((v) => v.key === full)) {
+      toast.error("Variable already exists");
+      return;
+    }
+    setVariables((prev) => [...prev, { key: full, description: newVarDesc.trim() }]);
+    setNewVarKey("");
+    setNewVarDesc("");
+  }
+
+  function removeVariable(key: string) {
+    setVariables((prev) => prev.filter((v) => v.key !== key));
+  }
+
+  function insertVariable(key: string) {
+    setBody((b) => `${b}${key}`);
+  }
 
   function save() {
+    if (!name.trim()) { toast.error("Name is required"); return; }
+    if (!eventType.trim()) { toast.error("Event type is required"); return; }
+    if (!body.trim()) { toast.error("Message body is required"); return; }
+
     startSave(async () => {
-      const res = await updateSmsTemplateAction(template.eventType, { body });
-      if (res.success) { toast.success("Template saved"); onSaved(res.data); onClose(); }
-      else toast.error(res.message ?? "Save failed");
+      if (isEdit) {
+        const res = await updateSmsTemplateAction(template!.eventType, { body, name });
+        if (res.success) { toast.success("Template saved"); onSaved(res.data); onClose(); }
+        else toast.error(res.message ?? "Save failed");
+      } else {
+        const input: CreateTemplateInput = {
+          eventType,
+          name: name.trim(),
+          section,
+          templateType,
+          body,
+          variables,
+        };
+        const res = await createSmsTemplateAction(input);
+        if (res.success) { toast.success("Template created"); onSaved(res.data); onClose(); }
+        else toast.error(res.message ?? "Create failed");
+      }
     });
   }
 
   function sendTest() {
     if (!testPhone.trim()) { toast.error("Enter a phone number"); return; }
     startTest(async () => {
-      const res = await sendTestSmsAction(template.eventType, testPhone.trim());
+      const res = await sendTestSmsAction(isEdit ? template!.eventType : eventType, testPhone.trim());
       if (res.success) toast.success(res.data.sent ? "Test SMS sent!" : "Dev mode — SMS logged to console");
       else toast.error(res.message ?? "Send failed");
     });
@@ -64,45 +179,167 @@ function EditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3.5">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-5 py-3.5">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">{template.name}</h2>
-            <p className="font-mono text-[11px] text-gray-400">{template.eventType}</p>
+            <h2 className="text-sm font-semibold text-gray-900">
+              {isEdit ? "Edit Template" : "Create New Template"}
+            </h2>
+            {isEdit && <p className="font-mono text-[11px] text-gray-400">{template.eventType}</p>}
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
         </div>
 
         <div className="space-y-4 p-5">
-          {vars.length > 0 && (
-            <div className="rounded-xl bg-brand-50 border border-brand-100 p-3">
-              <p className="mb-2 text-xs font-medium text-brand-700">Variables — click to insert</p>
-              <div className="flex flex-wrap gap-1.5">
-                {vars.map((v) => (
-                  <button
-                    key={v.key}
-                    title={v.description}
-                    onClick={() => setBody((b) => `${b}${v.key}`)}
-                    className="rounded-lg border border-brand-200 bg-white px-2 py-1 font-mono text-[11px] text-brand-700 hover:bg-brand-100"
-                  >
-                    {v.key}
-                  </button>
-                ))}
-              </div>
+          {/* Name + Event Type */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-gray-600">Template Name *</label>
+              <input
+                value={name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder="e.g. Welcome SMS"
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-400"
+              />
             </div>
-          )}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-gray-600">Event Type *</label>
+              <input
+                value={eventType}
+                onChange={(e) => handleSlugChange(e.target.value)}
+                placeholder="e.g. welcome_sms"
+                disabled={isEdit}
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 font-mono text-sm outline-none focus:ring-2 focus:ring-brand-400 disabled:bg-gray-50 disabled:text-gray-400"
+              />
+            </div>
+          </div>
 
+          {/* Section */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Message</label>
+            <label className="block text-xs font-medium text-gray-600">Section</label>
+            <select
+              value={section}
+              onChange={(e) => setSection(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {SECTION_META.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Template Type badge */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-600">Type:</span>
+            <span className="inline-flex items-center gap-1 rounded-lg bg-brand-100 px-2.5 py-1 text-xs font-medium text-brand-700">
+              <ChatText size={12} /> SMS
+            </span>
+          </div>
+
+          {/* Body textarea */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-gray-600">Message Body *</label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              rows={4}
+              rows={5}
+              placeholder="Type your SMS message... Use {{variable}} for dynamic content."
               className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-400 resize-none"
             />
-            <p className="text-right text-xs text-gray-400">
-              {body.length} chars · {segments(body.length)} SMS
-            </p>
+            {/* Character info bar */}
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <div className="flex items-center gap-2">
+                <span>{wLen} weighted chars</span>
+                <span>·</span>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${badge.color}`}>
+                  {badge.label}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`font-medium ${segs > 1 ? "text-amber-600" : "text-gray-500"}`}>
+                  {segs} SMS
+                </span>
+                {segs > 1 && (
+                  <span className="text-amber-500">
+                    ({segs} segments × 153 chars)
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Variables */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-600">Variables</label>
+
+            {/* Auto-detected from body */}
+            {detectedVars.length > 0 && (
+              <div className="rounded-xl bg-brand-50 border border-brand-100 p-3">
+                <p className="mb-2 text-[11px] font-medium text-brand-700">
+                  Detected in body — click to insert
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {detectedVars.map((v) => (
+                    <button
+                      key={v.key}
+                      onClick={() => insertVariable(v.key)}
+                      className="rounded-lg border border-brand-200 bg-white px-2 py-1 font-mono text-[11px] text-brand-700 hover:bg-brand-100"
+                    >
+                      {v.key}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Saved variables list */}
+            {variables.length > 0 && (
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                <p className="mb-2 text-[11px] font-medium text-gray-600">Defined variables</p>
+                <div className="space-y-1.5">
+                  {variables.map((v) => (
+                    <div key={v.key} className="flex items-center justify-between rounded-lg bg-white border border-gray-100 px-3 py-1.5">
+                      <div className="min-w-0">
+                        <span className="font-mono text-xs text-brand-700">{v.key}</span>
+                        {v.description && (
+                          <span className="ml-2 text-[11px] text-gray-400">— {v.description}</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => removeVariable(v.key)}
+                        className="ml-2 shrink-0 text-gray-300 hover:text-red-500"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add variable */}
+            <div className="flex gap-2">
+              <input
+                value={newVarKey}
+                onChange={(e) => setNewVarKey(e.target.value)}
+                placeholder="Variable name"
+                className="flex-1 rounded-xl border border-gray-200 px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-brand-400"
+                onKeyDown={(e) => e.key === "Enter" && addVariable()}
+              />
+              <input
+                value={newVarDesc}
+                onChange={(e) => setNewVarDesc(e.target.value)}
+                placeholder="Description (optional)"
+                className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-brand-400"
+                onKeyDown={(e) => e.key === "Enter" && addVariable()}
+              />
+              <button
+                onClick={addVariable}
+                className="shrink-0 rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
           </div>
 
           {/* Send test */}
@@ -131,8 +368,12 @@ function EditModal({
 
         <div className="flex justify-end gap-3 border-t border-gray-100 px-5 py-3.5">
           <button onClick={onClose} className="text-sm font-medium text-gray-500 hover:text-gray-700">Cancel</button>
-          <button onClick={save} disabled={isSaving} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60">
-            {isSaving ? "Saving…" : "Save template"}
+          <button
+            onClick={save}
+            disabled={isSaving}
+            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+          >
+            {isSaving ? "Saving…" : isEdit ? "Save Changes" : "Create Template"}
           </button>
         </div>
       </div>
@@ -151,6 +392,9 @@ function BroadcastTab({ counts }: { counts: Record<string, number> }) {
   const [isRefreshing, startRefresh] = useTransition();
 
   const recipientCount = liveCounts[segment] ?? 0;
+  const badge = languageBadge(message);
+  const segs = smsSegments(message);
+  const wLen = weightedLen(message);
 
   function refresh() {
     startRefresh(async () => {
@@ -230,9 +474,18 @@ function BroadcastTab({ counts }: { counts: Record<string, number> }) {
           placeholder="Type your campaign message…"
           className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-400 resize-none"
         />
-        <p className="text-right text-xs text-gray-400">
-          {message.length} chars · {segments(message.length)} SMS × {recipientCount} = {segments(message.length) * recipientCount} total
-        </p>
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <div className="flex items-center gap-2">
+            <span>{wLen} weighted chars</span>
+            <span>·</span>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${badge.color}`}>
+              {badge.label}
+            </span>
+          </div>
+          <span className={`font-medium ${segs > 1 ? "text-amber-600" : ""}`}>
+            {segs} SMS × {recipientCount} = {segs * recipientCount} total
+          </span>
+        </div>
       </div>
 
       <button
@@ -259,9 +512,13 @@ export function SmsTemplatesClient({
   const [templates, setTemplates] = useState(initial);
   const [tab, setTab] = useState<"templates" | "broadcast">("templates");
   const [editing, setEditing] = useState<SmsTemplate | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<SmsTemplate | null>(null);
   const [autoEnabled, setAutoEnabled] = useState(autoSmsEnabled);
   const [, startToggle] = useTransition();
   const [isTogglingAuto, startToggleAuto] = useTransition();
+  const [search, setSearch] = useState("");
+  const [sectionFilter, setSectionFilter] = useState("all");
 
   function toggleAutoSms() {
     const next = !autoEnabled;
@@ -282,6 +539,29 @@ export function SmsTemplatesClient({
     return map;
   }, [templates]);
 
+  const filteredTemplates = useMemo(() => {
+    let list = templates;
+    if (sectionFilter !== "all") {
+      list = list.filter((t) => t.section === sectionFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (t) =>
+          t.name.toLowerCase().includes(q) ||
+          t.eventType.toLowerCase().includes(q) ||
+          t.body.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [templates, sectionFilter, search]);
+
+  const filteredBySection = useMemo(() => {
+    const map: Record<string, SmsTemplate[]> = {};
+    for (const t of filteredTemplates) (map[t.section] ??= []).push(t);
+    return map;
+  }, [filteredTemplates]);
+
   function toggle(t: SmsTemplate) {
     startToggle(async () => {
       const res = await toggleSmsTemplateAction(t.eventType);
@@ -294,20 +574,53 @@ export function SmsTemplatesClient({
     });
   }
 
+  function confirmDelete() {
+    if (!deleting) return;
+    const et = deleting.eventType;
+    deleteSmsTemplateAction(et).then((res) => {
+      if (res.success) {
+        setTemplates((prev) => prev.filter((x) => x.eventType !== et));
+        toast.success("Template deleted");
+      } else {
+        toast.error(res.message ?? "Delete failed");
+      }
+      setDeleting(null);
+    });
+  }
+
+  function handleSaved(t: SmsTemplate) {
+    if (creating) {
+      setTemplates((prev) => [...prev, t]);
+      setCreating(false);
+    } else {
+      setTemplates((prev) => prev.map((x) => (x.eventType === t.eventType ? t : x)));
+    }
+  }
+
   return (
-    <div className="p-6">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-100">
-          <ChatText size={18} weight="fill" className="text-brand-600" />
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-100">
+            <ChatText size={18} weight="fill" className="text-brand-600" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">SMS Templates</h1>
+            <p className="text-sm text-gray-500">Manage event-triggered SMS and bulk broadcast.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">SMS Templates</h1>
-          <p className="text-sm text-gray-500">Editable SMS for each event, plus bulk broadcast.</p>
-        </div>
+        <button
+          onClick={() => { setCreating(true); setEditing(null); }}
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          <Plus size={16} weight="fill" /> New Template
+        </button>
       </div>
 
+      {/* Auto SMS toggle */}
       <div
-        className={`mb-5 flex items-center justify-between gap-3 rounded-2xl border p-4 ${
+        className={`flex items-center justify-between gap-3 rounded-2xl border p-4 ${
           autoEnabled ? "border-green-100 bg-green-50" : "border-amber-100 bg-amber-50"
         }`}
       >
@@ -332,7 +645,7 @@ export function SmsTemplatesClient({
       </div>
 
       {/* Tabs */}
-      <div className="mb-5 flex gap-2">
+      <div className="flex gap-2">
         {([["templates", "Templates"], ["broadcast", "Broadcast"]] as const).map(([key, label]) => (
           <button
             key={key}
@@ -349,57 +662,132 @@ export function SmsTemplatesClient({
       {tab === "broadcast" ? (
         <BroadcastTab counts={counts} />
       ) : (
-        <div className="space-y-8">
-          {SECTION_META.map((section) => {
-            const list = bySection[section.key] ?? [];
-            if (list.length === 0) return null;
-            return (
-              <div key={section.key}>
-                <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">
-                  {section.label}
-                </h2>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {list.map((t) => (
-                    <div
-                      key={t.eventType}
-                      className={`rounded-2xl border bg-white p-4 ${t.isEnabled ? "border-gray-100" : "border-gray-100 opacity-60"}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                          <p className="font-mono text-[11px] text-gray-400">{t.eventType}</p>
-                        </div>
-                        <button
-                          onClick={() => toggle(t)}
-                          title={t.isEnabled ? "Enabled — click to disable" : "Disabled — click to enable"}
-                          className={t.isEnabled ? "text-green-500" : "text-gray-300"}
-                        >
-                          {t.isEnabled ? <ToggleRight size={26} weight="fill" /> : <ToggleLeft size={26} weight="fill" />}
-                        </button>
-                      </div>
-                      <p className="mt-2 line-clamp-2 text-xs text-gray-500">{t.body}</p>
-                      <button
-                        onClick={() => setEditing(t)}
-                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700"
+        <>
+          {/* Search + filter bar */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search templates..."
+                className="w-full rounded-xl border border-gray-200 py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-brand-400"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <FunnelSimple size={14} className="text-gray-400" />
+              <select
+                value={sectionFilter}
+                onChange={(e) => setSectionFilter(e.target.value)}
+                className="rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                <option value="all">All Sections</option>
+                {SECTION_META.map((s) => (
+                  <option key={s.key} value={s.key}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Template grid by section */}
+          <div className="space-y-8">
+            {SECTION_META.map((section) => {
+              const list = filteredBySection[section.key] ?? [];
+              if (list.length === 0) return null;
+              return (
+                <div key={section.key}>
+                  <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">
+                    {section.label}
+                    <span className="ml-2 text-gray-300">({list.length})</span>
+                  </h2>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {list.map((t) => (
+                      <div
+                        key={t.eventType}
+                        className={`group relative rounded-2xl border bg-white p-4 transition-all hover:shadow-sm ${
+                          t.isEnabled ? "border-gray-100" : "border-gray-100 opacity-60"
+                        }`}
                       >
-                        <PencilSimple size={13} weight="fill" /> Edit
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                            <p className="font-mono text-[11px] text-gray-400">{t.eventType}</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => toggle(t)}
+                              title={t.isEnabled ? "Enabled — click to disable" : "Disabled — click to enable"}
+                              className={t.isEnabled ? "text-green-500" : "text-gray-300"}
+                            >
+                              {t.isEnabled ? <ToggleRight size={26} weight="fill" /> : <ToggleLeft size={26} weight="fill" />}
+                            </button>
+                          </div>
+                        </div>
+                        <p className="mt-2 line-clamp-2 text-xs text-gray-500">{t.body}</p>
+                        <div className="mt-3 flex items-center gap-3">
+                          <button
+                            onClick={() => { setEditing(t); setCreating(false); }}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700"
+                          >
+                            <PencilSimple size={13} weight="fill" /> Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleting(t)}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash size={13} weight="fill" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              );
+            })}
+            {filteredTemplates.length === 0 && (
+              <div className="py-12 text-center text-sm text-gray-400">
+                {search || sectionFilter !== "all"
+                  ? "No templates match your search."
+                  : "No templates yet. Create one to get started."}
               </div>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        </>
       )}
 
-      {editing && (
-        <EditModal
-          template={editing}
-          onClose={() => setEditing(null)}
-          onSaved={(t) => setTemplates((prev) => prev.map((x) => (x.eventType === t.eventType ? t : x)))}
+      {/* Create modal */}
+      {creating && (
+        <TemplateModal
+          template={null}
+          onClose={() => setCreating(false)}
+          onSaved={handleSaved}
         />
       )}
+
+      {/* Edit modal */}
+      {editing && (
+        <TemplateModal
+          template={editing}
+          onClose={() => setEditing(null)}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      <ConfirmModal
+        open={!!deleting}
+        title="Delete Template"
+        message={
+          <>
+            Are you sure you want to delete <strong>{deleting?.name}</strong>? This action cannot be undone.
+            Any code referencing this event type will no longer send SMS.
+          </>
+        }
+        confirmLabel="Delete Template"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onClose={() => setDeleting(null)}
+      />
     </div>
   );
 }

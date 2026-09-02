@@ -20,7 +20,7 @@ const SimpleHero = ({ content = {} }: Props) => {
   const d = { ...DEFAULTS, ...content };
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-surface-hero to-white transition-colors duration-300 dark:bg-gradient-to-br dark:from-gray-950 dark:via-[#160f2e] dark:to-gray-900">
+    <section className="relative overflow-hidden bg-linear-to-b from-surface-hero to-white transition-colors duration-300 dark:bg-linear-to-br dark:from-gray-950 dark:via-[#160f2e] dark:to-gray-900">
       <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-brand-tint/40 blur-3xl dark:bg-brand-600/25" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-brand-tint/40 blur-3xl dark:bg-brand-600/25" />
 

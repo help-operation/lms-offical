@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -24,6 +25,21 @@ export class SmsTemplatesController {
     return this.svc.findAll();
   }
 
+  @RequirePermissions('create_sms_templates')
+  @Post()
+  create(
+    @Body() body: {
+      eventType: string;
+      name: string;
+      section: string;
+      templateType?: string;
+      body: string;
+      variables?: { key: string; description: string }[];
+    },
+  ) {
+    return this.svc.create(body);
+  }
+
   @Get(':eventType')
   findOne(@Param('eventType') eventType: string) {
     return this.svc.findByEvent(eventType);
@@ -42,6 +58,12 @@ export class SmsTemplatesController {
   @Patch(':eventType/toggle')
   toggle(@Param('eventType') eventType: string) {
     return this.svc.toggle(eventType);
+  }
+
+  @RequirePermissions('delete_sms_templates')
+  @Delete(':eventType')
+  remove(@Param('eventType') eventType: string) {
+    return this.svc.delete(eventType);
   }
 
   @RequirePermissions('send_test_sms')

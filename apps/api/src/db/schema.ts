@@ -2444,6 +2444,8 @@ export const smsTemplates = pgTable('sms_templates', {
   name:        varchar('name', { length: 255 }).notNull(),
   /** Grouping shown in the admin UI — e.g. "auth", "payments" */
   section:     varchar('section', { length: 50 }).notNull().default('general'),
+  /** Template channel: sms (default) or email */
+  templateType: varchar('template_type', { length: 20 }).notNull().default('sms'),
   /** The SMS text, supports {{variable}} placeholders */
   body:        text('body').notNull(),
   isEnabled:   boolean('is_enabled').notNull().default(true),
