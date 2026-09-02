@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users, DeviceMobile, Envelope, WarningCircle } from "@phosphor-icons/react";
+import { Users, DeviceMobile, Envelope, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
 import type { Student } from "@/features/students/types";
 import type { SmsTemplate } from "@/features/sms-templates/types";
@@ -19,8 +19,9 @@ import { BulkActionBar } from "./BulkActionBar";
 import { SendMessageModal } from "./SendMessageModal";
 import { SmsHistoryTab } from "./SmsHistoryTab";
 import { EmailHistoryTab } from "./EmailHistoryTab";
+import { SendMessagePage } from "./SendMessagePage";
 
-type ActiveTab = "students" | "sms" | "email";
+type ActiveTab = "students" | "sms" | "email" | "send";
 
 export function StudentFiltersClient({
   initial,
@@ -166,6 +167,7 @@ export function StudentFiltersClient({
       <div className="flex gap-1 rounded-xl border border-gray-100 bg-gray-50 p-1 dark:border-slate-800 dark:bg-slate-900">
         {([
           ["students", "Students", Users],
+          ["send", "Send Message", PaperPlaneTilt],
           ["sms", "SMS History", DeviceMobile],
           ["email", "Email History", Envelope],
         ] as const).map(([key, label, Icon]) => (
@@ -245,6 +247,14 @@ export function StudentFiltersClient({
 
       {activeTab === "sms" && <SmsHistoryTab />}
       {activeTab === "email" && <EmailHistoryTab />}
+      {activeTab === "send" && (
+        <SendMessagePage
+          selectedStudents={selectedStudents}
+          smsTemplates={smsTemplates}
+          emailTemplates={emailTemplates}
+          onRemoveStudent={(id) => setSelected((prev) => { const next = new Set(prev); next.delete(id); return next; })}
+        />
+      )}
 
       {/* Student details drawer */}
       {drawerStudent && (
