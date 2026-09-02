@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useRef, useState, useMemo } from "react";
+import { useCallback, useRef, useState, useMemo, useEffect } from "react";
 import {
-  X, Upload, Download, Users, WarningCircle, FileCsv, CaretDown, MagnifyingGlass,
+  X, Upload, Download, Users, WarningCircle, FileCsv, CaretDown, MagnifyingGlass, Clock, Trash,
 } from "@phosphor-icons/react";
-import { parseCsv, csvTemplate, type CsvRecipient } from "./csv-parser";
+import { parseCsv, csvTemplate, type CsvRecipient, type CsvParseResult } from "./csv-parser";
+import { getSavedCsvs, saveCsvEntry, deleteSavedCsv, type SavedCsv } from "./csv-history";
+import { CsvSummary } from "./CsvSummary";
 import type { EnrichedStudent } from "./types";
 
 const selectCls =
@@ -58,7 +60,6 @@ export function RecipientsPanel({
   const fileRef = useRef<HTMLInputElement>(null);
   const [source, setSource] = useState<SourceType>("all");
   const [search, setSearch] = useState("");
-  const [parseErrors, setParseErrors] = useState<string[]>([]);
 
   // Filters
   const [batchFilter, setBatchFilter] = useState("");
@@ -66,6 +67,16 @@ export function RecipientsPanel({
   const [visitCourseFilter, setVisitCourseFilter] = useState("");
   const [visitFrom, setVisitFrom] = useState("");
   const [visitTo, setVisitTo] = useState("");
+
+  // CSV state
+  const [csvResult, setCsvResult] = useState<CsvParseResult | null>(null);
+  const [savedCsvs, setSavedCsvs] = useState<SavedCsv[]>([]);
+  const [csvTab, setCsvTab] = useState<"upload" | "history">("upload");
+
+  // Load saved CSVs on mount
+  useEffect(() => {
+    setSavedCsvs(getSavedCsvs());
+  }, []);
 
   const allBatchNames = useMemo(
     () => Array.from(new Set(allStudents.map((s) => s.batchName).filter((b): b is string => !!b))),
@@ -78,35 +89,17 @@ export function RecipientsPanel({
 
   const filteredStudents = useMemo(() => {
     let list = allStudents;
-
     switch (source) {
-      case "batch":
-        if (batchFilter) list = list.filter((s) => s.batchName === batchFilter);
-        break;
-      case "course":
-        if (courseFilter) list = list.filter((s) => s.courseName === courseFilter);
-        break;
-      case "visited":
-        list = list.filter((s) => s.hasRealEnrollment);
-        if (visitCourseFilter) list = list.filter((s) => s.courseName === visitCourseFilter);
-        break;
-      case "not_enrolled":
-        list = list.filter((s) => s.hasRealEnrollment && s.enrollmentStatus === "none");
-        if (visitCourseFilter) list = list.filter((s) => s.courseName === visitCourseFilter);
-        break;
-      case "date_range":
-        if (visitFrom) list = list.filter((s) => s.lastLoginAt && s.lastLoginAt >= visitFrom);
-        if (visitTo) list = list.filter((s) => s.lastLoginAt && s.lastLoginAt <= visitTo + "T23:59:59");
-        break;
+      case "batch": if (batchFilter) list = list.filter((s) => s.batchName === batchFilter); break;
+      case "course": if (courseFilter) list = list.filter((s) => s.courseName === courseFilter); break;
+      case "visited": list = list.filter((s) => s.hasRealEnrollment); if (visitCourseFilter) list = list.filter((s) => s.courseName === visitCourseFilter); break;
+      case "not_enrolled": list = list.filter((s) => s.hasRealEnrollment && s.enrollmentStatus === "none"); if (visitCourseFilter) list = list.filter((s) => s.courseName === visitCourseFilter); break;
+      case "date_range": if (visitFrom) list = list.filter((s) => s.lastLoginAt && s.lastLoginAt >= visitFrom); if (visitTo) list = list.filter((s) => s.lastLoginAt && s.lastLoginAt <= visitTo + "T23:59:59"); break;
     }
-
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter((s) =>
-        `${s.firstName} ${s.lastName} ${s.phone ?? ""} ${s.email ?? ""}`.toLowerCase().includes(q),
-      );
+      list = list.filter((s) => `${s.firstName} ${s.lastName} ${s.phone ?? ""} ${s.email ?? ""}`.toLowerCase().includes(q));
     }
-
     return list;
   }, [allStudents, source, batchFilter, courseFilter, visitCourseFilter, visitFrom, visitTo, search]);
 
@@ -119,9 +112,25 @@ export function RecipientsPanel({
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
-        const { recipients, errors } = parseCsv(text);
-        setParseErrors(errors);
-        if (recipients.length > 0) onAddCsvRecipients(recipients);
+        const result = parseCsv(text);
+        setCsvResult(result);
+
+        // Auto-save to history
+        const nonDuplicateRecipients = result.recipients.filter((r) => !r.isDuplicate);
+        const saved = saveCsvEntry({
+          fileName: file.name,
+          uploadedAt: new Date().toISOString(),
+          totalRows: result.totalRows,
+          validRecipients: result.validRecipients,
+          duplicateCount: result.duplicateCount,
+          recipients: nonDuplicateRecipients,
+        });
+        setSavedCsvs(getSavedCsvs());
+
+        // Add non-duplicate recipients
+        if (nonDuplicateRecipients.length > 0) {
+          onAddCsvRecipients(nonDuplicateRecipients);
+        }
       };
       reader.readAsText(file);
     },
@@ -137,6 +146,16 @@ export function RecipientsPanel({
     [handleFile],
   );
 
+  function loadSavedCsv(saved: SavedCsv) {
+    onAddCsvRecipients(saved.recipients);
+    setCsvTab("upload");
+  }
+
+  function handleDeleteSaved(id: string) {
+    deleteSavedCsv(id);
+    setSavedCsvs(getSavedCsvs());
+  }
+
   function resetFilters() {
     setBatchFilter("");
     setCourseFilter("");
@@ -151,35 +170,19 @@ export function RecipientsPanel({
       {/* Source + Search row */}
       <div className="flex items-end gap-2 border-b border-gray-100 px-4 py-3 dark:border-slate-800">
         <div className="flex-1">
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
-            Source
-          </label>
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Source</label>
           <div className="relative">
-            <select
-              value={source}
-              onChange={(e) => { setSource(e.target.value as SourceType); resetFilters(); }}
-              className={`${selectCls} pr-6`}
-            >
-              {SOURCE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
+            <select value={source} onChange={(e) => { setSource(e.target.value as SourceType); resetFilters(); }} className={`${selectCls} pr-6`}>
+              {SOURCE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
             <CaretDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
         </div>
         <div className="flex-[2]">
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
-            Search
-          </label>
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Search</label>
           <div className="relative">
             <MagnifyingGlass size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Name, phone, or email…"
-              className={`w-full pl-8 ${inputCls}`}
-            />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, phone, or email…" className={`w-full pl-8 ${inputCls}`} />
           </div>
         </div>
       </div>
@@ -187,7 +190,6 @@ export function RecipientsPanel({
       {/* Dynamic sub-filters */}
       {source !== "csv" && source !== "all" && (
         <div className="border-b border-gray-100 px-4 py-2.5 dark:border-slate-800">
-          {/* Batch */}
           {source === "batch" && (
             <div>
               <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Batch</label>
@@ -200,8 +202,6 @@ export function RecipientsPanel({
               </div>
             </div>
           )}
-
-          {/* Course */}
           {source === "course" && (
             <div>
               <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Course</label>
@@ -214,8 +214,6 @@ export function RecipientsPanel({
               </div>
             </div>
           )}
-
-          {/* Visited / Not Enrolled — 2-column: Course + Date Range */}
           {(source === "visited" || source === "not_enrolled") && (
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -238,8 +236,6 @@ export function RecipientsPanel({
               </div>
             </div>
           )}
-
-          {/* Date Range — 2-column */}
           {source === "date_range" && (
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -255,47 +251,65 @@ export function RecipientsPanel({
         </div>
       )}
 
-      {/* CSV Upload */}
+      {/* CSV Upload section */}
       {source === "csv" && (
-        <div className="border-b border-gray-100 px-4 py-3 dark:border-slate-800">
-          <div
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            className="cursor-pointer rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-3 text-center transition-colors hover:border-brand-400 hover:bg-brand-50/50 dark:border-slate-700 dark:bg-slate-800/60"
-            onClick={() => fileRef.current?.click()}
-          >
-            <Upload size={16} className="mx-auto mb-1 text-gray-400" />
-            <p className="text-[11px] text-gray-500">
-              Drop CSV or <span className="font-medium text-brand-600">browse</span>
-            </p>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-              e.target.value = "";
-            }}
-          />
-          <div className="mt-1.5 flex items-center justify-between">
-            <button onClick={() => {
-              const blob = new Blob([csvTemplate()], { type: "text/csv" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url; a.download = "recipients-template.csv"; a.click();
-              URL.revokeObjectURL(url);
-            }} className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-brand-600">
-              <Download size={9} /> Template
+        <div className="border-b border-gray-100 dark:border-slate-800">
+          {/* CSV sub-tabs */}
+          <div className="flex border-b border-gray-100 dark:border-slate-800">
+            <button onClick={() => setCsvTab("upload")} className={`flex-1 py-2 text-[11px] font-medium transition-colors ${csvTab === "upload" ? "text-brand-600 border-b-2 border-brand-600" : "text-gray-400 hover:text-gray-600"}`}>
+              <Upload size={11} className="mr-1 inline" /> Upload
             </button>
-            {parseErrors.length > 0 && (
-              <span className="flex items-center gap-0.5 text-[10px] text-amber-600">
-                <WarningCircle size={10} weight="fill" /> {parseErrors.length} warnings
-              </span>
-            )}
+            <button onClick={() => setCsvTab("history")} className={`flex-1 py-2 text-[11px] font-medium transition-colors ${csvTab === "history" ? "text-brand-600 border-b-2 border-brand-600" : "text-gray-400 hover:text-gray-600"}`}>
+              <Clock size={11} className="mr-1 inline" /> History {savedCsvs.length > 0 && `(${savedCsvs.length})`}
+            </button>
           </div>
+
+          {csvTab === "upload" ? (
+            <div className="p-4">
+              <div
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+                className="cursor-pointer rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-3 text-center transition-colors hover:border-brand-400 hover:bg-brand-50/50 dark:border-slate-700 dark:bg-slate-800/60"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload size={16} className="mx-auto mb-1 text-gray-400" />
+                <p className="text-[11px] text-gray-500">Drop CSV or <span className="font-medium text-brand-600">browse</span></p>
+                <p className="mt-0.5 text-[10px] text-gray-400">name, phone, email columns</p>
+              </div>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+              <div className="mt-2 flex items-center justify-between">
+                <button onClick={() => { const b = new Blob([csvTemplate()], { type: "text/csv" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "recipients-template.csv"; a.click(); URL.revokeObjectURL(u); }} className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-brand-600">
+                  <Download size={9} /> Template
+                </button>
+              </div>
+              {csvResult && <div className="mt-3"><CsvSummary result={csvResult} /></div>}
+            </div>
+          ) : (
+            <div className="max-h-[200px] overflow-y-auto">
+              {savedCsvs.length === 0 ? (
+                <div className="py-6 text-center text-[11px] text-gray-400">No saved CSVs yet</div>
+              ) : (
+                savedCsvs.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between border-b border-gray-50 px-4 py-2 dark:border-slate-800/60 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/40">
+                    <div className="min-w-0">
+                      <p className="truncate text-[11px] font-medium text-gray-900 dark:text-white">{s.fileName}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-slate-500">
+                        {new Date(s.uploadedAt).toLocaleDateString()} · {s.validRecipients} recipients{s.duplicateCount > 0 && ` · ${s.duplicateCount} dupes`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => loadSavedCsv(s)} className="rounded-md bg-brand-50 px-2 py-1 text-[10px] font-medium text-brand-600 hover:bg-brand-100 dark:bg-brand-500/10 dark:text-brand-400">
+                        Use
+                      </button>
+                      <button onClick={() => handleDeleteSaved(s.id)} className="rounded-md p-1 text-gray-400 hover:text-red-500">
+                        <Trash size={11} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -303,15 +317,7 @@ export function RecipientsPanel({
       {source !== "csv" && filteredStudents.length > 0 && (
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2 dark:border-slate-800">
           <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300">
-            <input
-              type="checkbox"
-              className="cursor-pointer rounded border-gray-300 accent-brand-600 dark:border-slate-600"
-              checked={allVisibleSelected}
-              onChange={() => {
-                if (allVisibleSelected) visibleIds.forEach((id) => { if (selectedStudentIds.has(id)) onToggleStudent(id); });
-                else onSelectAll(visibleIds);
-              }}
-            />
+            <input type="checkbox" className="cursor-pointer rounded border-gray-300 accent-brand-600 dark:border-slate-600" checked={allVisibleSelected} onChange={() => { if (allVisibleSelected) visibleIds.forEach((id) => { if (selectedStudentIds.has(id)) onToggleStudent(id); }); else onSelectAll(visibleIds); }} />
             Select all ({filteredStudents.length})
           </label>
           {selectedStudentIds.size > 0 && (
@@ -335,40 +341,18 @@ export function RecipientsPanel({
             </thead>
             <tbody>
               {filteredStudents.map((s) => (
-                <tr
-                  key={s.id}
-                  onClick={() => onToggleStudent(s.id)}
-                  className={`cursor-pointer border-t border-gray-50 transition-colors dark:border-slate-800/60 ${
-                    selectedStudentIds.has(s.id)
-                      ? "bg-brand-50/50 dark:bg-brand-500/5"
-                      : "hover:bg-gray-50 dark:hover:bg-slate-800/40"
-                  }`}
-                >
-                  <td className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      className="cursor-pointer rounded border-gray-300 accent-brand-600 dark:border-slate-600"
-                      checked={selectedStudentIds.has(s.id)}
-                      onChange={() => onToggleStudent(s.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
+                <tr key={s.id} onClick={() => onToggleStudent(s.id)} className={`cursor-pointer border-t border-gray-50 transition-colors dark:border-slate-800/60 ${selectedStudentIds.has(s.id) ? "bg-brand-50/50 dark:bg-brand-500/5" : "hover:bg-gray-50 dark:hover:bg-slate-800/40"}`}>
+                  <td className="px-3 py-2"><input type="checkbox" className="cursor-pointer rounded border-gray-300 accent-brand-600 dark:border-slate-600" checked={selectedStudentIds.has(s.id)} onChange={() => onToggleStudent(s.id)} onClick={(e) => e.stopPropagation()} /></td>
                   <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{s.firstName} {s.lastName}</td>
                   <td className="px-3 py-2 text-gray-500 dark:text-slate-400">{s.phone ?? "—"}</td>
                   <td className="px-3 py-2 text-gray-500 dark:text-slate-400">{s.email ?? "—"}</td>
-                  <td className="px-3 py-2">
-                    <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold capitalize ${STATUS_BADGE[s.activeStatus] ?? ""}`}>
-                      {s.activeStatus}
-                    </span>
-                  </td>
+                  <td className="px-3 py-2"><span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold capitalize ${STATUS_BADGE[s.activeStatus] ?? ""}`}>{s.activeStatus}</span></td>
                 </tr>
               ))}
-              {filteredStudents.length === 0 && (
-                <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">No students found</td></tr>
-              )}
+              {filteredStudents.length === 0 && <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">No students found</td></tr>}
             </tbody>
           </table>
-        ) : (
+        ) : csvRecipients.length > 0 ? (
           <table className="w-full text-xs">
             <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-slate-800">
               <tr className="text-left text-[10px] uppercase tracking-wider text-gray-400 dark:text-slate-500">
@@ -380,22 +364,20 @@ export function RecipientsPanel({
             </thead>
             <tbody>
               {csvRecipients.map((r, i) => (
-                <tr key={i} className="border-t border-gray-50 hover:bg-gray-50 dark:border-slate-800/60">
+                <tr key={r.id ?? i} className="border-t border-gray-50 hover:bg-gray-50 dark:border-slate-800/60">
                   <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{r.name}</td>
                   <td className="px-3 py-2 text-gray-500 dark:text-slate-400">{r.phone || "—"}</td>
                   <td className="px-3 py-2 text-gray-500 dark:text-slate-400">{r.email || "—"}</td>
-                  <td className="px-3 py-2">
-                    <button onClick={() => onRemoveCsvRecipient(i)} className="rounded p-0.5 text-gray-400 hover:text-red-500">
-                      <X size={11} />
-                    </button>
-                  </td>
+                  <td className="px-3 py-2"><button onClick={() => onRemoveCsvRecipient(i)} className="rounded p-0.5 text-gray-400 hover:text-red-500"><X size={11} /></button></td>
                 </tr>
               ))}
-              {csvRecipients.length === 0 && (
-                <tr><td colSpan={4} className="px-3 py-8 text-center text-gray-400">Upload a CSV file</td></tr>
-              )}
             </tbody>
           </table>
+        ) : (
+          <div className="py-10 text-center">
+            <FileCsv size={28} className="mx-auto mb-2 text-gray-300 dark:text-slate-600" />
+            <p className="text-sm text-gray-400">Upload a CSV or load from history</p>
+          </div>
         )}
       </div>
     </div>
