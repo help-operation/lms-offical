@@ -171,7 +171,7 @@ async function main() {
   console.log(`  ✅ ${insertedLiveCourses.length} live courses with batches`);
 
   // ── 4. Students ───────────────────────────────────────────────────────────
-  const insertedStudents: { id: number; firstName: string; lastName: string; phone: string; email: string }[] = [];
+  const insertedStudents: { id: number; firstName: string; lastName: string; phone: string | null; email: string | null }[] = [];
 
   for (let i = 0; i < 20; i++) {
     const fn = FIRST_NAMES[i];
@@ -281,8 +281,8 @@ async function main() {
         batchId: batch?.id ?? null,
         userId: student.id,
         name: `${student.firstName} ${student.lastName}`,
-        email: student.email,
-        phone: student.phone,
+        email: student.email ?? '',
+        phone: student.phone ?? '',
         amount: '4999',
         status: enrollStatus,
         paidAt,

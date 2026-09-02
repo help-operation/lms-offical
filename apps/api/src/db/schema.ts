@@ -2638,10 +2638,12 @@ export const messageBroadcastRecipients = pgTable('message_broadcast_recipients'
   jobId:     integer('job_id').notNull().references(() => messageBroadcastJobs.id, { onDelete: 'cascade' }),
   studentId: integer('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   recipient: varchar('recipient', { length: 255 }).notNull(), // phone or email actually used
+  renderedMessage: text('rendered_message'), // final message after template render
   status:    broadcastRecipientStatusEnum('status').default('pending').notNull(),
   error:     text('error'),
   sentAt:    timestamp('sent_at'),
   deliveredAt: timestamp('delivered_at'),
+  sentByAdminId: integer('sent_by_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

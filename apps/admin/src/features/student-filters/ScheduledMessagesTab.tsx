@@ -112,6 +112,10 @@ function ProgressCard({
               </span>
             </div>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400 max-w-[300px] truncate">{job.message}</p>
+            <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-500">
+              Created {formatDate(job.createdAt)}
+              {job.adminFirstName && <span className="ml-1">by {job.adminFirstName} {job.adminLastName ?? ""}</span>}
+            </p>
           </div>
         </div>
 
