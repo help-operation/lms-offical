@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition, useCallback } from "react";
 import {
   ChatText, PencilSimple, PaperPlaneTilt, SpinnerGap,
   X, Megaphone, ToggleLeft, ToggleRight, Info, Plus, Trash,
-  MagnifyingGlass, FunnelSimple,
+  MagnifyingGlass,
 } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
@@ -599,265 +599,132 @@ export function SmsTemplatesClient({
   }
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
+    <div className="space-y-4">
+      {/* Header — compact */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-100">
-            <ChatText size={18} weight="fill" className="text-brand-600" />
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100">
+            <ChatText size={16} weight="fill" className="text-brand-600" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">SMS Templates</h1>
-            <p className="text-sm text-gray-500">Manage event-triggered SMS and bulk broadcast.</p>
-          </div>
+          <h1 className="text-lg font-bold text-gray-900">SMS Templates</h1>
         </div>
         <div className="flex items-center gap-2">
-          {/* Language toggle */}
-          <div className="flex rounded-xl border border-gray-200 bg-white p-0.5">
-            <button
-              onClick={() => setLang("en")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                lang === "en" ? "bg-brand-100 text-brand-700" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => setLang("bn")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                lang === "bn" ? "bg-brand-100 text-brand-700" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              বাং
-            </button>
+          <div className="flex rounded-lg border border-gray-200 bg-white p-0.5">
+            <button onClick={() => setLang("en")} className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${lang === "en" ? "bg-brand-100 text-brand-700" : "text-gray-500 hover:text-gray-700"}`}>EN</button>
+            <button onClick={() => setLang("bn")} className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${lang === "bn" ? "bg-brand-100 text-brand-700" : "text-gray-500 hover:text-gray-700"}`}>বাং</button>
           </div>
-          <button
-            onClick={() => { setCreating(true); setEditing(null); }}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
-          >
-            <Plus size={16} weight="fill" /> New Template
+          <button onClick={() => { setCreating(true); setEditing(null); }} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:bg-brand-700">
+            <Plus size={14} weight="fill" /> New
           </button>
         </div>
       </div>
 
-      {/* Auto SMS toggle */}
-      <div
-        className={`flex items-center justify-between gap-3 rounded-2xl border p-4 ${
-          autoEnabled ? "border-green-100 bg-green-50" : "border-amber-100 bg-amber-50"
-        }`}
-      >
-        <div>
-          <p className={`text-sm font-semibold ${autoEnabled ? "text-green-700" : "text-amber-700"}`}>
-            Automatic SMS is {autoEnabled ? "ON" : "OFF"}
-          </p>
-          <p className={`text-xs ${autoEnabled ? "text-green-600" : "text-amber-700"}`}>
-            {autoEnabled
-              ? "Event-triggered SMS (welcome, payment, certificates, reminders, etc.) send normally."
-              : "Event-triggered SMS is paused — nothing auto-sends except login/password-reset OTP. Manual broadcasts and Student Filters sends still work."}
-          </p>
-        </div>
-        <button
-          onClick={toggleAutoSms}
-          disabled={isTogglingAuto}
-          title={autoEnabled ? "Turn off automatic SMS" : "Turn on automatic SMS"}
-          className={autoEnabled ? "text-green-600" : "text-gray-300"}
-        >
-          {autoEnabled ? <ToggleRight size={30} weight="fill" /> : <ToggleLeft size={30} weight="fill" />}
+      {/* Auto SMS + Guide — single compact bar */}
+      <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-2.5">
+        <button onClick={toggleAutoSms} disabled={isTogglingAuto} className={`shrink-0 ${autoEnabled ? "text-green-600" : "text-gray-300"}`} title={autoEnabled ? "Turn off" : "Turn on"}>
+          {autoEnabled ? <ToggleRight size={24} weight="fill" /> : <ToggleLeft size={24} weight="fill" />}
         </button>
+        <span className={`text-xs font-medium ${autoEnabled ? "text-green-700" : "text-amber-600"}`}>
+          Auto SMS: {autoEnabled ? "ON" : "OFF"}
+        </span>
+        <span className="text-gray-200">|</span>
+        <Info size={12} className="shrink-0 text-gray-400" />
+        <p className="text-[11px] text-gray-400 truncate">
+          {lang === "bn"
+            ? "ইভেন্ট-ট্রিগার্ড SMS — সাইনআপ, পেমেন্ট, সার্টিফিকেট ইত্যাদিতে অটো পাঠায়। {{variable}} ব্যবহার করুন। বাংলা: 70 chars/SMS, ইংরেজি: 160 chars/SMS।"
+            : "Event-triggered SMS — auto-sends on signup, payment, certificates, etc. Use {{variable}} for dynamic content. Bengali: 70 chars/SMS, English: 160 chars/SMS."}
+        </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2">
+      {/* Tabs + Search — one line */}
+      <div className="flex items-center gap-2">
         {([["templates", "Templates"], ["broadcast", "Broadcast"]] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-              tab === key ? "bg-brand-50 text-brand-700" : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
+          <button key={key} onClick={() => setTab(key)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${tab === key ? "bg-brand-50 text-brand-700" : "text-gray-500 hover:bg-gray-50"}`}>
             {label}
           </button>
         ))}
+        {tab === "templates" && (
+          <>
+            <span className="text-gray-200 mx-1">|</span>
+            <div className="relative flex-1 max-w-xs">
+              <MagnifyingGlass size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full rounded-lg border border-gray-200 py-1.5 pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-brand-400" />
+            </div>
+            <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-brand-400">
+              <option value="all">All</option>
+              {SECTION_META.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </>
+        )}
       </div>
 
       {tab === "broadcast" ? (
         <BroadcastTab counts={counts} />
       ) : (
-        <>
-          {/* Usage guide */}
-          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-            <div className="flex items-start gap-3">
-              <Info size={18} weight="fill" className="mt-0.5 shrink-0 text-blue-500" />
-              <div className="space-y-2 text-xs text-blue-700 leading-relaxed">
-                <p className="font-semibold text-blue-800">
-                  {lang === "bn" ? "কিভাবে কাজ করে" : "How it works"}
-                </p>
-                {lang === "bn" ? (
-                  <>
-                    <p>
-                      প্রতিটি টেমপ্লেট একটি ইভেন্টের সাথে সম্পর্কিত — যেমন ব্যবহারকারী সাইন আপ করলে <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">welcome</code> SMS পাঠানো হয়।
-                      টেমপ্লেটে <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">{"{{variable}}"}</code> ব্যবহার করে ডায়নামিক তথ্য পাঠানো যায়।
-                    </p>
-                    <p>
-                      আপনি বাংলা বা ইংরেজি যেকোনো ভাষায় টেমপ্লেট লিখতে পারবেন। বাংলা অক্ষর দৈর্ঘ্য সিস্টেম বুঝে নিন —
-                      বাংলায় 1 SMS = 70 ক্যারেক্টার, ইংরেজিতে 1 SMS = 160 ক্যারেক্টার।
-                    </p>
-                    <p>
-                      "Automatic SMS" চালু থাকলে ইভেন্ট ঘটলে অটোমেটিক SMS পাঠানো হয়।
-                      বন্ধ করলে শুধু OTP ছাড়া কোনো SMS পাঠানো হবে না।
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p>
-                      Each template is tied to an event — e.g. when a user signs up, the <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">welcome</code> SMS is sent automatically.
-                      Use <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">{"{{variable}}"}</code> syntax to insert dynamic content like names, amounts, and links.
-                    </p>
-                    <p>
-                      You can write templates in Bengali or English. Note the character limits —
-                      Bengali SMS: 70 chars/SMS, English SMS: 160 chars/SMS. The counter below the textarea shows the weighted count.
-                    </p>
-                    <p>
-                      When "Automatic SMS" is ON, event-triggered messages send automatically.
-                      Turn it OFF to pause all auto-sends (OTP always works regardless).
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
+        /* Template table */
+        <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+          {/* Table header */}
+          <div className="grid grid-cols-[1fr_140px_80px_80px] gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-gray-400">
+            <span>Template</span>
+            <span>Event Type</span>
+            <span className="text-center">Status</span>
+            <span className="text-right">Actions</span>
           </div>
 
-          {/* Search + filter bar */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search templates..."
-                className="w-full rounded-xl border border-gray-200 py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-brand-400"
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <FunnelSimple size={14} className="text-gray-400" />
-              <select
-                value={sectionFilter}
-                onChange={(e) => setSectionFilter(e.target.value)}
-                className="rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-400"
-              >
-                <option value="all">All Sections</option>
-                {SECTION_META.map((s) => (
-                  <option key={s.key} value={s.key}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Template grid by section */}
-          <div className="space-y-8">
-            {SECTION_META.map((section) => {
-              const list = filteredBySection[section.key] ?? [];
-              if (list.length === 0) return null;
-              return (
-                <div key={section.key}>
-                  <div className="mb-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                      {section.label}
-                      <span className="ml-2 text-gray-300">({list.length})</span>
-                    </h2>
-                    <p className="mt-1 text-xs text-gray-400 leading-relaxed">
-                      {lang === "bn" ? section.descriptionbn : section.description}
-                    </p>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {list.map((t) => (
-                      <div
-                        key={t.eventType}
-                        className={`group relative rounded-2xl border bg-white p-4 transition-all hover:shadow-sm ${
-                          t.isEnabled ? "border-gray-100" : "border-gray-100 opacity-60"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                            <p className="font-mono text-[11px] text-gray-400">{t.eventType}</p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => toggle(t)}
-                              title={t.isEnabled ? "Enabled — click to disable" : "Disabled — click to enable"}
-                              className={t.isEnabled ? "text-green-500" : "text-gray-300"}
-                            >
-                              {t.isEnabled ? <ToggleRight size={26} weight="fill" /> : <ToggleLeft size={26} weight="fill" />}
-                            </button>
-                          </div>
-                        </div>
-                        <p className="mt-2 line-clamp-2 text-xs text-gray-500">{t.body}</p>
-                        <div className="mt-3 flex items-center gap-3">
-                          <button
-                            onClick={() => { setEditing(t); setCreating(false); }}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700"
-                          >
-                            <PencilSimple size={13} weight="fill" /> Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleting(t)}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash size={13} weight="fill" /> Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+          {SECTION_META.map((section) => {
+            const list = filteredBySection[section.key] ?? [];
+            if (list.length === 0) return null;
+            return (
+              <div key={section.key}>
+                {/* Section group header */}
+                <div className="flex items-center gap-2 border-b border-gray-50 bg-gray-50/50 px-4 py-1.5">
+                  <span className="text-[11px] font-semibold text-gray-500">{section.label}</span>
+                  <span className="text-[10px] text-gray-300">({list.length})</span>
+                  <span className="text-[10px] text-gray-300 ml-auto hidden sm:inline">{lang === "bn" ? section.descriptionbn : section.description}</span>
                 </div>
-              );
-            })}
-            {filteredTemplates.length === 0 && (
-              <div className="py-12 text-center text-sm text-gray-400">
-                {search || sectionFilter !== "all"
-                  ? "No templates match your search."
-                  : "No templates yet. Create one to get started."}
+
+                {list.map((t) => (
+                  <div key={t.eventType} className={`group grid grid-cols-[1fr_140px_80px_80px] gap-2 items-center border-b border-gray-50 px-4 py-2 hover:bg-gray-50/50 transition-colors ${!t.isEnabled ? "opacity-50" : ""}`}>
+                    {/* Name + body preview */}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-900 truncate">{t.name}</p>
+                      <p className="text-[11px] text-gray-400 truncate">{t.body}</p>
+                    </div>
+                    {/* Event type */}
+                    <span className="font-mono text-[11px] text-gray-400 truncate">{t.eventType}</span>
+                    {/* Toggle */}
+                    <div className="flex justify-center">
+                      <button onClick={() => toggle(t)} title={t.isEnabled ? "Disable" : "Enable"} className={t.isEnabled ? "text-green-500" : "text-gray-300"}>
+                        {t.isEnabled ? <ToggleRight size={22} weight="fill" /> : <ToggleLeft size={22} weight="fill" />}
+                      </button>
+                    </div>
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => { setEditing(t); setCreating(false); }} className="rounded-md p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="Edit">
+                        <PencilSimple size={13} weight="fill" />
+                      </button>
+                      <button onClick={() => setDeleting(t)} className="rounded-md p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100" title="Delete">
+                        <Trash size={13} weight="fill" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-        </>
+            );
+          })}
+
+          {filteredTemplates.length === 0 && (
+            <div className="py-10 text-center text-xs text-gray-400">
+              {search || sectionFilter !== "all" ? "No templates match your search." : "No templates yet."}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Create modal */}
-      {creating && (
-        <TemplateModal
-          template={null}
-          onClose={() => setCreating(false)}
-          onSaved={handleSaved}
-        />
-      )}
-
-      {/* Edit modal */}
-      {editing && (
-        <TemplateModal
-          template={editing}
-          onClose={() => setEditing(null)}
-          onSaved={handleSaved}
-        />
-      )}
-
-      {/* Delete confirmation */}
-      <ConfirmModal
-        open={!!deleting}
-        title="Delete Template"
-        message={
-          <>
-            Are you sure you want to delete <strong>{deleting?.name}</strong>? This action cannot be undone.
-            Any code referencing this event type will no longer send SMS.
-          </>
-        }
-        confirmLabel="Delete Template"
-        variant="danger"
-        onConfirm={confirmDelete}
-        onClose={() => setDeleting(null)}
-      />
+      {/* Modals */}
+      {creating && <TemplateModal template={null} onClose={() => setCreating(false)} onSaved={handleSaved} />}
+      {editing && <TemplateModal template={editing} onClose={() => setEditing(null)} onSaved={handleSaved} />}
+      <ConfirmModal open={!!deleting} title="Delete Template" message={<>Delete <strong>{deleting?.name}</strong>? This cannot be undone.</>} confirmLabel="Delete" variant="danger" onConfirm={confirmDelete} onClose={() => setDeleting(null)} />
     </div>
   );
 }
