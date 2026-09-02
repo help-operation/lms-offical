@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "@repo/ui/sonner";
-import { PaperPlaneTilt, SpinnerGap } from "@phosphor-icons/react";
+import { PaperPlaneTilt, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import type { EnrichedStudent } from "./types";
 import type { SmsTemplate } from "@/features/sms-templates/types";
 import type { EmailTemplate } from "@/features/email-templates/types";
-import { sendSmsToStudentsAction, sendEmailToStudentsAction } from "./actions";
+import { fetchStudentsForFilterAction, fetchEnrollmentSummaryAction, sendSmsToStudentsAction, sendEmailToStudentsAction, type EnrollmentSummaryRow } from "./actions";
+import { enrichStudent } from "./enrichment";
 import { getBroadcastJobAction } from "@/features/broadcast-jobs/actions";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import { ComposePanel } from "./ComposePanel";
@@ -29,9 +30,14 @@ export function SendMessagePage({
   emailTemplates: EmailTemplate[];
   onRemoveStudent: (id: number) => void;
 }) {
+  // ALL students from DB (loaded on mount)
+  const [allStudents, setAllStudents] = useState<EnrichedStudent[]>([]);
+  const [allStudentsLoading, setAllStudentsLoading] = useState(true);
+  const [allStudentsError, setAllStudentsError] = useState<string | null>(null);
+
+  // Explicitly selected students (subset of allStudents)
   const [selectedStudents, setSelectedStudents] = useState<EnrichedStudent[]>(initialSelected);
   const [csvRecipients, setCsvRecipients] = useState<CsvRecipient[]>([]);
-  const [allStudents, setAllStudents] = useState<EnrichedStudent[]>(initialSelected);
 
   // Compose state
   const [messageType, setMessageType] = useState<MessageType>("template");
@@ -58,14 +64,51 @@ export function SendMessagePage({
   const [smsProgress, setSmsProgress] = useState<Progress | null>(null);
   const [emailProgress, setEmailProgress] = useState<Progress | null>(null);
 
+  // ── Fetch ALL students from DB on mount ───────────────────────────────────
   useEffect(() => {
-    setSelectedStudents(initialSelected);
-    setAllStudents((prev) => {
-      const existingIds = new Set(prev.map((s) => s.id));
-      const newOnes = initialSelected.filter((s) => !existingIds.has(s.id));
-      return [...prev, ...newOnes];
-    });
-  }, [initialSelected]);
+    let cancelled = false;
+    async function load() {
+      setAllStudentsLoading(true);
+      setAllStudentsError(null);
+      try {
+        const studentsRes = await fetchStudentsForFilterAction();
+        if (cancelled) return;
+        if (!studentsRes.success) {
+          setAllStudentsError(studentsRes.message);
+          setAllStudentsLoading(false);
+          return;
+        }
+        const rawStudents = studentsRes.data;
+
+        // Fetch enrollment summary for all students
+        const enrollmentRes = await fetchEnrollmentSummaryAction(rawStudents.map((s) => s.id));
+        if (cancelled) return;
+
+        const enrollmentByUserId: Record<number, EnrollmentSummaryRow> = {};
+        if (enrollmentRes.success) {
+          for (const row of enrollmentRes.data) enrollmentByUserId[row.userId] = row;
+        }
+
+        const enriched = rawStudents.map((s) => enrichStudent(s, enrollmentByUserId[s.id]));
+        setAllStudents(enriched);
+
+        // Merge initial selected into allStudents (they might already be there)
+        if (initialSelected.length > 0) {
+          const existingIds = new Set(enriched.map((s) => s.id));
+          const missing = initialSelected.filter((s) => !existingIds.has(s.id));
+          if (missing.length > 0) {
+            setAllStudents((prev) => [...prev, ...missing]);
+          }
+        }
+      } catch {
+        if (!cancelled) setAllStudentsError("Failed to load students");
+      } finally {
+        if (!cancelled) setAllStudentsLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedStudentIds = new Set(selectedStudents.map((s) => s.id));
   const recipientCount = selectedStudents.length + csvRecipients.length;
@@ -214,6 +257,13 @@ export function SendMessagePage({
         )}
       </div>
 
+      {/* Load error */}
+      {allStudentsError && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-500/10 dark:text-red-400">
+          <WarningCircle size={16} weight="fill" /> {allStudentsError}
+        </div>
+      )}
+
       {/* Confirm dialog */}
       <ConfirmModal
         open={showConfirm}
@@ -318,6 +368,7 @@ export function SendMessagePage({
             {rightTab === "recipients" ? (
               <RecipientsPanel
                 allStudents={allStudents}
+                allStudentsLoading={allStudentsLoading}
                 selectedStudentIds={selectedStudentIds}
                 csvRecipients={csvRecipients}
                 onToggleStudent={toggleStudent}

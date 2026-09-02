@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useMemo, useEffect } from "react";
 import {
-  X, Upload, Download, Users, WarningCircle, FileCsv, CaretDown, MagnifyingGlass, Clock, Trash,
+  X, Upload, Download, Users, WarningCircle, FileCsv, CaretDown, MagnifyingGlass, Clock, Trash, SpinnerGap,
 } from "@phosphor-icons/react";
 import { parseCsv, csvTemplate, type CsvRecipient, type CsvParseResult } from "./csv-parser";
 import { getSavedCsvs, saveCsvEntry, deleteSavedCsv, type SavedCsv } from "./csv-history";
@@ -19,7 +19,7 @@ const inputCls =
   "focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 " +
   "dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-brand-500";
 
-type SourceType = "all" | "batch" | "course" | "visited" | "not_enrolled" | "date_range" | "csv";
+type SourceType = "all" | "batch" | "course" | "visited" | "not_enrolled" | "age" | "csv";
 
 const SOURCE_OPTIONS: { value: SourceType; label: string }[] = [
   { value: "all", label: "All Students" },
@@ -27,7 +27,7 @@ const SOURCE_OPTIONS: { value: SourceType; label: string }[] = [
   { value: "course", label: "Course Wise" },
   { value: "visited", label: "Visited Course" },
   { value: "not_enrolled", label: "Not Enrolled" },
-  { value: "date_range", label: "Date Range" },
+  { value: "age", label: "Age Wise" },
   { value: "csv", label: "CSV Upload" },
 ];
 
@@ -36,8 +36,18 @@ const STATUS_BADGE: Record<string, string> = {
   inactive: "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400",
 };
 
+function getAgeFromCreatedAt(createdAt: string | null): number | null {
+  if (!createdAt) return null;
+  const created = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - created.getTime();
+  const diffYears = diffMs / (365.25 * 24 * 60 * 60 * 1000);
+  return Math.floor(diffYears);
+}
+
 export function RecipientsPanel({
   allStudents,
+  allStudentsLoading,
   selectedStudentIds,
   csvRecipients,
   onToggleStudent,
@@ -48,6 +58,7 @@ export function RecipientsPanel({
   onClearCsv,
 }: {
   allStudents: EnrichedStudent[];
+  allStudentsLoading: boolean;
   selectedStudentIds: Set<number>;
   csvRecipients: CsvRecipient[];
   onToggleStudent: (id: number) => void;
@@ -61,23 +72,26 @@ export function RecipientsPanel({
   const [source, setSource] = useState<SourceType>("all");
   const [search, setSearch] = useState("");
 
-  // Filters
+  // Filters — ALL sources get date range
   const [batchFilter, setBatchFilter] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
-  const [visitCourseFilter, setVisitCourseFilter] = useState("");
-  const [visitFrom, setVisitFrom] = useState("");
-  const [visitTo, setVisitTo] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Age filter
+  const [ageMin, setAgeMin] = useState("");
+  const [ageMax, setAgeMax] = useState("");
 
   // CSV state
   const [csvResult, setCsvResult] = useState<CsvParseResult | null>(null);
   const [savedCsvs, setSavedCsvs] = useState<SavedCsv[]>([]);
   const [csvTab, setCsvTab] = useState<"upload" | "history">("upload");
 
-  // Load saved CSVs on mount
   useEffect(() => {
     setSavedCsvs(getSavedCsvs());
   }, []);
 
+  // Derive batch names and course names from all students
   const allBatchNames = useMemo(
     () => Array.from(new Set(allStudents.map((s) => s.batchName).filter((b): b is string => !!b))),
     [allStudents],
@@ -87,26 +101,73 @@ export function RecipientsPanel({
     [allStudents],
   );
 
+  // ── Client-side filtering ─────────────────────────────────────────────────
   const filteredStudents = useMemo(() => {
     let list = allStudents;
+
     switch (source) {
-      case "batch": if (batchFilter) list = list.filter((s) => s.batchName === batchFilter); break;
-      case "course": if (courseFilter) list = list.filter((s) => s.courseName === courseFilter); break;
-      case "visited": list = list.filter((s) => s.hasRealEnrollment); if (visitCourseFilter) list = list.filter((s) => s.courseName === visitCourseFilter); break;
-      case "not_enrolled": list = list.filter((s) => s.hasRealEnrollment && s.enrollmentStatus === "none"); if (visitCourseFilter) list = list.filter((s) => s.courseName === visitCourseFilter); break;
-      case "date_range": if (visitFrom) list = list.filter((s) => s.lastLoginAt && s.lastLoginAt >= visitFrom); if (visitTo) list = list.filter((s) => s.lastLoginAt && s.lastLoginAt <= visitTo + "T23:59:59"); break;
+      case "batch":
+        if (batchFilter) list = list.filter((s) => s.batchName === batchFilter);
+        break;
+      case "course":
+        if (courseFilter) list = list.filter((s) => s.courseName === courseFilter);
+        break;
+      case "visited":
+        list = list.filter((s) => s.hasRealEnrollment);
+        if (courseFilter) list = list.filter((s) => s.courseName === courseFilter);
+        break;
+      case "not_enrolled":
+        // Students without active enrollment (enrollmentStatus === "none")
+        list = list.filter((s) => !s.hasRealEnrollment || s.enrollmentStatus === "none");
+        if (courseFilter) list = list.filter((s) => s.courseName === courseFilter);
+        break;
+      case "age": {
+        // Filter by account age (years since registration)
+        const minAge = ageMin ? parseInt(ageMin, 10) : 0;
+        const maxAge = ageMax ? parseInt(ageMax, 10) : 999;
+        list = list.filter((s) => {
+          const age = getAgeFromCreatedAt(s.createdAt);
+          if (age === null) return false;
+          return age >= minAge && age <= maxAge;
+        });
+        break;
+      }
+      // "all" and "csv" — no additional filtering (csv handled separately)
     }
+
+    // ── Date range filter — applies to ALL non-CSV sources ──────────────────
+    if (source !== "csv") {
+      if (dateFrom) {
+        list = list.filter((s) => {
+          const d = s.createdAt ?? s.lastLoginAt;
+          return d && d >= dateFrom;
+        });
+      }
+      if (dateTo) {
+        const toEnd = dateTo + "T23:59:59";
+        list = list.filter((s) => {
+          const d = s.createdAt ?? s.lastLoginAt;
+          return d && d <= toEnd;
+        });
+      }
+    }
+
+    // Search
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter((s) => `${s.firstName} ${s.lastName} ${s.phone ?? ""} ${s.email ?? ""}`.toLowerCase().includes(q));
+      list = list.filter((s) =>
+        `${s.firstName} ${s.lastName} ${s.phone ?? ""} ${s.email ?? ""}`.toLowerCase().includes(q),
+      );
     }
+
     return list;
-  }, [allStudents, source, batchFilter, courseFilter, visitCourseFilter, visitFrom, visitTo, search]);
+  }, [allStudents, source, batchFilter, courseFilter, dateFrom, dateTo, ageMin, ageMax, search]);
 
   const visibleIds = useMemo(() => filteredStudents.map((s) => s.id), [filteredStudents]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedStudentIds.has(id));
   const totalRecipients = selectedStudentIds.size + csvRecipients.length;
 
+  // ── CSV handling ──────────────────────────────────────────────────────────
   const handleFile = useCallback(
     (file: File) => {
       const reader = new FileReader();
@@ -115,9 +176,8 @@ export function RecipientsPanel({
         const result = parseCsv(text);
         setCsvResult(result);
 
-        // Auto-save to history
         const nonDuplicateRecipients = result.recipients.filter((r) => !r.isDuplicate);
-        const saved = saveCsvEntry({
+        saveCsvEntry({
           fileName: file.name,
           uploadedAt: new Date().toISOString(),
           totalRows: result.totalRows,
@@ -127,7 +187,6 @@ export function RecipientsPanel({
         });
         setSavedCsvs(getSavedCsvs());
 
-        // Add non-duplicate recipients
         if (nonDuplicateRecipients.length > 0) {
           onAddCsvRecipients(nonDuplicateRecipients);
         }
@@ -159,9 +218,10 @@ export function RecipientsPanel({
   function resetFilters() {
     setBatchFilter("");
     setCourseFilter("");
-    setVisitCourseFilter("");
-    setVisitFrom("");
-    setVisitTo("");
+    setDateFrom("");
+    setDateTo("");
+    setAgeMin("");
+    setAgeMax("");
     setSearch("");
   }
 
@@ -187,74 +247,96 @@ export function RecipientsPanel({
         </div>
       </div>
 
-      {/* Dynamic sub-filters */}
-      {source !== "csv" && source !== "all" && (
+      {/* ── Dynamic sub-filters ──────────────────────────────────────────────── */}
+      {source !== "csv" && (
         <div className="border-b border-gray-100 px-4 py-2.5 dark:border-slate-800">
+          {source === "all" && (
+            <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} inputCls={inputCls} />
+          )}
+
           {source === "batch" && (
-            <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Batch</label>
-              <div className="relative">
-                <select value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)} className={`${selectCls} pr-6`}>
-                  <option value="">All batches</option>
-                  {allBatchNames.map((b) => <option key={b} value={b}>{b}</option>)}
-                </select>
-                <CaretDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Batch</label>
+                <div className="relative">
+                  <select value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)} className={`${selectCls} pr-6`}>
+                    <option value="">All batches</option>
+                    {allBatchNames.map((b) => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                  <CaretDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                </div>
               </div>
+              <DateRangeFilterInline dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} inputCls={inputCls} />
             </div>
           )}
+
           {source === "course" && (
-            <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Course</label>
-              <div className="relative">
-                <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className={`${selectCls} pr-6`}>
-                  <option value="">All courses</option>
-                  {allCourseNames.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <CaretDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-          )}
-          {(source === "visited" || source === "not_enrolled") && (
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Course</label>
                 <div className="relative">
-                  <select value={visitCourseFilter} onChange={(e) => setVisitCourseFilter(e.target.value)} className={`${selectCls} pr-6`}>
+                  <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className={`${selectCls} pr-6`}>
                     <option value="">All courses</option>
                     {allCourseNames.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <CaretDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
               </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Date Range</label>
-                <div className="flex items-center gap-1">
-                  <input type="date" value={visitFrom} onChange={(e) => setVisitFrom(e.target.value)} className={`flex-1 ${inputCls}`} />
-                  <span className="text-[10px] text-gray-400">–</span>
-                  <input type="date" value={visitTo} onChange={(e) => setVisitTo(e.target.value)} className={`flex-1 ${inputCls}`} />
-                </div>
-              </div>
+              <DateRangeFilterInline dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} inputCls={inputCls} />
             </div>
           )}
-          {source === "date_range" && (
+
+          {source === "visited" && (
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">From</label>
-                <input type="date" value={visitFrom} onChange={(e) => setVisitFrom(e.target.value)} className={`w-full ${inputCls}`} />
+                <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Course</label>
+                <div className="relative">
+                  <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className={`${selectCls} pr-6`}>
+                    <option value="">All courses</option>
+                    {allCourseNames.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <CaretDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                </div>
               </div>
+              <DateRangeFilterInline dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} inputCls={inputCls} />
+            </div>
+          )}
+
+          {source === "not_enrolled" && (
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">To</label>
-                <input type="date" value={visitTo} onChange={(e) => setVisitTo(e.target.value)} className={`w-full ${inputCls}`} />
+                <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Course</label>
+                <div className="relative">
+                  <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className={`${selectCls} pr-6`}>
+                    <option value="">All courses</option>
+                    {allCourseNames.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <CaretDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                </div>
               </div>
+              <DateRangeFilterInline dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} inputCls={inputCls} />
+            </div>
+          )}
+
+          {source === "age" && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Account Age (years)</label>
+                <div className="flex items-center gap-1.5">
+                  <input type="number" min={0} value={ageMin} onChange={(e) => setAgeMin(e.target.value)} placeholder="Min" className={`flex-1 ${inputCls}`} />
+                  <span className="text-[10px] text-gray-400">–</span>
+                  <input type="number" min={0} value={ageMax} onChange={(e) => setAgeMax(e.target.value)} placeholder="Max" className={`flex-1 ${inputCls}`} />
+                </div>
+              </div>
+              <DateRangeFilterInline dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} inputCls={inputCls} />
             </div>
           )}
         </div>
       )}
 
-      {/* CSV Upload section */}
+      {/* ── CSV Upload section ───────────────────────────────────────────────── */}
       {source === "csv" && (
         <div className="border-b border-gray-100 dark:border-slate-800">
-          {/* CSV sub-tabs */}
           <div className="flex border-b border-gray-100 dark:border-slate-800">
             <button onClick={() => setCsvTab("upload")} className={`flex-1 py-2 text-[11px] font-medium transition-colors ${csvTab === "upload" ? "text-brand-600 border-b-2 border-brand-600" : "text-gray-400 hover:text-gray-600"}`}>
               <Upload size={11} className="mr-1 inline" /> Upload
@@ -313,11 +395,19 @@ export function RecipientsPanel({
         </div>
       )}
 
-      {/* Select all bar */}
-      {source !== "csv" && filteredStudents.length > 0 && (
+      {/* ── Select all bar ───────────────────────────────────────────────────── */}
+      {source !== "csv" && (
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2 dark:border-slate-800">
           <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300">
-            <input type="checkbox" className="cursor-pointer rounded border-gray-300 accent-brand-600 dark:border-slate-600" checked={allVisibleSelected} onChange={() => { if (allVisibleSelected) visibleIds.forEach((id) => { if (selectedStudentIds.has(id)) onToggleStudent(id); }); else onSelectAll(visibleIds); }} />
+            <input
+              type="checkbox"
+              className="cursor-pointer rounded border-gray-300 accent-brand-600 dark:border-slate-600"
+              checked={allVisibleSelected}
+              onChange={() => {
+                if (allVisibleSelected) visibleIds.forEach((id) => { if (selectedStudentIds.has(id)) onToggleStudent(id); });
+                else onSelectAll(visibleIds);
+              }}
+            />
             Select all ({filteredStudents.length})
           </label>
           {selectedStudentIds.size > 0 && (
@@ -326,9 +416,14 @@ export function RecipientsPanel({
         </div>
       )}
 
-      {/* Table */}
+      {/* ── Table ────────────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        {source !== "csv" ? (
+        {allStudentsLoading ? (
+          <div className="flex flex-col items-center justify-center py-10">
+            <SpinnerGap size={24} className="mb-2 animate-spin text-brand-500" />
+            <p className="text-xs text-gray-400">Loading students from database…</p>
+          </div>
+        ) : source !== "csv" ? (
           <table className="w-full text-xs">
             <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-slate-800">
               <tr className="text-left text-[10px] uppercase tracking-wider text-gray-400 dark:text-slate-500">
@@ -349,7 +444,11 @@ export function RecipientsPanel({
                   <td className="px-3 py-2"><span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold capitalize ${STATUS_BADGE[s.activeStatus] ?? ""}`}>{s.activeStatus}</span></td>
                 </tr>
               ))}
-              {filteredStudents.length === 0 && <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">No students found</td></tr>}
+              {filteredStudents.length === 0 && (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">
+                  {allStudents.length === 0 ? "No students in database" : "No students match the current filters"}
+                </td></tr>
+              )}
             </tbody>
           </table>
         ) : csvRecipients.length > 0 ? (
@@ -379,6 +478,48 @@ export function RecipientsPanel({
             <p className="text-sm text-gray-400">Upload a CSV or load from history</p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Reusable sub-filter components ──────────────────────────────────────────────
+
+function DateRangeFilter({
+  dateFrom, dateTo, onFromChange, onToChange, inputCls,
+}: {
+  dateFrom: string; dateTo: string;
+  onFromChange: (v: string) => void; onToChange: (v: string) => void;
+  inputCls: string;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">From</label>
+        <input type="date" value={dateFrom} onChange={(e) => onFromChange(e.target.value)} className={`w-full ${inputCls}`} />
+      </div>
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">To</label>
+        <input type="date" value={dateTo} onChange={(e) => onToChange(e.target.value)} className={`w-full ${inputCls}`} />
+      </div>
+    </div>
+  );
+}
+
+function DateRangeFilterInline({
+  dateFrom, dateTo, onFromChange, onToChange, inputCls,
+}: {
+  dateFrom: string; dateTo: string;
+  onFromChange: (v: string) => void; onToChange: (v: string) => void;
+  inputCls: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-[10px] font-medium text-gray-500 dark:text-slate-400">Date Range</label>
+      <div className="flex items-center gap-1">
+        <input type="date" value={dateFrom} onChange={(e) => onFromChange(e.target.value)} className={`flex-1 ${inputCls}`} />
+        <span className="text-[10px] text-gray-400">–</span>
+        <input type="date" value={dateTo} onChange={(e) => onToChange(e.target.value)} className={`flex-1 ${inputCls}`} />
       </div>
     </div>
   );
