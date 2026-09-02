@@ -470,6 +470,13 @@
       "when": 1788400000000,
       "tag": "0066_sms_template_type",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1788340950995,
+      "tag": "0067_equal_cyclops",
+      "breakpoints": true
     }
   ]
 }

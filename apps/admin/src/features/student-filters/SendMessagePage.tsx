@@ -15,7 +15,7 @@ import { RecipientsPanel } from "./RecipientsPanel";
 import { DevicePreview } from "./DevicePreview";
 import type { CsvRecipient } from "./csv-parser";
 
-type Progress = { total: number; sent: number; failed: number; status: "pending" | "running" | "completed" };
+type Progress = { total: number; sent: number; failed: number; status: "pending" | "running" | "completed" | "scheduled" | "cancelled" };
 type MessageType = "template" | "custom";
 type RightTab = "recipients" | "preview";
 

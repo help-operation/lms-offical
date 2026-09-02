@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users, DeviceMobile, Envelope, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react";
+import { Users, Clock, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
 import type { Student } from "@/features/students/types";
 import type { SmsTemplate } from "@/features/sms-templates/types";
@@ -17,11 +17,11 @@ import { StudentTable } from "./StudentTable";
 import { StudentDetailsDrawer } from "./StudentDetailsDrawer";
 import { BulkActionBar } from "./BulkActionBar";
 import { SendMessageModal } from "./SendMessageModal";
-import { SmsHistoryTab } from "./SmsHistoryTab";
-import { EmailHistoryTab } from "./EmailHistoryTab";
+import { MessageHistoryTab } from "./MessageHistoryTab";
+import { ScheduledMessagesTab } from "./ScheduledMessagesTab";
 import { SendMessagePage } from "./SendMessagePage";
 
-type ActiveTab = "students" | "sms" | "email" | "send";
+type ActiveTab = "students" | "history" | "scheduled" | "send";
 
 export function StudentFiltersClient({
   initial,
@@ -168,8 +168,8 @@ export function StudentFiltersClient({
         {([
           ["students", "Students", Users],
           ["send", "Send Message", PaperPlaneTilt],
-          ["sms", "SMS History", DeviceMobile],
-          ["email", "Email History", Envelope],
+          ["history", "Message History", Clock],
+          ["scheduled", "Scheduled", Clock],
         ] as const).map(([key, label, Icon]) => (
           <button
             key={key}
@@ -245,8 +245,8 @@ export function StudentFiltersClient({
         </>
       )}
 
-      {activeTab === "sms" && <SmsHistoryTab />}
-      {activeTab === "email" && <EmailHistoryTab />}
+      {activeTab === "history" && <MessageHistoryTab />}
+      {activeTab === "scheduled" && <ScheduledMessagesTab />}
       {activeTab === "send" && (
         <SendMessagePage
           selectedStudents={selectedStudents}

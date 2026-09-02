@@ -21,16 +21,27 @@ export async function getBroadcastJobRecipientsAction(jobId: number) {
   }
 }
 
-export async function listBroadcastJobsAction(limit = 100) {
+export async function listBroadcastJobsAction(limit = 100, status?: string) {
   try {
-    const res = await apiRequest<BroadcastJob[]>(`/broadcast-jobs?limit=${limit}`);
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (status && status !== "all") params.set("status", status);
+    const res = await apiRequest<BroadcastJob[]>(`/broadcast-jobs?${params}`);
     return { success: true as const, data: res.data ?? [] };
   } catch (err: any) {
     return { success: false as const, message: err?.message ?? "Failed to fetch send history" };
   }
 }
 
-/** Every message a specific student has been sent, newest first — used to check "have we already messaged this person". */
+export async function cancelBroadcastJobAction(jobId: number) {
+  try {
+    await apiRequest(`/broadcast-jobs/${jobId}/cancel`, { method: "POST" });
+    return { success: true as const };
+  } catch (err: any) {
+    return { success: false as const, message: err?.message ?? "Failed to cancel job" };
+  }
+}
+
+/** Every message a specific student has been sent, newest first -- used to check "have we already messaged this person". */
 export async function getStudentMessageHistoryAction(studentId: number) {
   try {
     const res = await apiRequest<StudentMessageHistoryRow[]>(`/broadcast-jobs/student/${studentId}`);

@@ -31,7 +31,7 @@ const inputCls =
   "dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 " +
   "dark:focus:border-brand-500 dark:focus:bg-slate-800 dark:focus:ring-brand-900/40";
 
-type ChannelProgress = { total: number; sent: number; failed: number; status: "pending" | "running" | "completed" };
+type ChannelProgress = { total: number; sent: number; failed: number; status: "pending" | "running" | "completed" | "scheduled" | "cancelled" };
 
 const PROGRESS_POLL_MS = 1200;
 

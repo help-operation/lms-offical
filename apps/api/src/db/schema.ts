@@ -2600,14 +2600,19 @@ export type ShopCartItem     = typeof shopCartItems.$inferSelect;
 export const broadcastChannelEnum = pgEnum('broadcast_channel', ['sms', 'email']);
 export type BroadcastChannel = (typeof broadcastChannelEnum.enumValues)[number];
 export const broadcastJobStatusEnum = pgEnum('broadcast_job_status', [
+  'scheduled',
   'pending',
   'running',
   'completed',
+  'cancelled',
 ]);
 export const broadcastRecipientStatusEnum = pgEnum('broadcast_recipient_status', [
   'pending',
+  'queued',
   'sent',
+  'delivered',
   'failed',
+  'cancelled',
 ]);
 
 export const messageBroadcastJobs = pgTable('message_broadcast_jobs', {
@@ -2619,6 +2624,10 @@ export const messageBroadcastJobs = pgTable('message_broadcast_jobs', {
   sent:      integer('sent').notNull().default(0),
   failed:    integer('failed').notNull().default(0),
   status:    broadcastJobStatusEnum('status').default('pending').notNull(),
+  // Scheduling support
+  scheduledAt:     timestamp('scheduled_at'),        // null = send now
+  intervalSeconds: integer('interval_seconds'),       // null = no interval (batch send)
+  lastSentAt:      timestamp('last_sent_at'),         // tracks interval-based sends
   createdByAdminId: integer('created_by_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
   completedAt: timestamp('completed_at'),
@@ -2632,6 +2641,7 @@ export const messageBroadcastRecipients = pgTable('message_broadcast_recipients'
   status:    broadcastRecipientStatusEnum('status').default('pending').notNull(),
   error:     text('error'),
   sentAt:    timestamp('sent_at'),
+  deliveredAt: timestamp('delivered_at'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
