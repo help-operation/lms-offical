@@ -105,6 +105,40 @@ export interface RevenueByCourseRow {
   revenue: number;
 }
 
+export interface StudentGrowthRow {
+  label: string;
+  newStudents: number;
+  totalStudents: number;
+}
+
+export interface RevenueTimeSeriesRow {
+  label: string;
+  recorded: number;
+  live: number;
+  total: number;
+}
+
+export interface CommunicationOverview {
+  sms: {
+    balance: number;
+    today: number;
+    week: number;
+    month: number;
+    year: number;
+    totalSent: number;
+    totalFailed: number;
+  };
+  email: {
+    balance: number;
+    today: number;
+    week: number;
+    month: number;
+    year: number;
+    totalSent: number;
+    totalFailed: number;
+  };
+}
+
 function buildQuery(filters: DashboardFilters): string {
   const q = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => {
@@ -131,4 +165,13 @@ export const dashboardApi = {
 
   revenueByCourse: (filters: DashboardFilters) =>
     apiRequestBrowser<RevenueByCourseRow[]>(`/dashboard/revenue-by-course${buildQuery(filters)}`),
+
+  studentGrowth: (filters: DashboardFilters) =>
+    apiRequestBrowser<StudentGrowthRow[]>(`/dashboard/student-growth${buildQuery(filters)}`),
+
+  revenueTimeSeries: (filters: DashboardFilters) =>
+    apiRequestBrowser<RevenueTimeSeriesRow[]>(`/dashboard/revenue-time-series${buildQuery(filters)}`),
+
+  communication: () =>
+    apiRequestBrowser<CommunicationOverview>("/dashboard/communication"),
 };

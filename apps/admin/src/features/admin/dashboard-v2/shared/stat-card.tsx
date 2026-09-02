@@ -79,7 +79,7 @@ export function StatCardGrid({ title, accentColor, cards, columns }: { title: st
         <span className={`text-xs font-bold ${accentColor} dark:text-brand uppercase tracking-wider`}>{title}</span>
         <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent dark:from-slate-700" />
       </div>
-      <div className={`grid grid-cols-3 gap-2`}>
+      <div className={`grid ${colClass} gap-2`}>
         {cards.map((card) => (
           <StatCard key={card.label} card={card} />
         ))}

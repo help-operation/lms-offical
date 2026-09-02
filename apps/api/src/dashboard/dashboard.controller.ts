@@ -47,4 +47,22 @@ export class DashboardController {
   getRevenueByCourse(@Query() query: DashboardQueryInput) {
     return this.svc.getRevenueByCourse(query);
   }
+
+  @Get('student-growth')
+  @Message('Student growth fetched')
+  getStudentGrowth(@Query() query: DashboardQueryInput) {
+    return this.svc.getStudentGrowth(query);
+  }
+
+  @Get('revenue-time-series')
+  @Message('Revenue time series fetched')
+  getRevenueTimeSeries(@Query() query: DashboardQueryInput) {
+    return this.svc.getRevenueTimeSeries(query);
+  }
+
+  @Get('communication')
+  @Message('Communication overview fetched')
+  getCommunicationOverview() {
+    return this.svc.getCommunicationOverview();
+  }
 }

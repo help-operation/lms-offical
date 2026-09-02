@@ -14,6 +14,8 @@ import {
   CaretRight,
   CaretDoubleRight,
   MagnifyingGlass,
+  Envelope,
+  DeviceMobile,
 } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
 import type { Student } from "@/features/students/types";
@@ -24,6 +26,10 @@ import { sendSmsToStudentsAction, sendEmailToStudentsAction, type EnrollmentSumm
 import { getBroadcastJobAction } from "@/features/broadcast-jobs/actions";
 import { enrichStudent } from "./enrichment";
 import { EMPTY_FILTERS, type EnrichedStudent, type Filters } from "./types";
+import { SmsHistoryTab } from "./SmsHistoryTab";
+import { EmailHistoryTab } from "./EmailHistoryTab";
+
+type ActiveTab = "students" | "sms" | "email";
 
 // Only variables the backend can genuinely fill per-recipient right now —
 // see sms-broadcast.service.ts#sendToStudentIds. due_amount/payment_link/
@@ -519,6 +525,7 @@ export function StudentFiltersClient({
   const [pageSizeInput, setPageSizeInput] = useState("10");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [showSendModal, setShowSendModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("students");
 
   const enriched = useMemo(
     () => initial.map((s) => enrichStudent(s, enrollmentByUserId[s.id])),
@@ -610,6 +617,7 @@ export function StudentFiltersClient({
 
   return (
     <div className="p-6">
+      {/* Header */}
       <div className="mb-5 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-100 dark:bg-brand-500/15">
           <Users size={18} weight="fill" className="text-brand-600 dark:text-brand-400" />
@@ -617,19 +625,58 @@ export function StudentFiltersClient({
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Student Filters</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Real students, course, batch, and enrollment status from the database. Payment status, due amount, and
-            last login are still illustrative — that backend data doesn't exist yet.
+            Manage students, SMS history, and email history
           </p>
         </div>
       </div>
 
-      {loadError && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-500/10 dark:text-red-400">
-          <WarningCircle size={16} weight="fill" /> Couldn&apos;t load students: {loadError}
-        </div>
-      )}
+      {/* Tabs */}
+      <div className="mb-6 flex gap-1 rounded-xl border border-gray-100 bg-gray-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+        <button
+          onClick={() => setActiveTab("students")}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+            activeTab === "students"
+              ? "bg-white text-brand-600 shadow-sm dark:bg-slate-800 dark:text-brand-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
+          }`}
+        >
+          <Users size={16} weight="fill" />
+          Students
+        </button>
+        <button
+          onClick={() => setActiveTab("sms")}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+            activeTab === "sms"
+              ? "bg-white text-brand-600 shadow-sm dark:bg-slate-800 dark:text-brand-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
+          }`}
+        >
+          <DeviceMobile size={16} weight="fill" />
+          SMS History
+        </button>
+        <button
+          onClick={() => setActiveTab("email")}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+            activeTab === "email"
+              ? "bg-white text-brand-600 shadow-sm dark:bg-slate-800 dark:text-brand-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
+          }`}
+        >
+          <Envelope size={16} weight="fill" />
+          Email History
+        </button>
+      </div>
 
-      {/* Filter bar */}
+      {/* Tab Content */}
+      {activeTab === "students" && (
+        <>
+          {loadError && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-500/10 dark:text-red-400">
+              <WarningCircle size={16} weight="fill" /> Couldn&apos;t load students: {loadError}
+            </div>
+          )}
+
+          {/* Filter bar */}
       <div className="mb-4 rounded-2xl border border-gray-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-slate-500">
           <Funnel size={14} weight="fill" /> Filters
@@ -949,6 +996,11 @@ export function StudentFiltersClient({
           onClose={() => setShowSendModal(false)}
         />
       )}
+        </>
+      )}
+
+      {activeTab === "sms" && <SmsHistoryTab />}
+      {activeTab === "email" && <EmailHistoryTab />}
     </div>
   );
 }
