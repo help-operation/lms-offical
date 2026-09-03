@@ -13,7 +13,6 @@ async function main() {
 
   const pool = new Pool({
     connectionString: url,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   });
   const db = drizzle(pool);
 

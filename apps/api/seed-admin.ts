@@ -4,8 +4,15 @@
  *
  * Admin login authenticates against the `admin_users` table (NOT `users`,
  * which is for phone/student auth).
+ * SAFETY: Blocked in production to protect live data.
  */
 import 'dotenv/config';
+
+if (process.env.NODE_ENV === 'production') {
+  console.error('[seed-admin] BLOCKED: Cannot seed in production.');
+  process.exit(1);
+}
+
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as bcrypt from 'bcrypt';
