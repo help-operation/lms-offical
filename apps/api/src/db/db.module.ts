@@ -31,6 +31,7 @@ const DB_POOL_MAX = 30;
           connectionTimeoutMillis: DB_CONNECTION_TIMEOUT_MS,
           statement_timeout: DB_STATEMENT_TIMEOUT_MS,
           max: DB_POOL_MAX,
+          ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
         });
         return drizzle(pool, { schema });
       },
