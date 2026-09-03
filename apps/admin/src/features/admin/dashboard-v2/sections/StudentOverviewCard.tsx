@@ -23,5 +23,5 @@ export function StudentOverviewCard({ data }: { data: DashboardOverview }) {
     { label: "Today's Watch Time", value: formatDuration(data.visitorActivity.avgStaySeconds), icon: Clock, iconBg: "bg-cyan-100", iconColor: "text-cyan-600", cardBg: "bg-gradient-to-br from-cyan-50/80 to-white dark:from-cyan-500/10 dark:to-slate-900", sparkData: [5, 8, 12, 10, 15, 18, data.visitorActivity.avgStaySeconds], sparkColor: "#06b6d4" },
   ];
 
-  return <StatCardGrid title="Student Overview" accentColor="text-brand-600" cards={cards} />;
+  return <StatCardGrid title="Student Overview" accentColor="text-brand-600" cards={cards} columns={3} />;
 }

@@ -25,7 +25,7 @@ export function StatCard({ card }: { card: StatCardDef }) {
   const positive = (card.change ?? 0) >= 0;
   return (
     <div
-      className={`group relative rounded-xl border border-white/60 dark:border-slate-800 shadow-sm hover:shadow-md dark:hover:shadow-slate-800/50 transition-all duration-200 p-2 overflow-hidden ${card.cardBg ?? "bg-white dark:bg-slate-900"}`}
+      className={`group relative rounded-xl border border-white/60 dark:border-slate-800 shadow-sm hover:shadow-md dark:hover:shadow-slate-800/50 transition-all duration-200 p-2 overflow-hidden min-h-[72px] flex flex-col justify-between ${card.cardBg ?? "bg-white dark:bg-slate-900"}`}
     >
       {card.href && (
         <div className="flex justify-end mb-0.5 relative z-10">
