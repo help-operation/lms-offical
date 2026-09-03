@@ -64,6 +64,7 @@ function parseSetCookieHeader(str: string) {
       case "samesite":   options.sameSite = val?.toLowerCase() ?? "lax"; break;
       case "path":       options.path = val ?? "/"; break;
       case "max-age":    if (val) options.maxAge = parseInt(val, 10); break;
+      case "domain":     if (val) options.domain = val; break;
     }
   }
 
