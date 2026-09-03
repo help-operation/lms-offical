@@ -62,7 +62,6 @@ import { TrackingModule } from './tracking/tracking.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { FontsModule } from './fonts/fonts.module';
 import { EventsModule } from './events/events.module';
-import { DemoDataCleanupModule } from './common/cleanup/demo-cleanup.module';
 import { RevenueGateway } from './events/revenue.gateway';
 import { DashboardGateway } from './events/dashboard.gateway';
 
@@ -132,7 +131,6 @@ import { DashboardGateway } from './events/dashboard.gateway';
     DashboardModule,
     FontsModule,
     EventsModule,
-    DemoDataCleanupModule,
   ],
   controllers: [AppController],
   providers: [
