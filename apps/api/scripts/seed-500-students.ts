@@ -1,4 +1,10 @@
 import 'dotenv/config';
+
+if (process.env.NODE_ENV === 'production') {
+  console.error('[seed-500-students] BLOCKED: Cannot seed in production.');
+  process.exit(1);
+}
+
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as bcrypt from 'bcrypt';

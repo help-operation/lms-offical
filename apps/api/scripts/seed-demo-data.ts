@@ -9,8 +9,14 @@
  *   • Orders + payments for each enrollment
  *
  * Requires DATABASE_URL in .env
+ * SAFETY: Blocked in production to protect live data.
  */
 import 'dotenv/config';
+
+if (process.env.NODE_ENV === 'production') {
+  console.error('[seed-demo-data] BLOCKED: Cannot seed in production.');
+  process.exit(1);
+}
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as bcrypt from 'bcrypt';

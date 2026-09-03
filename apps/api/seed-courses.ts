@@ -1,8 +1,15 @@
 /**
  * Seed demo categories and 2 courses for development.
  * Run: npx tsx seed-courses.ts
+ * SAFETY: Blocked in production to protect live data.
  */
 import "dotenv/config";
+
+if (process.env.NODE_ENV === 'production') {
+  console.error('[seed-courses] BLOCKED: Cannot seed in production.');
+  process.exit(1);
+}
+
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as bcrypt from "bcrypt";

@@ -4,8 +4,15 @@
  *
  * Student login authenticates against the `users` table (NOT `admin_users`,
  * which is for admin/instructor email auth).
+ * SAFETY: Blocked in production to protect live data.
  */
 import 'dotenv/config';
+
+if (process.env.NODE_ENV === 'production') {
+  console.error('[seed-student] BLOCKED: Cannot seed in production.');
+  process.exit(1);
+}
+
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as bcrypt from 'bcrypt';
