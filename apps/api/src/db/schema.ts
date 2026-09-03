@@ -2444,6 +2444,8 @@ export const smsTemplates = pgTable('sms_templates', {
   name:        varchar('name', { length: 255 }).notNull(),
   /** Grouping shown in the admin UI — e.g. "auth", "payments" */
   section:     varchar('section', { length: 50 }).notNull().default('general'),
+  /** Template channel: sms (default) or email */
+  templateType: varchar('template_type', { length: 20 }).notNull().default('sms'),
   /** The SMS text, supports {{variable}} placeholders */
   body:        text('body').notNull(),
   isEnabled:   boolean('is_enabled').notNull().default(true),
@@ -2598,14 +2600,19 @@ export type ShopCartItem     = typeof shopCartItems.$inferSelect;
 export const broadcastChannelEnum = pgEnum('broadcast_channel', ['sms', 'email']);
 export type BroadcastChannel = (typeof broadcastChannelEnum.enumValues)[number];
 export const broadcastJobStatusEnum = pgEnum('broadcast_job_status', [
+  'scheduled',
   'pending',
   'running',
   'completed',
+  'cancelled',
 ]);
 export const broadcastRecipientStatusEnum = pgEnum('broadcast_recipient_status', [
   'pending',
+  'queued',
   'sent',
+  'delivered',
   'failed',
+  'cancelled',
 ]);
 
 export const messageBroadcastJobs = pgTable('message_broadcast_jobs', {
@@ -2617,6 +2624,10 @@ export const messageBroadcastJobs = pgTable('message_broadcast_jobs', {
   sent:      integer('sent').notNull().default(0),
   failed:    integer('failed').notNull().default(0),
   status:    broadcastJobStatusEnum('status').default('pending').notNull(),
+  // Scheduling support
+  scheduledAt:     timestamp('scheduled_at'),        // null = send now
+  intervalSeconds: integer('interval_seconds'),       // null = no interval (batch send)
+  lastSentAt:      timestamp('last_sent_at'),         // tracks interval-based sends
   createdByAdminId: integer('created_by_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
   completedAt: timestamp('completed_at'),
@@ -2627,9 +2638,12 @@ export const messageBroadcastRecipients = pgTable('message_broadcast_recipients'
   jobId:     integer('job_id').notNull().references(() => messageBroadcastJobs.id, { onDelete: 'cascade' }),
   studentId: integer('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   recipient: varchar('recipient', { length: 255 }).notNull(), // phone or email actually used
+  renderedMessage: text('rendered_message'), // final message after template render
   status:    broadcastRecipientStatusEnum('status').default('pending').notNull(),
   error:     text('error'),
   sentAt:    timestamp('sent_at'),
+  deliveredAt: timestamp('delivered_at'),
+  sentByAdminId: integer('sent_by_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

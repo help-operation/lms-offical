@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:backfill-tracking-items": "tsx scripts/backfill-tracking-items.ts",
+    "db:seed": "tsx scripts/seed-demo-data.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

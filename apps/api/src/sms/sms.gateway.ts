@@ -28,6 +28,15 @@ const BULKSMSBD_ERRORS: Record<number, string> = {
   1032: 'Your server IP is not whitelisted in BulkSMSBD.',
 };
 
+export type SmsDispatchResult = {
+  ok: boolean;
+  error?: string;
+  messageId?: string;
+  balance?: number;
+  responseCode?: number;
+  rawResponse?: string;
+};
+
 /**
  * Thin wrapper around the BulkSMSBD gateway. Centralises sending so the OTP
  * flow, templated event SMS, and broadcasts all share one implementation.
@@ -52,13 +61,21 @@ export class SmsGateway {
   async send(phone: string, message: string, throwOnError = false): Promise<boolean> {
     const result = await this.dispatch(phone, message);
     if (!result.ok) {
-      this.logger.error(`SMS to ${phone} failed: ${result.error}`);
+      this.logger.error(`SMS to ${phone} failed: ${result.error} (code=${result.responseCode})`);
       if (throwOnError) {
         throw new InternalServerErrorException(`SMS failed: ${result.error}`);
       }
       return false;
     }
+    this.logger.log(`SMS to ${phone} accepted: messageId=${result.messageId ?? 'n/a'} balance=${result.balance ?? 'n/a'}`);
     return true;
+  }
+
+  /**
+   * Send one SMS and return the full dispatch result (for broadcast tracking).
+   */
+  async sendWithResult(phone: string, message: string): Promise<SmsDispatchResult> {
+    return this.dispatch(phone, message);
   }
 
   /**
@@ -78,12 +95,15 @@ export class SmsGateway {
     for (let i = 0; i < unique.length; i += CHUNK) {
       const batch = unique.slice(i, i + CHUNK);
       const result = await this.dispatch(batch.join(','), message);
-      if (result.ok) sent += batch.length;
-      else {
+      if (result.ok) {
+        sent += batch.length;
+        this.logger.log(`Bulk SMS batch ${Math.floor(i / CHUNK) + 1}: ${batch.length} sent, balance=${result.balance ?? 'n/a'}`);
+      } else {
         failed += batch.length;
-        this.logger.error(`Bulk SMS batch failed: ${result.error}`);
+        this.logger.error(`Bulk SMS batch ${Math.floor(i / CHUNK) + 1} failed: ${result.error} (code=${result.responseCode})`);
       }
     }
+    this.logger.log(`Bulk SMS complete: ${sent} sent, ${failed} failed out of ${unique.length} total`);
     return { sent, failed };
   }
 
@@ -101,7 +121,7 @@ export class SmsGateway {
   private async dispatch(
     number: string,
     message: string,
-  ): Promise<{ ok: boolean; error?: string }> {
+  ): Promise<SmsDispatchResult> {
     const creds = await this.storageConfig.getDecryptedCredentials('bulksms');
     const apiKey = creds.apiKey?.trim() || this.config.get<string>('BULKSMSBD_API_KEY');
     const senderId = creds.senderId?.trim() || this.config.get<string>('BULKSMSBD_SENDER_ID', 'Skillkoro');
@@ -109,38 +129,63 @@ export class SmsGateway {
     if (!apiKey) {
       this.logger.warn('BULKSMSBD_API_KEY not set — SMS not sent (dev mode)');
       this.logger.debug(`[SMS DEV] To: ${number} | Message: ${message}`);
-      return { ok: true };
+      return { ok: true, responseCode: 202, rawResponse: 'dev-mode' };
     }
 
     const normalized = this.normalizePhone(number);
     const url = `http://bulksmsbd.net/api/smsapi?api_key=${apiKey}&type=text&number=${normalized}&senderid=${senderId}&message=${encodeURIComponent(message)}`;
 
+    this.logger.log(`BulkSMSBD request: POST ${url.replace(apiKey, '***')}`);
+
     let responseText = '';
+    let httpStatus = 0;
     try {
       const res = await fetch(url);
+      httpStatus = res.status;
       responseText = await res.text();
+      this.logger.log(`BulkSMSBD HTTP ${httpStatus}: ${responseText.trim()}`);
     } catch (err) {
-      this.logger.error('SMS gateway network error', err as Error);
-      return { ok: false, error: 'SMS gateway unreachable. Please try again.' };
+      this.logger.error(`BulkSMSBD network error: ${(err as Error).message}`, err as Error);
+      return { ok: false, error: 'SMS gateway unreachable. Please try again.', rawResponse: responseText };
     }
 
+    // Handle non-2xx HTTP status
+    if (httpStatus < 200 || httpStatus >= 300) {
+      const errorMsg = `SMS gateway returned HTTP ${httpStatus}`;
+      this.logger.error(`${errorMsg}: ${responseText.trim()}`);
+      return { ok: false, error: errorMsg, rawResponse: responseText, responseCode: httpStatus };
+    }
+
+    // Parse JSON response
+    let parsed: Record<string, unknown> = {};
     let responseCode: number;
     try {
-      const parsed = JSON.parse(responseText);
-      responseCode = parsed?.response_code ?? parsed;
+      parsed = JSON.parse(responseText);
+      responseCode = typeof parsed.response_code === 'number' ? parsed.response_code : parseInt(String(parsed.response_code ?? responseText.trim()), 10);
     } catch {
       responseCode = parseInt(responseText.trim(), 10);
     }
 
-    this.logger.log(`BulkSMSBD response: ${responseText.trim()}`);
+    const messageId = typeof parsed.message_id === 'string' ? parsed.message_id : undefined;
+    const balance = typeof parsed.balance === 'number' ? parsed.balance : undefined;
+    const success = typeof parsed.success === 'boolean' ? parsed.success : responseCode === 202;
 
-    if (responseCode === 202) return { ok: true };
+    this.logger.log(
+      `BulkSMSBD result: code=${responseCode} success=${success} ` +
+      `messageId=${messageId ?? 'n/a'} balance=${balance ?? 'n/a'} ` +
+      `raw=${responseText.trim().substring(0, 500)}`,
+    );
 
-    return {
-      ok: false,
-      error:
-        BULKSMSBD_ERRORS[responseCode] ??
-        `BulkSMSBD error code ${responseCode}. Raw: ${responseText.trim()}`,
-    };
+    if (success || responseCode === 202) {
+      return { ok: true, responseCode, messageId, balance, rawResponse: responseText };
+    }
+
+    const knownError = BULKSMSBD_ERRORS[responseCode];
+    const errorMsg = knownError
+      ? `BulkSMSBD error ${responseCode}: ${knownError}`
+      : `BulkSMSBD error code ${responseCode}. Raw: ${responseText.trim().substring(0, 300)}`;
+
+    this.logger.error(`SMS dispatch failed: ${errorMsg}`);
+    return { ok: false, error: errorMsg, responseCode, messageId, balance, rawResponse: responseText };
   }
 }

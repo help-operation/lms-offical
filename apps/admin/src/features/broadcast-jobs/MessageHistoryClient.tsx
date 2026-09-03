@@ -15,15 +15,20 @@ const inputCls =
   "dark:focus:border-brand-500 dark:focus:bg-slate-800 dark:focus:ring-brand-900/40";
 
 const STATUS_BADGE: Record<BroadcastJob["status"], string> = {
+  scheduled: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400",
   pending: "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400",
   running: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   completed: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+  cancelled: "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400",
 };
 
 const RECIPIENT_BADGE: Record<BroadcastRecipient["status"], string> = {
   pending: "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400",
+  queued: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   sent: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+  delivered: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
   failed: "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400",
+  cancelled: "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400",
 };
 
 function fmtDateTime(iso: string | null) {

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import {
   EnvelopeSimple, PencilSimple, SpinnerGap, CheckCircle,
   FloppyDisk, X, Eye, PaperPlaneTilt, ToggleLeft, ToggleRight,
-  Warning, Lock,
+  Warning, Lock, Info,
 } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
 import {
@@ -326,6 +326,27 @@ export function EmailTemplatesClient({ initial }: { initial: EmailTemplate[] }) 
           <span className="font-bold">{enabledCount}</span> of <span className="font-bold">{templates.length}</span> templates enabled.
           {" "}Disabled templates are skipped silently — no email is sent for that event.
         </p>
+      </div>
+
+      {/* Usage guide */}
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+        <div className="flex items-start gap-3">
+          <Info size={18} weight="fill" className="mt-0.5 shrink-0 text-blue-500" />
+          <div className="space-y-2 text-xs text-blue-700 leading-relaxed">
+            <p className="font-semibold text-blue-800">How Email Templates Work</p>
+            <p>
+              Each template is triggered by a specific event — e.g. when a student enrolls, the <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">enrollment_confirmation</code> email is sent automatically.
+              Use <code className="rounded bg-blue-100 px-1 py-0.5 font-mono">{"{{variable}}"}</code> syntax to insert dynamic content like student names, course titles, and links.
+            </p>
+            <p>
+              Templates use HTML — you can style emails with colors, buttons, and images.
+              Click the <strong>Preview</strong> tab in the edit modal to see how the email will look.
+            </p>
+            <p>
+              <strong>OTP</strong> and <strong>Password Reset</strong> templates cannot be disabled (locked) since they are critical for account security.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Template cards */}
