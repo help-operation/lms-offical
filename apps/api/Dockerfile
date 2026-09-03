@@ -23,6 +23,6 @@ COPY --from=build /repo /repo
 WORKDIR /repo/apps/api
 EXPOSE 3000
 
-# Run pending DB migrations (HTTP driver, not drizzle-kit), then boot the API.
-# tsc emits to dist/src/** because there are .ts files at the apps/api root.
-CMD ["sh", "-c", "node dist/src/db/migrate.js && node dist/src/main.js"]
+# Coolify injects runtime env vars via docker-compose, but process.env
+# must see them.  The migrate + boot CMD reads DATABASE_URL at runtime.
+CMD ["sh", "-c", "echo DATABASE_URL=${DATABASE_URL:+SET} && node dist/src/db/migrate.js && node dist/src/main.js"]
