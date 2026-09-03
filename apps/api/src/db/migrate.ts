@@ -11,7 +11,10 @@ async function main() {
     process.exit(1);
   }
 
-  const pool = new Pool({ connectionString: url });
+  const pool = new Pool({
+    connectionString: url,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  });
   const db = drizzle(pool);
 
   console.log('[migrate] applying migrations…');
