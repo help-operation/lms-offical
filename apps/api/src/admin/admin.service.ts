@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, sql, ilike, or, and, inArray, gte, lte, isNotNull, type SQL } from 'drizzle-orm';
+import { desc, eq, sql, ilike, or, and, inArray, notInArray, gte, lte, isNotNull, type SQL } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
@@ -141,20 +141,21 @@ export class AdminService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const allRoles = ['GUEST', 'STUDENT', 'INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
+    const adminOnlyRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
+    const adminWhere = inArray(users.role, adminOnlyRoles as any);
 
     const [totalRow, activeRow, suspendedRow, newThisMonthRow, ...roleRows] = await Promise.all([
-      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users),
-      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(eq(users.status, 'active')),
-      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(eq(users.status, 'suspended')),
-      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(gte(users.createdAt, startOfMonth)),
-      ...allRoles.map((role) =>
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(adminWhere),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(adminWhere, eq(users.status, 'active'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(adminWhere, eq(users.status, 'suspended'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(adminWhere, gte(users.createdAt, startOfMonth))),
+      ...adminOnlyRoles.map((role) =>
         this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(eq(users.role, role))
       ),
     ]);
 
     const roles: Record<string, number> = {};
-    allRoles.forEach((role, i) => {
+    adminOnlyRoles.forEach((role, i) => {
       roles[role] = roleRows[i]?.count ?? 0;
     });
 
@@ -176,6 +177,10 @@ export class AdminService {
       defaultSort: desc(users.createdAt),
     });
 
+    const adminRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'];
+    const baseWhere = notInArray(users.role, adminRoles);
+    const combinedWhere = q.where ? and(baseWhere, q.where) : baseWhere;
+
     const [rows, [countRow]] = await Promise.all([
       this.db
         .select({
@@ -190,14 +195,14 @@ export class AdminService {
           createdAt: users.createdAt,
         })
         .from(users)
-        .where(q.where)
+        .where(combinedWhere)
         .orderBy(q.orderBy)
         .limit(q.limit)
         .offset(q.offset),
       this.db
         .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
         .from(users)
-        .where(q.where),
+        .where(combinedWhere),
     ]);
 
     return formatPaginatedResponse(rows, countRow?.count ?? 0, q.page, q.perPage);

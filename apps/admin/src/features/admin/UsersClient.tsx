@@ -30,7 +30,7 @@ const avatarColors = [
   "bg-amber-400", "bg-green-400", "bg-rose-400",
 ];
 
-const ROLES = ["GUEST", "STUDENT", "INSTRUCTOR", "SUPER_ADMIN", "EDITOR", "MARKETING_OFFICER", "ACCOUNTANT"];
+const ROLES = ["INSTRUCTOR", "SUPER_ADMIN", "EDITOR", "MARKETING_OFFICER", "ACCOUNTANT"];
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
