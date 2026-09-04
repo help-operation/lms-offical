@@ -233,24 +233,6 @@ export function StudentsClient({ initialData, initialStats }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {kpiCards.map((card) => (
-          <div
-            key={card.label}
-            className={`rounded-2xl ${card.cardBg} p-4 border border-white/60 dark:border-slate-800 shadow-sm flex items-center gap-3`}
-          >
-            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${card.iconBg} shrink-0`}>
-              <card.icon className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{card.label}</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.total === 0 && card.label === "Online Now" ? "0" : card.value.toLocaleString()}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Header Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -273,11 +255,26 @@ export function StudentsClient({ initialData, initialStats }: Props) {
         </div>
       </div>
 
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {kpiCards.map((card) => (
+          <div
+            key={card.label}
+            className={`rounded-2xl ${card.cardBg} p-4 border border-white/60 dark:border-slate-800 shadow-sm flex items-center gap-3`}
+          >
+            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${card.iconBg} shrink-0`}>
+              <card.icon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{card.label}</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.total === 0 && card.label === "Online Now" ? "0" : card.value.toLocaleString()}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 dark:border-slate-800">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">All Students</h2>
-        </div>
         <div className="px-6 pt-5 pb-6">
           <DataTable
             data={students}
@@ -297,6 +294,15 @@ export function StudentsClient({ initialData, initialStats }: Props) {
                 options: [
                   { label: "Active", value: "active" },
                   { label: "Suspended", value: "suspended" },
+                ],
+              },
+              {
+                key: "paymentStatus",
+                label: "All Payment",
+                options: [
+                  { label: "Paid", value: "paid" },
+                  { label: "Partial", value: "partial" },
+                  { label: "Unpaid", value: "unpaid" },
                 ],
               },
             ]}
