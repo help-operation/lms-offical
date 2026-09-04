@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { fetchGuestsAction, fetchGuestsStatsAction } from "@/features/students/actions/students.actions";
+import { fetchGuestsAction } from "@/features/students/actions/students.actions";
 import type { Student } from "@/features/students/types";
-import type { TableQueryParams } from "@/features/admin/api";
+import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
 import {
   Users, UserCheck, UserX, CalendarClock, Calendar, Eye, Phone, Mail, Copy, Check,
@@ -54,20 +54,23 @@ function CopyableField({ icon: Icon, value }: { icon: typeof Mail; value: string
   );
 }
 
-export function GuestsClient() {
-  const { formatDate } = useLocalization();
-  const [guests, setGuests] = useState<Student[]>([]);
-  const [pagination, setPagination] = useState<TablePagination>({
-    total: 0, per_page: 20, current_page: 1, last_page: 1, from: 0, to: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, active: 0, suspended: 0, newThisMonth: 0, newThisWeek: 0 });
+interface Props {
+  initialData: PaginatedResponse<Student>;
+  initialStats?: {
+    total: number;
+    active: number;
+    suspended: number;
+    newThisMonth: number;
+    newThisWeek: number;
+  };
+}
 
-  useEffect(() => {
-    fetchGuestsStatsAction().then((res) => {
-      if (res.success && res.data) setStats(res.data);
-    }).catch(() => {});
-  }, []);
+export function GuestsClient({ initialData, initialStats }: Props) {
+  const { formatDate } = useLocalization();
+  const [guests, setGuests] = useState<Student[]>(initialData.data);
+  const [pagination, setPagination] = useState<TablePagination>(initialData.pagination);
+  const [isLoading, setIsLoading] = useState(false);
+  const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, newThisWeek: 0 });
 
   async function fetchGuests(params: TableQueryParams) {
     setIsLoading(true);
