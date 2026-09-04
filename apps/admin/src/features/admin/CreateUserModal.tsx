@@ -6,6 +6,16 @@ import { toast } from "@repo/ui/sonner";
 import { createUserAction } from "./actions/admin.actions";
 import type { AdminUser } from "./api";
 
+const ALL_ROLES = [
+  { value: "GUEST", label: "Guest" },
+  { value: "STUDENT", label: "Student" },
+  { value: "INSTRUCTOR", label: "Instructor" },
+  { value: "SUPER_ADMIN", label: "Super Admin" },
+  { value: "EDITOR", label: "Editor" },
+  { value: "MARKETING_OFFICER", label: "Marketing Officer" },
+  { value: "ACCOUNTANT", label: "Accountant" },
+];
+
 export function CreateUserModal({
   onClose,
   onCreated,
@@ -15,8 +25,17 @@ export function CreateUserModal({
   onCreated: (user: AdminUser) => void;
   defaultRole?: string;
 }) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    password: "",
+    role: defaultRole,
+  });
   const [isPending, startTransition] = useTransition();
+
+  const isStudentContext = defaultRole === "STUDENT";
 
   function handleCreate() {
     if (!form.firstName.trim()) { toast.error("First name is required"); return; }
@@ -30,10 +49,10 @@ export function CreateUserModal({
         email:     form.email.trim()  || undefined,
         phone:     form.phone.trim()  || undefined,
         password:  form.password,
-        role:      defaultRole,
+        role:      form.role,
       });
       if (res.success) {
-        toast.success(defaultRole === "STUDENT" ? "Student created" : "User created");
+        toast.success(isStudentContext ? "Student created" : "User created");
         onCreated(res.data);
       } else {
         toast.error(res.message ?? "Failed to create user");
@@ -52,7 +71,7 @@ export function CreateUserModal({
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 shrink-0">
           <h2 className="text-sm font-bold text-gray-900 dark:text-white">
-            {defaultRole === "STUDENT" ? "Add Student" : "Add User"}
+            {isStudentContext ? "Add Student" : "Add User"}
           </h2>
           <button
             onClick={onClose}
@@ -70,11 +89,21 @@ export function CreateUserModal({
           <Field label="Email"    value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="name@email.com" autoComplete="off" />
           <Field label="Phone"    value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="01XXXXXXXXX" autoComplete="off" />
           <Field label="Password *" value={form.password} onChange={(v) => setForm({ ...form, password: v })} type="password" placeholder="Min. 6 characters" autoComplete="new-password" />
-          <p className="text-[11px] text-gray-400 dark:text-slate-500">
-            {defaultRole === "STUDENT"
-              ? "New student will be created with the Student role."
-              : "New users are created with the Guest role and can be promoted later."}
-          </p>
+
+          {!isStudentContext && (
+            <label className="block">
+              <span className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Role *</span>
+              <select
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand"
+              >
+                {ALL_ROLES.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 dark:border-slate-800 shrink-0">
@@ -90,7 +119,7 @@ export function CreateUserModal({
             disabled={isPending}
             className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors disabled:opacity-60"
           >
-            <UserPlus className="h-4 w-4" /> {defaultRole === "STUDENT" ? "Create Student" : "Create User"}
+            <UserPlus className="h-4 w-4" /> {isStudentContext ? "Create Student" : "Create User"}
           </button>
         </div>
       </div>
