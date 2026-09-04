@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, sql, ilike, or, and, inArray, gte, lte, type SQL } from 'drizzle-orm';
+import { desc, eq, sql, ilike, or, and, inArray, gte, lte, isNotNull, type SQL } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
@@ -2470,6 +2470,29 @@ export class AdminService {
   }
 
   // ─── Student Management ───────────────────────────────────────────────────
+
+  async getStudentStats() {
+    const studentWhere = eq(users.role, 'STUDENT');
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalRow, activeRow, suspendedRow, newThisMonthRow, onlineNowRow] = await Promise.all([
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(studentWhere),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(studentWhere, eq(users.status, 'active'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(studentWhere, eq(users.status, 'suspended'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(studentWhere, gte(users.createdAt, startOfMonth))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(studentWhere, eq(users.status, 'active'), isNotNull(users.lastLoginAt), gte(users.lastLoginAt, new Date(Date.now() - 5 * 60 * 1000)))),
+    ]);
+
+    return {
+      total:        totalRow?.count ?? 0,
+      active:       activeRow?.count ?? 0,
+      suspended:    suspendedRow?.count ?? 0,
+      newThisMonth: newThisMonthRow?.count ?? 0,
+      onlineNow:    onlineNowRow?.count ?? 0,
+    };
+  }
 
   async listStudents(params: TableQueryInput = {}) {
     const q = buildTableQuery(params, {

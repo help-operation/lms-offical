@@ -491,6 +491,13 @@ export class AdminController {
   // ─── Student Management ───────────────────────────────────────────────────
 
   @RequirePermissions('view_students')
+  @Get('students/stats')
+  @Message('Student stats fetched')
+  getStudentStats() {
+    return this.adminService.getStudentStats();
+  }
+
+  @RequirePermissions('view_students')
   @Get('students')
   @Message('Students fetched')
   listStudents(@Query() query: TableQueryInput) {

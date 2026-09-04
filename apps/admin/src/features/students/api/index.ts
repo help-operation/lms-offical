@@ -3,6 +3,9 @@ import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import type { Student, StudentDetail } from "../types";
 
 export const studentsApi = {
+  stats: () =>
+    apiRequest<{ total: number; active: number; suspended: number; newThisMonth: number; onlineNow: number }>(`/admin/students/stats`),
+
   list: (params?: TableQueryParams) => {
     const q = new URLSearchParams();
     if (params) {
