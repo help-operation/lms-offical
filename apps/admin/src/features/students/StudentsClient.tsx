@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { fetchStudentsAction } from "@/features/students/actions/students.actions";
+import { fetchStudentsAction, fetchStudentsStatsAction } from "@/features/students/actions/students.actions";
 import type { Student } from "./types";
 import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import { useLocalization } from "@/shared/context/LocalizationContext";
-import { studentsApi } from "./api";
 
 interface Props {
   initialData: PaginatedResponse<Student>;
@@ -110,7 +109,9 @@ export function StudentsClient({ initialData, initialStats }: Props) {
   const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, onlineNow: 0 });
 
   useEffect(() => {
-    studentsApi.stats().then((res) => setStats(res.data)).catch(() => {});
+    fetchStudentsStatsAction().then((res) => {
+      if (res.success && res.data) setStats(res.data);
+    }).catch(() => {});
   }, []);
 
   async function fetchStudents(params: TableQueryParams) {

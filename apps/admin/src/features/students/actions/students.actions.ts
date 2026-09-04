@@ -15,6 +15,15 @@ function extractMessage(err: unknown): string {
   return "Something went wrong";
 }
 
+export async function fetchStudentsStatsAction() {
+  try {
+    const res = await studentsApi.stats();
+    return { success: true as const, data: res.data };
+  } catch (err) {
+    return { success: false as const, message: extractMessage(err) };
+  }
+}
+
 export async function fetchStudentsAction(params: TableQueryParams) {
   try {
     const res = await studentsApi.list(params);
