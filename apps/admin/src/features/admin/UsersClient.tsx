@@ -7,15 +7,23 @@ import {
   fetchAllUsersForExportAction,
 } from "@/features/admin/actions/admin.actions";
 import type { AdminUser, PaginatedResponse, TableQueryParams } from "@/features/admin/api";
-import { Eye, UserPlus } from "lucide-react";
+import { Eye, UserPlus, Users, UserCheck, UserX, CalendarClock } from "lucide-react";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
-import { formatUserDate } from "./utils/export-users";
 import { CreateUserModal } from "./CreateUserModal";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import type { ExportField } from "@/utils/table-export";
 import { useLocalization } from "@/shared/context/LocalizationContext";
 
-interface Props { initialData: PaginatedResponse<AdminUser> }
+interface Props {
+  initialData: PaginatedResponse<AdminUser>;
+  initialStats?: {
+    total: number;
+    active: number;
+    suspended: number;
+    newThisMonth: number;
+    roles: Record<string, number>;
+  };
+}
 
 const avatarColors = [
   "bg-pink-400", "bg-violet-400", "bg-blue-400",
@@ -117,13 +125,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-/**
- * Route to the richer Student detail page when this row really is a student
- * (Student.id is the same users.id, confirmed by the students API). There is
- * no equivalent shortcut for INSTRUCTOR: Teachers live in the separate
- * admin_users table with an unrelated id sequence, so a users.id can't be
- * used to look up a teacher record — those fall through to the generic page.
- */
 function viewHref(user: AdminUser): string {
   if (user.role === "STUDENT") return `/admin/students/${user.id}`;
   return `/admin/users/${user.id}`;
@@ -131,7 +132,7 @@ function viewHref(user: AdminUser): string {
 
 // ─── Main Client ──────────────────────────────────────────────────────────────
 
-export function UsersClient({ initialData }: Props) {
+export function UsersClient({ initialData, initialStats }: Props) {
   const { formatDate } = useLocalization();
   const [users, setUsers]             = useState(initialData.data);
   const [pagination, setPagination]   = useState<TablePagination>(initialData.pagination);
@@ -142,8 +143,8 @@ export function UsersClient({ initialData }: Props) {
   });
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(DEFAULT_VISIBLE));
   const [showCreate, setShowCreate] = useState(false);
+  const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, roles: {} });
 
-  // Derive export fields from visible columns (preserves ALL_COLS order)
   const exportFields: ExportField<AdminUser>[] = ALL_COLS
     .filter((c) => visibleCols.has(c.key))
     .flatMap((c) => c.exportFields ?? []);
@@ -167,10 +168,8 @@ export function UsersClient({ initialData }: Props) {
     }
   }
 
-  // Build table columns dynamically based on visibleCols (preserves order)
   const columns: Column<AdminUser>[] = [
     ...ALL_COLS.filter((c) => visibleCols.has(c.key)).map((col, _, arr) => {
-      const isFirst = arr[0]?.key === col.key;
       if (col.key === "id") return {
         key: "id" as keyof AdminUser,
         header: "ID",
@@ -225,7 +224,6 @@ export function UsersClient({ initialData }: Props) {
       };
       return { key: col.key as keyof AdminUser, header: col.header };
     }),
-    // Action column always last, never exported
     {
       key: "actions",
       header: "Actions",
@@ -243,15 +241,22 @@ export function UsersClient({ initialData }: Props) {
     },
   ];
 
+  const kpiCards = [
+    { label: "Total Users", value: stats.total, icon: Users, iconBg: "bg-gradient-to-br from-brand-500 to-brand-600", cardBg: "bg-gradient-to-br from-brand-50/80 to-white dark:from-brand-500/10 dark:to-slate-900" },
+    { label: "Active", value: stats.active, icon: UserCheck, iconBg: "bg-gradient-to-br from-emerald-500 to-emerald-600", cardBg: "bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-500/10 dark:to-slate-900" },
+    { label: "Suspended", value: stats.suspended, icon: UserX, iconBg: "bg-gradient-to-br from-red-500 to-red-600", cardBg: "bg-gradient-to-br from-red-50/80 to-white dark:from-red-500/10 dark:to-slate-900" },
+    { label: "New This Month", value: stats.newThisMonth, icon: CalendarClock, iconBg: "bg-gradient-to-br from-blue-500 to-blue-600", cardBg: "bg-gradient-to-br from-blue-50/80 to-white dark:from-blue-500/10 dark:to-slate-900" },
+  ];
+
   return (
     <div className="space-y-5">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
+      {/* Single Header Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
           <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Admin & staff accounts</p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <ColumnsDropdown
             cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
             visible={visibleCols}
@@ -283,6 +288,25 @@ export function UsersClient({ initialData }: Props) {
         />
       )}
 
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {kpiCards.map((card) => (
+          <div
+            key={card.label}
+            className={`rounded-2xl ${card.cardBg} p-4 border border-white/60 dark:border-slate-800 shadow-sm flex items-center gap-3`}
+          >
+            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${card.iconBg} shrink-0`}>
+              <card.icon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{card.label}</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{card.value.toLocaleString()}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
         <div className="px-6 pt-5 pb-6">
           <DataTable
@@ -318,4 +342,9 @@ export function UsersClient({ initialData }: Props) {
       </div>
     </div>
   );
+}
+
+function formatUserDate(date: string | null | undefined): string {
+  if (!date) return "";
+  return new Date(date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }

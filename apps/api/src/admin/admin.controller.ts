@@ -41,6 +41,13 @@ export class AdminController {
 
   // ─── User management ──────────────────────────────────────────────────────
 
+  @Get('users/stats')
+  @RequirePermissions('view_users')
+  @Message('User stats fetched')
+  getUserStats() {
+    return this.adminService.getUserStats();
+  }
+
   @Get('users')
   @RequirePermissions('view_users')
   @Message('Users fetched')

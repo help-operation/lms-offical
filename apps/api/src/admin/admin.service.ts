@@ -137,6 +137,36 @@ export class AdminService {
 
   // ─── User Management ──────────────────────────────────────────────────────
 
+  async getUserStats() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const allRoles = ['GUEST', 'STUDENT', 'INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
+
+    const [totalRow, activeRow, suspendedRow, newThisMonthRow, ...roleRows] = await Promise.all([
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(eq(users.status, 'active')),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(eq(users.status, 'suspended')),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(gte(users.createdAt, startOfMonth)),
+      ...allRoles.map((role) =>
+        this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(eq(users.role, role))
+      ),
+    ]);
+
+    const roles: Record<string, number> = {};
+    allRoles.forEach((role, i) => {
+      roles[role] = roleRows[i]?.count ?? 0;
+    });
+
+    return {
+      total:        totalRow?.count ?? 0,
+      active:       activeRow?.count ?? 0,
+      suspended:    suspendedRow?.count ?? 0,
+      newThisMonth: newThisMonthRow?.count ?? 0,
+      roles,
+    };
+  }
+
   async listUsers(params: TableQueryInput = {}) {
     const q = buildTableQuery(params, {
       searchable: [users.firstName, users.lastName, users.email, users.phone],

@@ -126,6 +126,8 @@ export interface PickerCourse {
 export const adminApi = {
   stats: () => apiRequest<PlatformStats>("/admin/stats"),
 
+  userStats: () => apiRequest<{ total: number; active: number; suspended: number; newThisMonth: number; roles: Record<string, number> }>("/admin/users/stats"),
+
   users: (params?: TableQueryParams) => {
     const q = new URLSearchParams();
     if (params) {
