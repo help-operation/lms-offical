@@ -160,10 +160,10 @@ export class AdminService {
     });
 
     return {
-      total:        totalRow?.count ?? 0,
-      active:       activeRow?.count ?? 0,
-      suspended:    suspendedRow?.count ?? 0,
-      newThisMonth: newThisMonthRow?.count ?? 0,
+      total:        totalRow[0]?.count ?? 0,
+      active:       activeRow[0]?.count ?? 0,
+      suspended:    suspendedRow[0]?.count ?? 0,
+      newThisMonth: newThisMonthRow[0]?.count ?? 0,
       roles,
     };
   }
@@ -2523,11 +2523,11 @@ export class AdminService {
     ]);
 
     return {
-      total:        totalRow?.count ?? 0,
-      active:       activeRow?.count ?? 0,
-      suspended:    suspendedRow?.count ?? 0,
-      newThisMonth: newThisMonthRow?.count ?? 0,
-      onlineNow:    onlineNowRow?.count ?? 0,
+      total:        totalRow[0]?.count ?? 0,
+      active:       activeRow[0]?.count ?? 0,
+      suspended:    suspendedRow[0]?.count ?? 0,
+      newThisMonth: newThisMonthRow[0]?.count ?? 0,
+      onlineNow:    onlineNowRow[0]?.count ?? 0,
     };
   }
 
@@ -2824,11 +2824,11 @@ export class AdminService {
     ]);
 
     return {
-      total:        totalRow?.count ?? 0,
-      active:       activeRow?.count ?? 0,
-      suspended:    suspendedRow?.count ?? 0,
-      newThisMonth: newThisMonthRow?.count ?? 0,
-      newThisWeek:  newThisWeekRow?.count ?? 0,
+      total:        totalRow[0]?.count ?? 0,
+      active:       activeRow[0]?.count ?? 0,
+      suspended:    suspendedRow[0]?.count ?? 0,
+      newThisMonth: newThisMonthRow[0]?.count ?? 0,
+      newThisWeek:  newThisWeekRow[0]?.count ?? 0,
     };
   }
 
