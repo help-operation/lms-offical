@@ -23,6 +23,9 @@ export const userRoleEnum = pgEnum('user_role', [
   'STUDENT',
   'INSTRUCTOR',
   'SUPER_ADMIN',
+  'EDITOR',
+  'MARKETING_OFFICER',
+  'ACCOUNTANT',
 ]);
 
 export const adminRoleEnum = pgEnum('admin_role', ['SUPER_ADMIN', 'INSTRUCTOR']);

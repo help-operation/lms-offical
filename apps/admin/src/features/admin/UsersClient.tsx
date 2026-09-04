@@ -22,7 +22,7 @@ const avatarColors = [
   "bg-amber-400", "bg-green-400", "bg-rose-400",
 ];
 
-const ROLES = ["GUEST", "STUDENT", "INSTRUCTOR", "SUPER_ADMIN"];
+const ROLES = ["GUEST", "STUDENT", "INSTRUCTOR", "SUPER_ADMIN", "EDITOR", "MARKETING_OFFICER", "ACCOUNTANT"];
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
@@ -80,14 +80,26 @@ const DEFAULT_VISIBLE = new Set(ALL_COLS.filter((c) => c.defaultVisible).map((c)
 
 function RoleBadge({ role }: { role: string }) {
   const map: Record<string, string> = {
-    SUPER_ADMIN: "bg-violet-100 text-violet-700 dark:bg-brand/15 dark:text-brand",
-    INSTRUCTOR:  "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
-    STUDENT:     "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
-    GUEST:       "bg-gray-100 text-gray-500 dark:bg-slate-500/15 dark:text-slate-400",
+    SUPER_ADMIN:       "bg-violet-100 text-violet-700 dark:bg-brand/15 dark:text-brand",
+    INSTRUCTOR:        "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+    EDITOR:            "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
+    MARKETING_OFFICER: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400",
+    ACCOUNTANT:        "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400",
+    STUDENT:           "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+    GUEST:             "bg-gray-100 text-gray-500 dark:bg-slate-500/15 dark:text-slate-400",
+  };
+  const labels: Record<string, string> = {
+    SUPER_ADMIN: "Super Admin",
+    INSTRUCTOR: "Instructor",
+    EDITOR: "Editor",
+    MARKETING_OFFICER: "Marketing",
+    ACCOUNTANT: "Accountant",
+    STUDENT: "Student",
+    GUEST: "Guest",
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold ${map[role] ?? "bg-gray-100 text-gray-600 dark:bg-slate-500/15 dark:text-slate-400"}`}>
-      {role}
+      {labels[role] ?? role}
     </span>
   );
 }
@@ -237,7 +249,7 @@ export function UsersClient({ initialData }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
-          <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Let&apos;s check your update today</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Admin & staff accounts</p>
         </div>
         <div className="flex items-center gap-2.5">
           <ColumnsDropdown
@@ -272,9 +284,6 @@ export function UsersClient({ initialData }: Props) {
       )}
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 dark:border-slate-800">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">All Users</h2>
-        </div>
         <div className="px-6 pt-5 pb-6">
           <DataTable
             data={users}

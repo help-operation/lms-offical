@@ -559,6 +559,22 @@ export class AdminController {
     return result;
   }
 
+  // ─── Guest Management ────────────────────────────────────────────────────
+
+  @RequirePermissions('view_students')
+  @Get('students/guests/stats')
+  @Message('Guest stats fetched')
+  getGuestStats() {
+    return this.adminService.getGuestStats();
+  }
+
+  @RequirePermissions('view_students')
+  @Get('students/guests')
+  @Message('Guests fetched')
+  listGuests(@Query() query: TableQueryInput) {
+    return this.adminService.listGuests(query);
+  }
+
   // ─── Course Interest Tracking ──────────────────────────────────────────────
 
   @Get('interests')

@@ -233,26 +233,20 @@ export function StudentsClient({ initialData, initialStats }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Students</h1>
-          <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Manage all student accounts</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <ColumnsDropdown
-            cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
-            visible={visibleCols}
-            onChange={setVisibleCols}
-          />
-          <ExportDropdown
-            pageData={students}
-            fields={exportFields}
-            fetchAll={fetchAllForExport}
-            filename={`students-${new Date().toISOString().slice(0, 10)}`}
-            exportTitle="Students Export"
-          />
-        </div>
+      {/* Header Row with Controls */}
+      <div className="flex items-center justify-end gap-2">
+        <ColumnsDropdown
+          cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
+          visible={visibleCols}
+          onChange={setVisibleCols}
+        />
+        <ExportDropdown
+          pageData={students}
+          fields={exportFields}
+          fetchAll={fetchAllForExport}
+          filename={`students-${new Date().toISOString().slice(0, 10)}`}
+          exportTitle="Students Export"
+        />
       </div>
 
       {/* KPI Cards */}

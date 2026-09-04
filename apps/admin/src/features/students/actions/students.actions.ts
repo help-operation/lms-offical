@@ -74,3 +74,21 @@ export async function deleteStudentAction(id: number) {
     return { success: false as const, message: extractMessage(err) };
   }
 }
+
+export async function fetchGuestsStatsAction() {
+  try {
+    const res = await studentsApi.guestStats();
+    return { success: true as const, data: res.data };
+  } catch (err) {
+    return { success: false as const, message: extractMessage(err) };
+  }
+}
+
+export async function fetchGuestsAction(params: TableQueryParams) {
+  try {
+    const res = await studentsApi.listGuests(params);
+    return { success: true as const, data: res.data };
+  } catch (err) {
+    return { success: false as const, message: extractMessage(err) };
+  }
+}

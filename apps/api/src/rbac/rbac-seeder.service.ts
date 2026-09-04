@@ -5,6 +5,9 @@ import { DB_TOKEN } from 'src/db/db.module';
 import { adminUsers, permissions, rolePermissions, roles } from 'src/db/schema';
 import {
   INSTRUCTOR_DEFAULT_PERMISSIONS,
+  EDITOR_DEFAULT_PERMISSIONS,
+  MARKETING_OFFICER_DEFAULT_PERMISSIONS,
+  ACCOUNTANT_DEFAULT_PERMISSIONS,
   LEGACY_PERMISSION_MIGRATION,
   PERMISSION_CATALOG,
   SYSTEM_ROLES,
@@ -27,11 +30,20 @@ export class RbacSeederService implements OnModuleInit {
     try {
       await this.seedPermissions();
       await this.migrateLegacyPermissions();
-      const { superAdminId, instructorId, instructorCreated } =
+      const { superAdminId, instructorId, editorId, marketingId, accountantId, instructorCreated, editorCreated, marketingCreated, accountantCreated } =
         await this.seedRoles();
       await this.syncSuperAdminPermissions(superAdminId);
       if (instructorCreated) {
-        await this.seedInstructorPermissions(instructorId);
+        await this.seedRoleDefaultPermissions(instructorId, INSTRUCTOR_DEFAULT_PERMISSIONS);
+      }
+      if (editorCreated) {
+        await this.seedRoleDefaultPermissions(editorId, EDITOR_DEFAULT_PERMISSIONS);
+      }
+      if (marketingCreated) {
+        await this.seedRoleDefaultPermissions(marketingId, MARKETING_OFFICER_DEFAULT_PERMISSIONS);
+      }
+      if (accountantCreated) {
+        await this.seedRoleDefaultPermissions(accountantId, ACCOUNTANT_DEFAULT_PERMISSIONS);
       }
       await this.backfillAdminRoleIds(superAdminId, instructorId);
       this.logger.log('RBAC seed complete');
@@ -111,18 +123,33 @@ export class RbacSeederService implements OnModuleInit {
     );
   }
 
-  /** Ensure both system roles exist; report whether Instructor was just created. */
+  /** Ensure all system roles exist; report which ones were just created. */
   private async seedRoles(): Promise<{
     superAdminId: number;
     instructorId: number;
+    editorId: number;
+    marketingId: number;
+    accountantId: number;
     instructorCreated: boolean;
+    editorCreated: boolean;
+    marketingCreated: boolean;
+    accountantCreated: boolean;
   }> {
     const superAdminId = await this.ensureRole(SYSTEM_ROLES.superAdmin);
     const instructor = await this.ensureRoleTracked(SYSTEM_ROLES.instructor);
+    const editor = await this.ensureRoleTracked(SYSTEM_ROLES.editor);
+    const marketing = await this.ensureRoleTracked(SYSTEM_ROLES.marketingOfficer);
+    const accountant = await this.ensureRoleTracked(SYSTEM_ROLES.accountant);
     return {
       superAdminId: superAdminId.id,
       instructorId: instructor.id,
+      editorId: editor.id,
+      marketingId: marketing.id,
+      accountantId: accountant.id,
       instructorCreated: instructor.created,
+      editorCreated: editor.created,
+      marketingCreated: marketing.created,
+      accountantCreated: accountant.created,
     };
   }
 
@@ -176,18 +203,18 @@ export class RbacSeederService implements OnModuleInit {
       .onConflictDoNothing();
   }
 
-  /** Grant the default permission set to a freshly created Instructor role. */
-  private async seedInstructorPermissions(instructorId: number): Promise<void> {
+  /** Grant default permissions to a freshly created role (only on first creation). */
+  private async seedRoleDefaultPermissions(roleId: number, slugs: string[]): Promise<void> {
     const defaults = await this.db
       .select({ id: permissions.id })
       .from(permissions)
-      .where(inArray(permissions.slug, INSTRUCTOR_DEFAULT_PERMISSIONS));
+      .where(inArray(permissions.slug, slugs));
     if (defaults.length === 0) return;
 
     await this.db
       .insert(rolePermissions)
       .values(
-        defaults.map((p) => ({ roleId: instructorId, permissionId: p.id })),
+        defaults.map((p) => ({ roleId, permissionId: p.id })),
       )
       .onConflictDoNothing();
   }

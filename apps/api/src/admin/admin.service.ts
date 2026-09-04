@@ -2767,6 +2767,81 @@ export class AdminService {
     return { success: true };
   }
 
+  // ─── Guest Management ────────────────────────────────────────────────────
+
+  async getGuestStats() {
+    const guestWhere = eq(users.role, 'GUEST');
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setUTCHours(0, 0, 0, 0);
+
+    const [totalRow, activeRow, suspendedRow, newThisMonthRow, newThisWeekRow] = await Promise.all([
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(guestWhere),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(guestWhere, eq(users.status, 'active'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(guestWhere, eq(users.status, 'suspended'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(guestWhere, gte(users.createdAt, startOfMonth))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(guestWhere, gte(users.createdAt, startOfWeek))),
+    ]);
+
+    return {
+      total:        totalRow?.count ?? 0,
+      active:       activeRow?.count ?? 0,
+      suspended:    suspendedRow?.count ?? 0,
+      newThisMonth: newThisMonthRow?.count ?? 0,
+      newThisWeek:  newThisWeekRow?.count ?? 0,
+    };
+  }
+
+  async listGuests(params: TableQueryInput = {}) {
+    const q = buildTableQuery(params, {
+      searchable: [users.firstName, users.lastName, users.email, users.phone],
+      sortable:   { createdAt: users.createdAt, firstName: users.firstName, email: users.email, lastLoginAt: users.lastLoginAt },
+      filterable: {
+        status: users.status,
+        lastLoginFrom: (value: string) => gte(users.lastLoginAt, new Date(value)) as SQL,
+        lastLoginTo: (value: string) => {
+          const endOfDay = new Date(value);
+          endOfDay.setUTCHours(23, 59, 59, 999);
+          return lte(users.lastLoginAt, endOfDay) as SQL;
+        },
+      },
+      dateColumn:  users.createdAt,
+      defaultSort: desc(users.createdAt),
+    });
+
+    const guestWhere = eq(users.role, 'GUEST');
+    const combinedWhere = q.where ? and(guestWhere, q.where) : guestWhere;
+
+    const [rows, [countRow]] = await Promise.all([
+      this.db
+        .select({
+          id:          users.id,
+          firstName:   users.firstName,
+          lastName:    users.lastName,
+          email:       users.email,
+          phone:       users.phone,
+          status:      users.status,
+          avatar:      users.avatar,
+          createdAt:   users.createdAt,
+          lastLoginAt: users.lastLoginAt,
+        })
+        .from(users)
+        .where(combinedWhere)
+        .orderBy(q.orderBy)
+        .limit(q.limit)
+        .offset(q.offset),
+      this.db
+        .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
+        .from(users)
+        .where(combinedWhere),
+    ]);
+
+    return formatPaginatedResponse(rows, countRow?.count ?? 0, q.page, q.perPage);
+  }
+
   /** Admin — paginated course interest list, joinable across users + courses. */
   async listInterests(opts: {
     search?: string;

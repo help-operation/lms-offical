@@ -16,6 +16,19 @@ export const studentsApi = {
     return apiRequest<PaginatedResponse<Student>>(`/admin/students${q.toString() ? `?${q}` : ""}`);
   },
 
+  guestStats: () =>
+    apiRequest<{ total: number; active: number; suspended: number; newThisMonth: number; newThisWeek: number }>(`/admin/students/guests/stats`),
+
+  listGuests: (params?: TableQueryParams) => {
+    const q = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
+      });
+    }
+    return apiRequest<PaginatedResponse<Student>>(`/admin/students/guests${q.toString() ? `?${q}` : ""}`);
+  },
+
   get: (id: number) =>
     apiRequest<StudentDetail>(`/admin/students/${id}`),
 
