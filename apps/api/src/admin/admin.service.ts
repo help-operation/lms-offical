@@ -270,7 +270,7 @@ export class AdminService {
     return user;
   }
 
-  async createUser(dto: { firstName: string; lastName: string; email?: string; phone?: string; password: string }) {
+  async createUser(dto: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string }) {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Email or phone is required');
     }
@@ -285,6 +285,8 @@ export class AdminService {
     }
 
     const hash = await bcrypt.hash(dto.password, 10);
+    const validRoles = ['GUEST', 'STUDENT', 'INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'];
+    const role = validRoles.includes(dto.role ?? '') ? dto.role! : 'GUEST';
 
     const [created] = await this.db
       .insert(users)
@@ -294,7 +296,7 @@ export class AdminService {
         email:     dto.email || null,
         phone:     dto.phone || null,
         password:  hash,
-        role:      'GUEST',
+        role:      role as any,
         status:    'active',
       })
       .returning({

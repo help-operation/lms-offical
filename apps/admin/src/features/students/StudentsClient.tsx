@@ -7,10 +7,11 @@ import type { Student } from "./types";
 import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
 import {
-  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Trash2, Phone, Mail, Copy, Check,
+  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Trash2, Phone, Mail, Copy, Check, UserPlus,
 } from "lucide-react";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import { useLocalization } from "@/shared/context/LocalizationContext";
+import { CreateUserModal } from "@/features/admin/CreateUserModal";
 
 interface Props {
   initialData: PaginatedResponse<Student>;
@@ -231,23 +232,58 @@ export function StudentsClient({ initialData, initialStats }: Props) {
     { label: "Online Now", value: stats.onlineNow, icon: Wifi, iconBg: "bg-gradient-to-br from-amber-500 to-amber-600", cardBg: "bg-gradient-to-br from-amber-50/80 to-white dark:from-amber-500/10 dark:to-slate-900" },
   ];
 
+  const [showCreate, setShowCreate] = useState(false);
+
   return (
     <div className="space-y-5">
-      {/* Header Row with Controls */}
-      <div className="flex items-center justify-end gap-2">
-        <ColumnsDropdown
-          cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
-          visible={visibleCols}
-          onChange={setVisibleCols}
-        />
-        <ExportDropdown
-          pageData={students}
-          fields={exportFields}
-          fetchAll={fetchAllForExport}
-          filename={`students-${new Date().toISOString().slice(0, 10)}`}
-          exportTitle="Students Export"
-        />
+      {/* Single Header Row: Title + Tabs + Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Students</h1>
+            <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Manage students and guests</p>
+          </div>
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
+            <a href="/admin/students?tab=students" className="px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm transition-colors">
+              Students
+            </a>
+            <a href="/admin/students?tab=guests" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              Guests
+            </a>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <ColumnsDropdown
+            cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
+            visible={visibleCols}
+            onChange={setVisibleCols}
+          />
+          <ExportDropdown
+            pageData={students}
+            fields={exportFields}
+            fetchAll={fetchAllForExport}
+            filename={`students-${new Date().toISOString().slice(0, 10)}`}
+            exportTitle="Students Export"
+          />
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand dark:hover:bg-brand/90 text-white text-sm font-medium transition-colors"
+          >
+            <UserPlus className="h-4 w-4" /> New Student
+          </button>
+        </div>
       </div>
+
+      {showCreate && (
+        <CreateUserModal
+          defaultRole="STUDENT"
+          onClose={() => setShowCreate(false)}
+          onCreated={(user) => {
+            setStudents((prev) => [user as unknown as Student, ...prev]);
+            setShowCreate(false);
+          }}
+        />
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

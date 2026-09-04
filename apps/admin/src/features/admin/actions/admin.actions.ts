@@ -36,10 +36,11 @@ export async function fetchAllUsersForExportAction(params: TableQueryParams) {
   }
 }
 
-export async function createUserAction(data: { firstName: string; lastName: string; email?: string; phone?: string; password: string }) {
+export async function createUserAction(data: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string }) {
   try {
     const res = await adminApi.createUser(data);
     revalidatePath("/admin/users");
+    revalidatePath("/admin/students");
     return { success: true as const, data: res.data };
   } catch (err) {
     return { success: false as const, message: extractMessage(err) };

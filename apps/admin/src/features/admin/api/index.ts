@@ -163,7 +163,7 @@ export const adminApi = {
   getUser: (id: number) =>
     apiRequest<AdminUser>(`/admin/users/${id}`),
 
-  createUser: (data: { firstName: string; lastName: string; email?: string; phone?: string; password: string }) =>
+  createUser: (data: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string }) =>
     apiRequest<AdminUser>(`/admin/users`, {
       method: "POST",
       body: JSON.stringify(data),
