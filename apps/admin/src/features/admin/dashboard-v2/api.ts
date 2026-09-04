@@ -121,6 +121,7 @@ export interface RevenueTimeSeriesRow {
 export interface CommunicationOverview {
   sms: {
     balance: number;
+    estimatedSms: number;
     today: number;
     week: number;
     month: number;

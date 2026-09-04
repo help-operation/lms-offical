@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageSquare, Send, XCircle, Calendar, Clock } from "lucide-react";
+import { MessageSquare, Send, XCircle, Calendar, Clock, Wallet } from "lucide-react";
 import { dashboardApi, type CommunicationOverview } from "../api";
 
 export function SmsOverviewCard() {
@@ -31,8 +31,9 @@ export function SmsOverviewCard() {
   const cards = [
     {
       label: "Balance",
-      value: data.balance.toLocaleString(),
-      icon: MessageSquare,
+      value: `৳${data.balance.toFixed(2)}`,
+      sub: `~${data.estimatedSms.toLocaleString()} SMS`,
+      icon: Wallet,
       iconBg: "bg-gradient-to-br from-brand-500 to-brand-600",
       cardBg: "bg-gradient-to-br from-brand-50/80 to-white dark:from-brand-500/10 dark:to-slate-900",
     },
@@ -99,6 +100,9 @@ export function SmsOverviewCard() {
             </div>
             <p className="text-[10px] text-gray-500 dark:text-slate-400 font-medium">{card.label}</p>
             <p className="text-sm font-bold text-gray-900 dark:text-white">{card.value}</p>
+            {"sub" in card && card.sub && (
+              <p className="text-[10px] text-gray-400 dark:text-slate-500">{card.sub}</p>
+            )}
           </div>
         ))}
       </div>
