@@ -1,4 +1,4 @@
-CREATE TABLE "communication_balances" (
+CREATE TABLE IF NOT EXISTS "communication_balances" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"channel" "broadcast_channel" NOT NULL,
 	"balance" integer DEFAULT 0 NOT NULL,
