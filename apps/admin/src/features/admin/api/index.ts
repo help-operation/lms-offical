@@ -55,6 +55,24 @@ export interface AdminUser {
   role: string;
   status: string;
   avatar: string | null;
+  employeeId?: string | null;
+  department?: string | null;
+  designation?: string | null;
+  joiningDate?: string | null;
+  employmentType?: string | null;
+  dateOfBirth?: string | null;
+  nationalId?: string | null;
+  profilePicture?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  salary?: string | null;
+  bankName?: string | null;
+  bankAccountNumber?: string | null;
+  presentAddress?: string | null;
+  permanentAddress?: string | null;
+  gender?: string | null;
+  country?: string | null;
+  city?: string | null;
   createdAt: string | null;
   updatedAt?: string | null;
   lastLoginAt?: string | null;
@@ -171,7 +189,15 @@ export const adminApi = {
   getUser: (id: number) =>
     apiRequest<AdminUser>(`/admin/users/${id}`),
 
-  createUser: (data: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string; gender?: string; country?: string; city?: string }) =>
+  createUser: (data: {
+    firstName: string; lastName: string; email?: string; phone?: string; password: string;
+    role?: string; gender?: string; country?: string; city?: string;
+    department?: string; designation?: string;
+    dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
+    emergencyContactName?: string; emergencyContactPhone?: string;
+    salary?: number; bankName?: string; bankAccountNumber?: string;
+    presentAddress?: string; permanentAddress?: string;
+  }) =>
     apiRequest<AdminUser>(`/admin/users`, {
       method: "POST",
       body: JSON.stringify(data),

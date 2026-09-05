@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import {
   ChevronLeft, Mail, Phone, Pencil, Trash2, ShieldOff, ShieldCheck,
   Calendar, Clock, KeyRound, Lock, Activity, Shield, Info,
+  Briefcase, Heart, CreditCard, MapPin, User,
 } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
@@ -50,6 +51,29 @@ function Card({ title, icon: Icon, children }: { title: string; icon: typeof Inf
         <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">{title}</h3>
       </div>
       <div className="p-5">{children}</div>
+    </div>
+  );
+}
+
+const sectionColorMap = {
+  blue:   { border: "border-blue-100 dark:border-blue-500/20", bg: "bg-blue-50/40 dark:bg-blue-500/5", iconBg: "bg-blue-100 dark:bg-blue-500/15", iconText: "text-blue-600 dark:text-blue-400" },
+  green:  { border: "border-emerald-100 dark:border-emerald-500/20", bg: "bg-emerald-50/40 dark:bg-emerald-500/5", iconBg: "bg-emerald-100 dark:bg-emerald-500/15", iconText: "text-emerald-600 dark:text-emerald-400" },
+  rose:   { border: "border-rose-100 dark:border-rose-500/20", bg: "bg-rose-50/40 dark:bg-rose-500/5", iconBg: "bg-rose-100 dark:bg-rose-500/15", iconText: "text-rose-600 dark:text-rose-400" },
+  amber:  { border: "border-amber-100 dark:border-amber-500/20", bg: "bg-amber-50/40 dark:bg-amber-500/5", iconBg: "bg-amber-100 dark:bg-amber-500/15", iconText: "text-amber-600 dark:text-amber-400" },
+  default:{ border: "border-gray-100 dark:border-slate-800", bg: "bg-white dark:bg-slate-900", iconBg: "bg-brand-50 dark:bg-brand/10", iconText: "text-brand-500" },
+};
+
+function SectionCard({ title, icon: Icon, color = "default" as keyof typeof sectionColorMap, children }: { title: string; icon: typeof Info; color?: keyof typeof sectionColorMap; children: React.ReactNode }) {
+  const c = sectionColorMap[color];
+  return (
+    <div className={`rounded-2xl border ${c.border} ${c.bg} p-5`}>
+      <div className="flex items-center gap-2 mb-4">
+        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${c.iconBg} ${c.iconText}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
+      </div>
+      {children}
     </div>
   );
 }
@@ -172,9 +196,8 @@ export function UserDetailClient({ user: initial }: Props) {
           </div>
         </div>
 
-        {/* Two Column Layout */}
+        {/* Two Column Layout — Account & Security */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Account Info */}
           <Card title="Account Info" icon={Info}>
             <InfoRow label="Full Name" value={`${user.firstName} ${user.lastName}`} />
             <InfoRow label="Email" value={
@@ -193,7 +216,6 @@ export function UserDetailClient({ user: initial }: Props) {
             } />
           </Card>
 
-          {/* Security */}
           <Card title="Security" icon={Shield}>
             <InfoRow label="Last Login" value={user.lastLoginAt ? formatDate(user.lastLoginAt) : "Never"} />
             <InfoRow label="Failed Attempts" value={user.failedLoginAttempts ?? 0} />
@@ -234,6 +256,49 @@ export function UserDetailClient({ user: initial }: Props) {
             </div>
           </Card>
         )}
+
+        {/* ── Basic Info & Media ── */}
+        <SectionCard title="Basic Info & Media" icon={User} color="blue">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+            <InfoRow label="First Name" value={user.firstName} />
+            <InfoRow label="Last Name" value={user.lastName} />
+            <InfoRow label="Gender" value={user.gender} />
+            <InfoRow label="Date of Birth" value={user.dateOfBirth ? formatDate(user.dateOfBirth) : null} />
+            <InfoRow label="National ID / Passport" value={user.nationalId} mono />
+          </div>
+        </SectionCard>
+
+        {/* ── Employment Details ── */}
+        <SectionCard title="Employment Details" icon={Briefcase} color="green">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+            <InfoRow label="Employee ID" value={user.employeeId} mono />
+            <InfoRow label="Department" value={user.department} />
+            <InfoRow label="Designation" value={user.designation} />
+            <InfoRow label="Employment Type" value={user.employmentType?.replace("_", " ")} />
+            <InfoRow label="Joining Date" value={user.joiningDate ? formatDate(user.joiningDate) : null} />
+          </div>
+        </SectionCard>
+
+        {/* ── Emergency & Payroll ── */}
+        <SectionCard title="Emergency & Payroll Info" icon={Heart} color="rose">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+            <InfoRow label="Emergency Contact" value={user.emergencyContactName} />
+            <InfoRow label="Emergency Phone" value={user.emergencyContactPhone} />
+            <InfoRow label="Salary" value={user.salary ? `৳${Number(user.salary).toLocaleString()}` : null} />
+            <InfoRow label="Bank Name" value={user.bankName} />
+            <InfoRow label="Account Number" value={user.bankAccountNumber} mono />
+          </div>
+        </SectionCard>
+
+        {/* ── Address Details ── */}
+        <SectionCard title="Address Details" icon={MapPin} color="amber">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+            <InfoRow label="Country" value={user.country} />
+            <InfoRow label="City" value={user.city} />
+            <InfoRow label="Present Address" value={user.presentAddress} />
+            <InfoRow label="Permanent Address" value={user.permanentAddress} />
+          </div>
+        </SectionCard>
       </div>
 
       {/* Modals */}

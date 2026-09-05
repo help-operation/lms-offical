@@ -217,6 +217,22 @@ export const users = pgTable('users', {
   tokensValidFrom: timestamp('tokens_valid_from'),
   // Last successful login on the student web app (apps/web). Null until first login.
   lastLoginAt: timestamp('last_login_at'),
+  // ── Staff profile fields ───────────────────────────────────────────────────
+  employeeId: varchar('employee_id', { length: 20 }),
+  department: varchar('department', { length: 100 }),
+  designation: varchar('designation', { length: 100 }),
+  joiningDate: timestamp('joining_date'),
+  employmentType: varchar('employment_type', { length: 20 }), // full_time, part_time, contractual
+  dateOfBirth: timestamp('date_of_birth'),
+  nationalId: varchar('national_id', { length: 50 }),
+  profilePicture: varchar('profile_picture', { length: 500 }),
+  emergencyContactName: varchar('emergency_contact_name', { length: 200 }),
+  emergencyContactPhone: varchar('emergency_contact_phone', { length: 20 }),
+  salary: numeric('salary', { precision: 12, scale: 2 }),
+  bankName: varchar('bank_name', { length: 200 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 50 }),
+  presentAddress: text('present_address'),
+  permanentAddress: text('permanent_address'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

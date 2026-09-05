@@ -26,6 +26,8 @@ import {
   orderItems,
   orders,
   payments,
+  permissions,
+  rolePermissions,
   roles,
   shopOrders,
   shopOrderItems,
@@ -298,6 +300,24 @@ export class AdminService {
       role:                users.role,
       status:              users.status,
       avatar:              users.avatar,
+      gender:              users.gender,
+      country:             users.country,
+      city:                users.city,
+      employeeId:          users.employeeId,
+      department:          users.department,
+      designation:         users.designation,
+      joiningDate:         users.joiningDate,
+      employmentType:      users.employmentType,
+      dateOfBirth:         users.dateOfBirth,
+      nationalId:          users.nationalId,
+      profilePicture:      users.profilePicture,
+      emergencyContactName:  users.emergencyContactName,
+      emergencyContactPhone: users.emergencyContactPhone,
+      salary:              users.salary,
+      bankName:            users.bankName,
+      bankAccountNumber:   users.bankAccountNumber,
+      presentAddress:      users.presentAddress,
+      permanentAddress:    users.permanentAddress,
       createdAt:           users.createdAt,
       updatedAt:           users.updatedAt,
       lastLoginAt:         users.lastLoginAt,
@@ -331,7 +351,15 @@ export class AdminService {
     };
   }
 
-  async createUser(dto: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string; gender?: string; country?: string; city?: string }) {
+  async createUser(dto: {
+    firstName: string; lastName: string; email?: string; phone?: string; password: string;
+    role?: string; gender?: string; country?: string; city?: string;
+    department?: string; designation?: string;
+    dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
+    emergencyContactName?: string; emergencyContactPhone?: string;
+    salary?: number; bankName?: string; bankAccountNumber?: string;
+    presentAddress?: string; permanentAddress?: string;
+  }) {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Email or phone is required');
     }
@@ -344,6 +372,12 @@ export class AdminService {
       const [existing] = await this.db.select({ id: users.id }).from(users).where(eq(users.phone, dto.phone)).limit(1);
       if (existing) throw new ConflictException('A user with this phone number already exists');
     }
+
+    // Generate employee ID: EMP-YYYYMMDD-XXXX
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const employeeId = `EMP-${dateStr}-${random}`;
 
     const hash = await bcrypt.hash(dto.password, 10);
     const validRoles = ['GUEST', 'STUDENT', 'INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'];
@@ -362,6 +396,20 @@ export class AdminService {
         gender:    (dto.gender as any) || null,
         country:   dto.country || null,
         city:      dto.city || null,
+        employeeId,
+        department:   dto.department || null,
+        designation:  dto.designation || null,
+        joiningDate:  dto.joiningDate ? new Date(dto.joiningDate) : null,
+        employmentType: dto.employmentType || null,
+        dateOfBirth:  dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+        nationalId:   dto.nationalId || null,
+        emergencyContactName:  dto.emergencyContactName || null,
+        emergencyContactPhone: dto.emergencyContactPhone || null,
+        salary:       dto.salary != null ? String(dto.salary) : null,
+        bankName:     dto.bankName || null,
+        bankAccountNumber: dto.bankAccountNumber || null,
+        presentAddress:  dto.presentAddress || null,
+        permanentAddress: dto.permanentAddress || null,
       })
       .returning({
         id:        users.id,
@@ -372,6 +420,7 @@ export class AdminService {
         role:      users.role,
         status:    users.status,
         avatar:    users.avatar,
+        employeeId: users.employeeId,
         createdAt: users.createdAt,
       });
 
