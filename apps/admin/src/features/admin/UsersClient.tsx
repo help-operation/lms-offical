@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   fetchUsersAction,
   fetchAllUsersForExportAction,
@@ -9,7 +10,6 @@ import {
 import type { AdminUser, PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { Eye, UserPlus, Users, UserCheck, UserX, CalendarClock } from "lucide-react";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
-import { CreateUserModal } from "./CreateUserModal";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import type { ExportField } from "@/utils/table-export";
 import { useLocalization } from "@/shared/context/LocalizationContext";
@@ -133,6 +133,7 @@ function viewHref(user: AdminUser): string {
 // ─── Main Client ──────────────────────────────────────────────────────────────
 
 export function UsersClient({ initialData, initialStats }: Props) {
+  const router = useRouter();
   const { formatDate } = useLocalization();
   const [users, setUsers]             = useState(initialData.data);
   const [pagination, setPagination]   = useState<TablePagination>(initialData.pagination);
@@ -142,7 +143,6 @@ export function UsersClient({ initialData, initialStats }: Props) {
     per_page: initialData.pagination.per_page,
   });
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(DEFAULT_VISIBLE));
-  const [showCreate, setShowCreate] = useState(false);
   const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, roles: {} });
 
   const exportFields: ExportField<AdminUser>[] = ALL_COLS
@@ -270,23 +270,13 @@ export function UsersClient({ initialData, initialStats }: Props) {
             exportTitle="Users Export"
           />
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={() => router.push("/admin/users/new")}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand dark:hover:bg-brand/90 text-white text-sm font-medium transition-colors"
           >
             <UserPlus className="h-4 w-4" /> Add User
           </button>
         </div>
       </div>
-
-      {showCreate && (
-        <CreateUserModal
-          onClose={() => setShowCreate(false)}
-          onCreated={(user) => {
-            setUsers((prev) => [user, ...prev]);
-            setShowCreate(false);
-          }}
-        />
-      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
