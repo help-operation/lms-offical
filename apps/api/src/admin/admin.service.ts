@@ -291,7 +291,8 @@ export class AdminService {
   }
 
   async getUser(id: number) {
-    const cols = {
+    // 1) Try the `users` table first
+    const userCols = {
       id:                  users.id,
       firstName:           users.firstName,
       lastName:            users.lastName,
@@ -324,8 +325,37 @@ export class AdminService {
       failedLoginAttempts: users.failedLoginAttempts,
       lockedUntil:         users.lockedUntil,
     };
-    const [user] = await this.db.select(cols).from(users).where(eq(users.id, id)).limit(1);
-    if (!user) throw new NotFoundException('User not found');
+    const [user] = await this.db.select(userCols).from(users).where(eq(users.id, id)).limit(1);
+
+    // 2) Fallback: check `admin_users` table (Super Admin, Instructors)
+    let mappedUser = user;
+    if (!mappedUser) {
+      const [admin] = await this.db
+        .select({
+          id:        adminUsers.id,
+          firstName: adminUsers.firstName,
+          lastName:  adminUsers.lastName,
+          email:     adminUsers.email,
+          phone:     sql<string | null>`null`,
+          role:      adminUsers.role,
+          status:    adminUsers.status,
+          avatar:    adminUsers.avatar,
+          gender:    sql<string | null>`null`,
+          country:   sql<string | null>`null`,
+          city:      sql<string | null>`null`,
+          createdAt: adminUsers.createdAt,
+          updatedAt: adminUsers.updatedAt,
+          lastLoginAt: sql<string | null>`null`,
+          failedLoginAttempts: adminUsers.failedLoginAttempts,
+          lockedUntil: adminUsers.lockedUntil,
+        })
+        .from(adminUsers)
+        .where(eq(adminUsers.id, id))
+        .limit(1);
+
+      if (!admin) throw new NotFoundException('User not found');
+      mappedUser = admin as any;
+    }
 
     const [roleRow] = await this.db
       .select({ id: roles.id, name: roles.name, slug: roles.slug, description: roles.description })
@@ -345,7 +375,7 @@ export class AdminService {
     }
 
     return {
-      ...user,
+      ...mappedUser,
       roleInfo: roleRow ?? null,
       permissions: permissionSlugs,
     };
