@@ -1,15 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "@repo/ui/sonner";
 import {
   fetchUsersAction,
   fetchAllUsersForExportAction,
 } from "@/features/admin/actions/admin.actions";
 import type { AdminUser, PaginatedResponse, TableQueryParams } from "@/features/admin/api";
-import { Eye, UserPlus, Users, UserCheck, UserX, CalendarClock } from "lucide-react";
+import { Eye, UserPlus, Users, UserCheck, UserX, CalendarClock, Pencil, ShieldOff, ShieldCheck, Trash2 } from "lucide-react";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
+import { ConfirmModal } from "@/shared/components/ConfirmModal";
+import {
+  suspendUserAction,
+  activateUserAction,
+  deleteUserAction,
+} from "@/features/admin/actions/admin.actions";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import type { ExportField } from "@/utils/table-export";
 import { useLocalization } from "@/shared/context/LocalizationContext";
@@ -144,6 +151,8 @@ export function UsersClient({ initialData, initialStats }: Props) {
   });
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(DEFAULT_VISIBLE));
   const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, roles: {} });
+  const [isPending, startTransition] = useTransition();
+  const [actionUser, setActionUser] = useState<{ user: AdminUser; type: "suspend" | "activate" | "delete" } | null>(null);
 
   const exportFields: ExportField<AdminUser>[] = ALL_COLS
     .filter((c) => visibleCols.has(c.key))
@@ -152,6 +161,34 @@ export function UsersClient({ initialData, initialStats }: Props) {
   async function fetchAllForExport(): Promise<AdminUser[]> {
     const res = await fetchAllUsersForExportAction(currentParams);
     return res.success ? (res.data as AdminUser[]) : [];
+  }
+
+  function handleAction() {
+    if (!actionUser) return;
+    const { user, type } = actionUser;
+    setActionUser(null);
+
+    startTransition(async () => {
+      let res;
+      if (type === "suspend") {
+        res = await suspendUserAction(user.id);
+      } else if (type === "activate") {
+        res = await activateUserAction(user.id);
+      } else if (type === "delete") {
+        res = await deleteUserAction(user.id);
+      }
+      if (res?.success) {
+        toast.success(type === "delete" ? "User deleted" : "Status updated");
+        if (type === "delete") {
+          setUsers((prev) => prev.filter((u) => u.id !== user.id));
+          setStats((prev) => ({ ...prev, total: prev.total - 1 }));
+        } else {
+          setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, status: type === "suspend" ? "suspended" : "active" } : u));
+        }
+      } else {
+        toast.error((res as any)?.message ?? "Action failed");
+      }
+    });
   }
 
   async function fetchUsers(params: TableQueryParams) {
@@ -228,7 +265,7 @@ export function UsersClient({ initialData, initialStats }: Props) {
       key: "actions",
       header: "Actions",
       render: (user: AdminUser) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <Link
             href={viewHref(user)}
             title="View"
@@ -236,6 +273,33 @@ export function UsersClient({ initialData, initialStats }: Props) {
           >
             <Eye className="h-3.5 w-3.5" />
           </Link>
+          <Link
+            href={viewHref(user)}
+            title="Edit"
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Link>
+          <button
+            title={user.status === "active" ? "Suspend" : "Activate"}
+            onClick={() => setActionUser({ user, type: user.status === "active" ? "suspend" : "activate" })}
+            disabled={isPending}
+            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 ${
+              user.status === "active"
+                ? "bg-yellow-50 text-yellow-600 hover:bg-yellow-100 dark:bg-yellow-500/10 dark:text-yellow-400 dark:hover:bg-yellow-500/20"
+                : "bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
+            }`}
+          >
+            {user.status === "active" ? <ShieldOff className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            title="Delete"
+            onClick={() => setActionUser({ user, type: "delete" })}
+            disabled={isPending}
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       ),
     },
@@ -330,6 +394,39 @@ export function UsersClient({ initialData, initialStats }: Props) {
           />
         </div>
       </div>
+
+      {/* Action Confirmation Modal */}
+      {actionUser && (
+        <ConfirmModal
+          open
+          title={
+            actionUser.type === "suspend" ? "Suspend User"
+            : actionUser.type === "activate" ? "Activate User"
+            : "Delete User"
+          }
+          message={
+            actionUser.type === "delete"
+              ? <>Delete <strong>{actionUser.user.firstName} {actionUser.user.lastName}</strong>? This cannot be undone.</>
+              : actionUser.type === "suspend"
+              ? <>Suspend <strong>{actionUser.user.firstName} {actionUser.user.lastName}</strong>? They will lose access.</>
+              : <>Activate <strong>{actionUser.user.firstName} {actionUser.user.lastName}</strong>? They will regain access.</>
+          }
+          confirmLabel={
+            actionUser.type === "delete" ? "Yes, Delete"
+            : actionUser.type === "suspend" ? "Yes, Suspend"
+            : "Yes, Activate"
+          }
+          variant={actionUser.type === "delete" ? "danger" : actionUser.type === "suspend" ? "warning" : "success"}
+          icon={
+            actionUser.type === "delete" ? <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+            : actionUser.type === "suspend" ? <ShieldOff className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+            : <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+          }
+          isPending={isPending}
+          onConfirm={handleAction}
+          onClose={() => setActionUser(null)}
+        />
+      )}
     </div>
   );
 }
