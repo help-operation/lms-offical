@@ -304,7 +304,7 @@ export class AdminService {
       failedLoginAttempts: users.failedLoginAttempts,
       lockedUntil:         users.lockedUntil,
     };
-    const [user] = await this.db.select(cols).from(users).where(eq(users.id, id)).limit(1);
+    const [user] = await this.db.select(cols).from(users).where(and(eq(users.id, id), inArray(users.role, ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as any))).limit(1);
     if (!user) throw new NotFoundException('User not found');
 
     const [roleRow] = await this.db
