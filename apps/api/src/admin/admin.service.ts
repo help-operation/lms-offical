@@ -290,19 +290,45 @@ export class AdminService {
 
   async getUser(id: number) {
     const cols = {
-      id:        users.id,
-      firstName: users.firstName,
-      lastName:  users.lastName,
-      email:     users.email,
-      phone:     users.phone,
-      role:      users.role,
-      status:    users.status,
-      avatar:    users.avatar,
-      createdAt: users.createdAt,
+      id:                  users.id,
+      firstName:           users.firstName,
+      lastName:            users.lastName,
+      email:               users.email,
+      phone:               users.phone,
+      role:                users.role,
+      status:              users.status,
+      avatar:              users.avatar,
+      createdAt:           users.createdAt,
+      updatedAt:           users.updatedAt,
+      lastLoginAt:         users.lastLoginAt,
+      failedLoginAttempts: users.failedLoginAttempts,
+      lockedUntil:         users.lockedUntil,
     };
     const [user] = await this.db.select(cols).from(users).where(eq(users.id, id)).limit(1);
     if (!user) throw new NotFoundException('User not found');
-    return user;
+
+    const [roleRow] = await this.db
+      .select({ id: roles.id, name: roles.name, slug: roles.slug, description: roles.description })
+      .from(roles)
+      .innerJoin(adminUsers, eq(adminUsers.roleId, roles.id))
+      .where(eq(adminUsers.id, id))
+      .limit(1);
+
+    let permissionSlugs: string[] = [];
+    if (roleRow) {
+      const perms = await this.db
+        .select({ slug: permissions.slug })
+        .from(permissions)
+        .innerJoin(rolePermissions, eq(rolePermissions.permissionId, permissions.id))
+        .where(eq(rolePermissions.roleId, roleRow.id));
+      permissionSlugs = perms.map((p) => p.slug);
+    }
+
+    return {
+      ...user,
+      roleInfo: roleRow ?? null,
+      permissions: permissionSlugs,
+    };
   }
 
   async createUser(dto: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string }) {

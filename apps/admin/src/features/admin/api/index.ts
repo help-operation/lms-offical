@@ -56,6 +56,12 @@ export interface AdminUser {
   status: string;
   avatar: string | null;
   createdAt: string | null;
+  updatedAt?: string | null;
+  lastLoginAt?: string | null;
+  failedLoginAttempts?: number;
+  lockedUntil?: string | null;
+  roleInfo?: { id: number; name: string; slug: string; description: string | null } | null;
+  permissions?: string[];
 }
 
 export interface RevenueOrder {
