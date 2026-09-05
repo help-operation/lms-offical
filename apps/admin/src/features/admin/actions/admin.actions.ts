@@ -36,7 +36,7 @@ export async function fetchAllUsersForExportAction(params: TableQueryParams) {
   }
 }
 
-export async function createUserAction(data: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string }) {
+export async function createUserAction(data: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string; gender?: string; country?: string; city?: string }) {
   try {
     const res = await adminApi.createUser(data);
     revalidatePath("/admin/users");

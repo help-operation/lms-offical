@@ -73,7 +73,7 @@ export class AdminController {
   @RequirePermissions('update_users')
   @Message('User created')
   async createUser(
-    @Body() body: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string },
+    @Body() body: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string; gender?: string; country?: string; city?: string },
     @CurrentUser() actor: RequestUser,
   ) {
     const result = await this.adminService.createUser(body);

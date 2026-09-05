@@ -178,7 +178,7 @@ export class AdminService {
     });
 
     const adminRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
-    const baseWhere = notInArray(users.role, adminRoles as any);
+    const baseWhere = inArray(users.role, adminRoles as any);
     const combinedWhere = q.where ? and(baseWhere, q.where) : baseWhere;
 
     const [rows, [countRow]] = await Promise.all([
@@ -331,7 +331,7 @@ export class AdminService {
     };
   }
 
-  async createUser(dto: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string }) {
+  async createUser(dto: { firstName: string; lastName: string; email?: string; phone?: string; password: string; role?: string; gender?: string; country?: string; city?: string }) {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Email or phone is required');
     }
@@ -359,6 +359,9 @@ export class AdminService {
         password:  hash,
         role:      role as any,
         status:    'active',
+        gender:    (dto.gender as any) || null,
+        country:   dto.country || null,
+        city:      dto.city || null,
       })
       .returning({
         id:        users.id,
