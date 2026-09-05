@@ -156,7 +156,7 @@ export class AdminService {
 
     const roles: Record<string, number> = {};
     adminOnlyRoles.forEach((role, i) => {
-      roles[role] = roleRows[i]?.count ?? 0;
+      roles[role] = roleRows[i]?.[0]?.count ?? 0;
     });
 
     return {
@@ -177,8 +177,8 @@ export class AdminService {
       defaultSort: desc(users.createdAt),
     });
 
-    const adminRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'];
-    const baseWhere = notInArray(users.role, adminRoles);
+    const adminRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
+    const baseWhere = notInArray(users.role, adminRoles as any);
     const combinedWhere = q.where ? and(baseWhere, q.where) : baseWhere;
 
     const [rows, [countRow]] = await Promise.all([
