@@ -7,7 +7,7 @@ import {
   ChevronLeft, Mail, Phone, Pencil, Trash2, ShieldOff, ShieldCheck,
   Shield, Info, Briefcase, Heart, CreditCard, MapPin, User, Lock,
   GraduationCap, BriefcaseBusiness, Wrench, FileText,
-  DollarSign, Receipt, Gift, CheckCircle2, AlertCircle,
+  DollarSign, Receipt, Gift, CheckCircle2, AlertCircle, Printer,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@repo/ui/tabs";
 import { toast } from "@repo/ui/sonner";
@@ -170,9 +170,9 @@ export function UserDetailClient({ user: initial }: Props) {
 
   return (
     <>
-      <div className="space-y-5">
+      <div className="no-print space-y-5">
         {/* ── Header ── */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="no-print flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <Link
               href="/admin/users"
@@ -186,12 +186,16 @@ export function UserDetailClient({ user: initial }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => window.print()} disabled={isPending}
+              className="no-print inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors">
+              <Printer className="h-3.5 w-3.5" /> Print
+            </button>
             <button onClick={() => router.push(`/admin/users/${user.id}/edit`)} disabled={isPending}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors">
+              className="no-print inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors">
               <Pencil className="h-3.5 w-3.5" /> Edit
             </button>
             <button onClick={() => setShowToggle(true)} disabled={isPending}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
+              className={`no-print inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
                 user.status === "active"
                   ? "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-500/15 dark:text-yellow-400"
                   : "bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-500/15 dark:text-green-400"
@@ -201,14 +205,14 @@ export function UserDetailClient({ user: initial }: Props) {
                 : <><ShieldCheck className="h-3.5 w-3.5" /> Activate</>}
             </button>
             <button onClick={() => setShowDelete(true)} disabled={isPending}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-400 disabled:opacity-50 transition-colors">
+              className="no-print inline-flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-400 disabled:opacity-50 transition-colors">
               <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
           </div>
         </div>
 
         {/* ── Profile Banner ── */}
-        <div className="rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
+        <div className="no-print rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm dark:shadow-none">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
             {user.avatar ? (
               <img src={user.avatar} alt={user.firstName} className="h-20 w-20 rounded-2xl object-cover shrink-0" />
@@ -243,7 +247,7 @@ export function UserDetailClient({ user: initial }: Props) {
         </div>
 
         {/* ── Tabs ── */}
-        <Tabs defaultValue="overview">
+        <Tabs defaultValue="overview" className="no-print">
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap gap-1 h-auto p-1 bg-gray-100 dark:bg-slate-800 rounded-xl">
             <TabsTrigger value="overview" className="rounded-lg text-xs px-3 py-2 shrink-0">Overview</TabsTrigger>
             <TabsTrigger value="personal" className="rounded-lg text-xs px-3 py-2 shrink-0">Personal Info</TabsTrigger>
@@ -591,7 +595,273 @@ export function UserDetailClient({ user: initial }: Props) {
         </Tabs>
       </div>
 
+      {/* ── Print-Only Layout ──────────────────────────────────────────────────── */}
+      <div className="print-only hidden">
+        {/* Header */}
+        <div style={{ borderBottom: "2px solid #111", paddingBottom: "12px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>USER PROFILE</h1>
+              <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0" }}>leerney.com — Learning Management System</p>
+            </div>
+            <div style={{ textAlign: "right", fontSize: "10px", color: "#666" }}>
+              <p style={{ margin: 0 }}>Printed: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+              <p style={{ margin: 0 }}>User ID: #{user.id}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Summary */}
+        <div style={{ display: "flex", gap: "16px", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #ddd" }}>
+          {user.avatar ? (
+            <img src={user.avatar} alt={user.firstName} style={{ width: "60px", height: "60px", borderRadius: "8px", objectFit: "cover" }} />
+          ) : (
+            <div style={{ width: "60px", height: "60px", borderRadius: "8px", background: "#a64dff", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", fontWeight: 700, flexShrink: 0 }}>
+              {user.firstName?.[0]?.toUpperCase() ?? "U"}
+            </div>
+          )}
+          <div>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>{user.firstName} {user.lastName}</h2>
+            <p style={{ fontSize: "11px", color: "#666", margin: "2px 0" }}>Role: {roleLabelMap[user.role] ?? user.role} &nbsp;|&nbsp; Status: {user.status} &nbsp;|&nbsp; ID: {user.employeeId || `#${user.id}`}</p>
+            <p style={{ fontSize: "11px", color: "#444", margin: "2px 0" }}>
+              {user.email && <span>Email: {user.email}</span>}
+              {user.email && user.phone && <span> &nbsp;|&nbsp; </span>}
+              {user.phone && <span>Phone: {user.phone}</span>}
+            </p>
+          </div>
+        </div>
+
+        {/* Section helper */}
+        {(() => {
+          const PrintSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+            <div style={{ marginBottom: "14px", pageBreakInside: "avoid" }}>
+              <h3 style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#444", borderBottom: "1px solid #ccc", paddingBottom: "4px", marginBottom: "8px" }}>{title}</h3>
+              {children}
+            </div>
+          );
+          const PrintRow = ({ label, value }: { label: string; value?: string | number | null }) => (
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: "1px dotted #eee", fontSize: "11px" }}>
+              <span style={{ color: "#666" }}>{label}</span>
+              <span style={{ fontWeight: 500, textAlign: "right" }}>{value || "—"}</span>
+            </div>
+          );
+          const PrintGrid = ({ children }: { children: React.ReactNode }) => (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>{children}</div>
+          );
+
+          return (
+            <>
+              {/* Account & Security */}
+              <PrintSection title="Account Information">
+                <PrintGrid>
+                  <PrintRow label="Full Name" value={`${user.firstName} ${user.lastName}`} />
+                  <PrintRow label="Email" value={user.email} />
+                  <PrintRow label="Phone" value={user.phone} />
+                  <PrintRow label="Role" value={roleLabelMap[user.role] ?? user.role} />
+                  <PrintRow label="Status" value={user.status} />
+                  <PrintRow label="Employee ID" value={user.employeeId} />
+                  <PrintRow label="Department" value={user.department} />
+                  <PrintRow label="Designation" value={user.designation} />
+                  <PrintRow label="Employment Type" value={user.employmentType?.replace("_", " ")} />
+                  <PrintRow label="Joining Date" value={user.joiningDate} />
+                </PrintGrid>
+              </PrintSection>
+
+              {/* Personal Info */}
+              <PrintSection title="Personal Information">
+                <PrintGrid>
+                  <PrintRow label="Gender" value={user.gender} />
+                  <PrintRow label="Date of Birth" value={user.dateOfBirth} />
+                  <PrintRow label="NID Type" value={user.nidType} />
+                  <PrintRow label="NID Number" value={user.nationalId} />
+                  <PrintRow label="Father's Name" value={user.fatherName} />
+                  <PrintRow label="Mother's Name" value={user.motherName} />
+                  <PrintRow label="Blood Group" value={user.bloodGroup} />
+                  <PrintRow label="Marital Status" value={user.maritalStatus} />
+                  <PrintRow label="Religion" value={user.religion} />
+                  <PrintRow label="Nationality" value={user.nationality} />
+                </PrintGrid>
+              </PrintSection>
+
+              {/* Emergency Contact */}
+              <PrintSection title="Emergency Contact">
+                <PrintGrid>
+                  <PrintRow label="Contact Name" value={user.emergencyContactName} />
+                  <PrintRow label="Relationship" value={user.emergencyContactRelationship} />
+                  <PrintRow label="Phone" value={user.emergencyContactPhone} />
+                </PrintGrid>
+              </PrintSection>
+
+              {/* Addresses */}
+              <PrintSection title="Addresses">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+                  <div>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Permanent Address</p>
+                    <PrintRow label="Country" value={user.country} />
+                    <PrintRow label="Division" value={user.division} />
+                    <PrintRow label="District" value={user.district} />
+                    <PrintRow label="Thana" value={user.thana} />
+                    <PrintRow label="Union" value={user.unionName} />
+                    <PrintRow label="Post Code" value={user.postCode} />
+                    {user.permanentAddress && <PrintRow label="Full Address" value={user.permanentAddress} />}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Present Address</p>
+                    {user.sameAsPermanent ? (
+                      <p style={{ fontSize: "11px", color: "#666", fontStyle: "italic" }}>Same as permanent address</p>
+                    ) : (
+                      <>
+                        <PrintRow label="Country" value={user.presentCountry} />
+                        <PrintRow label="Division" value={user.presentDivision} />
+                        <PrintRow label="District" value={user.presentDistrict} />
+                        <PrintRow label="Thana" value={user.presentThana} />
+                        <PrintRow label="Union" value={user.presentUnion} />
+                        <PrintRow label="Post Code" value={user.presentPostCode} />
+                        {user.presentAddress && <PrintRow label="Full Address" value={user.presentAddress} />}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </PrintSection>
+
+              {/* Payroll */}
+              <PrintSection title="Salary & Payroll">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+                  <div>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Earnings</p>
+                    <PrintRow label="Basic Salary" value={user.salary ? "\u09F3" + Number(user.salary).toLocaleString() : null} />
+                    <PrintRow label="House Rent" value={user.houseRent ? "\u09F3" + Number(user.houseRent).toLocaleString() : null} />
+                    <PrintRow label="Medical" value={user.medicalAllowance ? "\u09F3" + Number(user.medicalAllowance).toLocaleString() : null} />
+                    <PrintRow label="Transport" value={user.transportAllowance ? "\u09F3" + Number(user.transportAllowance).toLocaleString() : null} />
+                    <PrintRow label="Other Allowances" value={user.otherAllowance ? "\u09F3" + Number(user.otherAllowance).toLocaleString() : null} />
+                    <div style={{ borderTop: "1px solid #999", marginTop: "4px", paddingTop: "4px" }}>
+                      <PrintRow label="Gross Salary" value={user.grossSalary ? "\u09F3" + Number(user.grossSalary).toLocaleString() : null} />
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Deductions</p>
+                    <PrintRow label="Tax" value={user.taxDeduction ? "\u09F3" + Number(user.taxDeduction).toLocaleString() : null} />
+                    <PrintRow label="Provident Fund" value={user.providentFund ? "\u09F3" + Number(user.providentFund).toLocaleString() : null} />
+                    <PrintRow label="Other Deductions" value={user.otherDeduction ? "\u09F3" + Number(user.otherDeduction).toLocaleString() : null} />
+                    <div style={{ borderTop: "1px solid #999", marginTop: "4px", paddingTop: "4px" }}>
+                      <PrintRow label="Net Salary" value={user.netSalary ? "\u09F3" + Number(user.netSalary).toLocaleString() : null} />
+                    </div>
+                    <div style={{ marginTop: "8px" }}>
+                      <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Bonus</p>
+                      <PrintRow label="Type" value={user.bonusType} />
+                      <PrintRow label="Amount" value={user.bonusAmount ? "\u09F3" + Number(user.bonusAmount).toLocaleString() : null} />
+                      <PrintRow label="Frequency" value={user.bonusFrequency} />
+                    </div>
+                  </div>
+                </div>
+              </PrintSection>
+
+              {/* Banking */}
+              <PrintSection title="Banking Information">
+                <PrintGrid>
+                  <PrintRow label="Account Type" value={user.bankingType} />
+                  <PrintRow label="Bank / Provider" value={user.bankingProvider || user.bankName} />
+                  <PrintRow label="Account Number" value={user.bankAccountNumber} />
+                  <PrintRow label="Branch" value={user.bankBranch} />
+                </PrintGrid>
+              </PrintSection>
+
+              {/* Education */}
+              {user.education && user.education.length > 0 && (
+                <PrintSection title="Education">
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #ccc" }}>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Degree</th>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Institution</th>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Subject</th>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Year</th>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {user.education.map((edu, i) => (
+                        <tr key={edu.id ?? i} style={{ borderBottom: "1px solid #eee" }}>
+                          <td style={{ padding: "4px 8px" }}>{edu.degree || "—"}</td>
+                          <td style={{ padding: "4px 8px" }}>{edu.institution || "—"}</td>
+                          <td style={{ padding: "4px 8px" }}>{edu.subject || "—"}</td>
+                          <td style={{ padding: "4px 8px" }}>{edu.passingYear || "—"}</td>
+                          <td style={{ padding: "4px 8px" }}>{edu.result || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </PrintSection>
+              )}
+
+              {/* Experience */}
+              {user.experience && user.experience.length > 0 && (
+                <PrintSection title="Work Experience">
+                  {user.experience.map((exp, i) => (
+                    <div key={exp.id ?? i} style={{ marginBottom: "8px", paddingBottom: "8px", borderBottom: i < user.experience!.length - 1 ? "1px solid #eee" : "none" }}>
+                      <p style={{ fontSize: "11px", fontWeight: 600, margin: 0 }}>{exp.company || "Unknown"} — {exp.designation || "—"}</p>
+                      <p style={{ fontSize: "10px", color: "#666", margin: "2px 0" }}>
+                        {exp.department && <span>{exp.department} | </span>}
+                        {exp.startDate || "—"} to {exp.currentlyWorking ? "Present" : exp.endDate || "—"}
+                        {exp.currentlyWorking && <span style={{ fontWeight: 600 }}> (Currently Working)</span>}
+                      </p>
+                      {exp.responsibilities && <p style={{ fontSize: "10px", color: "#444", margin: "2px 0" }}>{exp.responsibilities}</p>}
+                    </div>
+                  ))}
+                </PrintSection>
+              )}
+
+              {/* Skills */}
+              {user.skills && user.skills.length > 0 && (
+                <PrintSection title="Skills">
+                  <p style={{ fontSize: "11px" }}>
+                    {user.skills.map((s, i) => (
+                      <span key={s.id ?? i}>{s.skillName}{s.level ? ` (${s.level})` : ""}{i < user.skills!.length - 1 ? ", " : ""}</span>
+                    ))}
+                  </p>
+                </PrintSection>
+              )}
+
+              {/* Documents */}
+              {user.documents && user.documents.length > 0 && (
+                <PrintSection title="Documents">
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #ccc" }}>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Type</th>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Name</th>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Upload Date</th>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Expiry</th>
+                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {user.documents.map((doc, i) => (
+                        <tr key={doc.id ?? i} style={{ borderBottom: "1px solid #eee" }}>
+                          <td style={{ padding: "4px 8px" }}>{doc.documentType || "—"}</td>
+                          <td style={{ padding: "4px 8px" }}>{doc.documentName || "—"}</td>
+                          <td style={{ padding: "4px 8px" }}>{doc.uploadDate || "—"}</td>
+                          <td style={{ padding: "4px 8px" }}>{doc.expiryDate || "—"}</td>
+                          <td style={{ padding: "4px 8px" }}>{doc.status || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </PrintSection>
+              )}
+
+              {/* Footer */}
+              <div style={{ borderTop: "1px solid #ccc", paddingTop: "8px", marginTop: "16px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#999" }}>
+                <span>leerney.com — Learning Management System</span>
+                <span>Generated on {new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" })}</span>
+              </div>
+            </>
+          );
+        })()}
+      </div>
+
       {/* ── Modals ── */}
+      <div className="no-print">
       {showEdit && (
         <EditPersonModal
           entityLabel="User"
@@ -632,6 +902,7 @@ export function UserDetailClient({ user: initial }: Props) {
         onConfirm={confirmDelete}
         onClose={() => setShowDelete(false)}
       />
+      </div>
     </>
   );
 }

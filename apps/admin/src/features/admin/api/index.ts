@@ -114,10 +114,15 @@ export interface AdminUser {
   emergencyContactRelationship?: string | null;
   salary?: string | null;
   bankName?: string | null;
+  bankBranch?: string | null;
   bankAccountNumber?: string | null;
   presentAddress?: string | null;
   permanentAddress?: string | null;
   gender?: string | null;
+  bloodGroup?: string | null;
+  maritalStatus?: string | null;
+  religion?: string | null;
+  nationality?: string | null;
   country?: string | null;
   city?: string | null;
   nidType?: string | null;

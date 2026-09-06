@@ -177,3 +177,45 @@
   92% { opacity: 0; }
   100% { stroke-dashoffset: 1500; opacity: 0; }
 }
+
+/* ── Print Styles ────────────────────────────────────────────────────────────── */
+@media print {
+  body {
+    background: white !important;
+    color: #111 !important;
+    font-size: 11px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide everything except print layout */
+  .no-print,
+  .no-print *,
+  nav, aside, header, footer, [role="navigation"],
+  .modal-overlay-in,
+  [data-radix-popper-content-wrapper] {
+    display: none !important;
+  }
+
+  /* Show print-only section */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Remove shadows and rounded corners for print */
+  * {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 1.2cm 1.5cm;
+    size: A4;
+  }
+
+  /* Ensure links show URL */
+  a[href]::after {
+    content: none !important;
+  }
+}
