@@ -181,7 +181,6 @@
 /* ── Print Styles ────────────────────────────────────────────────────────────── */
 @media print {
   html, body {
-    overflow: hidden !important;
     height: auto !important;
     background: white !important;
     color: #111 !important;
@@ -192,48 +191,67 @@
     padding: 0 !important;
   }
 
-  /* Hide everything except print layout */
+  /* Remove main app shell completely from layout */
+  #admin-dashboard-root,
+  #admin-dashboard-root > *,
   .no-print,
-  .no-print *,
   nav, aside, header, footer, [role="navigation"],
   .modal-overlay-in,
   [data-radix-popper-content-wrapper] {
     display: none !important;
+    position: absolute !important;
+    left: -9999px !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Ensure the main content area doesn't show scrollbar */
+  main, main * {
+    overflow: visible !important;
+    height: auto !important;
   }
 
   /* Show print-only section */
   .print-only {
     display: block !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     max-width: 100% !important;
     width: 100% !important;
     height: auto !important;
+    position: static !important;
+    visibility: visible !important;
   }
 
-  /* Remove shadows, rounded corners, and backgrounds for print */
-  * {
+  /* Remove shadows, rounded corners */
+  .print-only * {
     box-shadow: none !important;
     border-radius: 0 !important;
     background: transparent !important;
     background-color: transparent !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
-  /* Re-enable white background for body and print container only */
-  body, .print-only, .print-only > div {
+  /* Re-enable white background for print container */
+  .print-only, .print-only > div {
     background: white !important;
   }
 
-  /* Prevent table overflow */
-  table {
+  /* Tables respect page width */
+  .print-only table {
     width: 100% !important;
     table-layout: fixed !important;
-    overflow: hidden !important;
   }
 
-  th, td {
-    overflow: hidden !important;
+  .print-only th, .print-only td {
     word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* Prevent awkward page breaks inside sections */
+  .print-only > div[style*="page-break"],
+  .print-only h3 {
+    page-break-after: avoid !important;
   }
 
   /* Page margins */
@@ -242,7 +260,6 @@
     size: A4;
   }
 
-  /* Ensure links show URL */
   a[href]::after {
     content: none !important;
   }
