@@ -1,3 +1,15 @@
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+    from: number;
+    to: number;
+  };
+}
+
 export interface Student {
   id: number;
   firstName: string;

@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { apiRequestBrowser } from "@/lib/api-client-browser";
-import { AtSign, Lock, Eye, EyeOff, Loader2, User } from "lucide-react";
+import { AtSign, Lock, Eye, EyeOff, Loader2, User, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { trackSignUp } from "@/shared/utils/dataLayer";
 
 type Step = 1 | 2 | 3;
+
+const OTP_LENGTH = 4;
+const RESEND_SECONDS = 60;
 
 export function SignupForm({
   defaultIdentifier,
@@ -17,8 +20,9 @@ export function SignupForm({
   const [step, setStep] = useState<Step>(1);
   const [identifier, setIdentifier] = useState(defaultIdentifier ?? "");
   const [idError, setIdError] = useState("");
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [otpError, setOtpError] = useState("");
+  const [otpSuccess, setOtpSuccess] = useState(false);
   const [sending, setSending] = useState(false);
   const [timer, setTimer] = useState(0);
   const [fullName, setFullName] = useState("");
@@ -53,13 +57,17 @@ export function SignupForm({
     }
     setIdError("");
     setSending(true);
+    setOtpError("");
+    setOtpSuccess(false);
     try {
       await apiRequestBrowser<null>("/auth/account/send-otp", {
         method: "POST",
         body: JSON.stringify({ identifier: identifier.trim() }),
       });
       setStep(2);
-      setTimer(60);
+      setTimer(RESEND_SECONDS);
+      setOtp(Array(OTP_LENGTH).fill(""));
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (err: any) {
       setIdError(err?.message ?? "Failed to send OTP");
     } finally {
@@ -67,25 +75,69 @@ export function SignupForm({
     }
   }
 
-  function handleOtpChange(i: number, val: string) {
+  async function resendOtp() {
+    if (timer > 0) return;
+    setOtp(Array(OTP_LENGTH).fill(""));
+    setOtpError("");
+    setOtpSuccess(false);
+    setSending(true);
+    try {
+      await apiRequestBrowser<null>("/auth/account/send-otp", {
+        method: "POST",
+        body: JSON.stringify({ identifier: identifier.trim() }),
+      });
+      setTimer(RESEND_SECONDS);
+      otpRefs.current[0]?.focus();
+    } catch (err: any) {
+      setOtpError(err?.message ?? "Failed to resend OTP");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const handleOtpChange = useCallback((i: number, val: string) => {
     if (!/^[0-9]?$/.test(val)) return;
     const next = [...otp];
     next[i] = val;
     setOtp(next);
-    if (val && i < 3) otpRefs.current[i + 1]?.focus();
-  }
+    setOtpError("");
+    if (val && i < OTP_LENGTH - 1) {
+      otpRefs.current[i + 1]?.focus();
+    }
+  }, [otp]);
 
-  function handleOtpKeyDown(i: number, e: React.KeyboardEvent) {
+  const handleOtpKeyDown = useCallback((i: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !otp[i] && i > 0) {
       otpRefs.current[i - 1]?.focus();
     }
+  }, [otp]);
+
+  const handleOtpPaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+    if (!pasted) return;
+    const next = Array(OTP_LENGTH).fill("");
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
+    setOtp(next);
+    setOtpError("");
+    const focusIdx = Math.min(pasted.length, OTP_LENGTH - 1);
+    otpRefs.current[focusIdx]?.focus();
+  }, []);
+
+  function goToOtp() {
+    if (otp.join("").length < OTP_LENGTH) {
+      setOtpError("Enter all 4 digits");
+      return;
+    }
+    setOtpError("");
+    setStep(3);
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setServerError("");
     const code = otp.join("");
-    if (code.length < 4) {
+    if (code.length < OTP_LENGTH) {
       setServerError("Enter the 4-digit OTP");
       return;
     }
@@ -97,9 +149,6 @@ export function SignupForm({
       setServerError("Password must be at least 6 characters");
       return;
     }
-    // Store first/last separately under the hood (the backend keeps both for
-    // certificates, invoices, emails, etc.). Split on the first space — a
-    // single-word name goes entirely into firstName with an empty lastName.
     const [firstName, ...rest] = fullName.trim().replace(/\s+/g, " ").split(" ");
     const lastName = rest.join(" ");
     setSubmitting(true);
@@ -123,10 +172,11 @@ export function SignupForm({
     }
   }
 
+  const timerProgress = timer > 0 ? timer / RESEND_SECONDS : 0;
+
   return (
     <form onSubmit={onSubmit}>
-      {/* Step indicator — 2 dots: identifier submitted, OTP verified.
-          Step 3 (name+password) is the tail end of step 2, not its own dot. */}
+      {/* Step indicator */}
       <div className="mb-6 flex items-center gap-2">
         {[1, 2].map((s) => (
           <div key={s} className="flex items-center gap-2">
@@ -141,27 +191,48 @@ export function SignupForm({
             >
               {step > s || (s === 2 && step === 3) ? "✓" : s}
             </div>
-            {s < 2 && <div className={`h-0.5 w-8 flex-1 ${step > s ? "bg-brand-400" : "bg-gray-100 dark:bg-gray-700"}`} />}
+            {s < 2 && (
+              <div
+                className={`h-0.5 w-8 flex-1 ${
+                  step > s ? "bg-brand-400" : "bg-gray-100 dark:bg-gray-700"
+                }`}
+              />
+            )}
           </div>
         ))}
       </div>
 
-      {/* Step 1: identifier */}
+      {/* ─── Step 1: identifier ─────────────────────────────────────────── */}
       {step === 1 && (
         <div className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">Email or phone number</label>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Email or phone number
+            </label>
             <div className="relative">
               <AtSign className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setIdError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    sendOtp();
+                  }
+                }}
                 placeholder="you@example.com or 01XXXXXXXXX"
                 className="w-full rounded-xl border border-gray-100 bg-gray-50/70 py-3.5 pl-10 pr-4 text-sm transition-all focus:border-brand-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-gray-700 dark:bg-gray-900/60 dark:text-white dark:focus:bg-gray-900"
               />
             </div>
-            {idError && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{idError}</p>}
+            {idError && (
+              <p className="mt-1 text-xs text-red-500 dark:text-red-400">
+                {idError}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -174,76 +245,136 @@ export function SignupForm({
                 <Loader2 className="h-4 w-4 animate-spin" /> Sending OTP...
               </>
             ) : (
-              "Continue >"
+              "Continue"
             )}
           </button>
         </div>
       )}
 
-      {/* Step 2: OTP */}
+      {/* ─── Step 2: OTP ─────────────────────────────────────────────────── */}
       {step === 2 && (
         <div className="space-y-5">
-          <div>
-            <p className="mb-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <span className="font-semibold text-gray-900 dark:text-white">{identifier}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                OTP has been sent to the {isEmail ? "email" : "number"}
+          {/* Back + identifier summary */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setStep(1);
+                setOtpError("");
+                setOtpSuccess(false);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <p className="flex-1 text-sm text-gray-600 dark:text-gray-400">
+              OTP sent to{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {identifier}
               </span>
             </p>
-            <div className="flex gap-3">
-              {otp.map((digit, i) => (
-                <input
-                  key={i}
-                  ref={(el) => {
-                    otpRefs.current[i] = el;
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleOtpChange(i, e.target.value)}
-                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className="h-12 w-12 rounded-xl border border-gray-100 bg-gray-50/70 text-center text-lg font-bold transition-all focus:border-brand-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 dark:border-gray-700 dark:bg-gray-900/60 dark:text-white dark:focus:bg-gray-900"
-                />
-              ))}
-            </div>
-            {otpError && <p className="mt-2 text-xs text-red-500">{otpError}</p>}
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setTimer(60);
-                  sendOtp();
-                }}
-                disabled={timer > 0}
-                className="rounded-full bg-amber-300 px-3 py-1 text-xs font-bold text-amber-900 shadow transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-amber-500/80 dark:text-amber-950"
-              >
-                {timer > 0 ? `Resend in ${timer}s` : "Resend OTP"}
-              </button>
-            </div>
           </div>
+
+          {/* OTP digit boxes */}
+          <div className="flex items-center justify-center gap-3">
+            {otp.map((digit, i) => (
+              <input
+                key={i}
+                ref={(el) => {
+                  otpRefs.current[i] = el;
+                }}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={OTP_LENGTH}
+                value={digit}
+                onChange={(e) => handleOtpChange(i, e.target.value)}
+                onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                onPaste={handleOtpPaste}
+                className={`h-14 w-14 rounded-xl border-2 bg-gray-50/70 text-center text-xl font-bold transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 dark:bg-gray-900/60 dark:text-white dark:focus:bg-gray-900 ${
+                  otpError
+                    ? "border-red-300 focus:border-red-400 dark:border-red-500/40"
+                    : digit
+                      ? "border-brand-300 dark:border-brand-500/50"
+                      : "border-gray-200 dark:border-gray-700"
+                }`}
+                aria-label={`Digit ${i + 1}`}
+              />
+            ))}
+          </div>
+
+          {/* Error / success */}
+          {otpError && (
+            <p className="text-center text-xs text-red-500 dark:text-red-400">
+              {otpError}
+            </p>
+          )}
+          {otpSuccess && (
+            <p className="flex items-center justify-center gap-1 text-xs text-green-600 dark:text-green-400">
+              <CheckCircle2 className="h-3.5 w-3.5" /> OTP verified
+            </p>
+          )}
+
+          {/* Timer bar */}
+          <div className="relative h-1 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-brand-400 transition-all duration-1000 ease-linear"
+              style={{ width: `${timerProgress * 100}%` }}
+            />
+          </div>
+
+          {/* Resend */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={resendOtp}
+              disabled={timer > 0 || sending}
+              className="text-sm font-medium text-brand-600 transition-colors hover:text-brand-700 disabled:cursor-not-allowed disabled:text-gray-400 dark:text-brand-400 dark:hover:text-brand-300 dark:disabled:text-gray-600"
+            >
+              {timer > 0 ? (
+                <span>
+                  Resend OTP in{" "}
+                  <span className="font-bold tabular-nums">{timer}s</span>
+                </span>
+              ) : sending ? (
+                <span className="flex items-center justify-center gap-1">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending...
+                </span>
+              ) : (
+                "Resend OTP"
+              )}
+            </button>
+          </div>
+
+          {/* Continue */}
           <button
             type="button"
-            onClick={() => {
-              if (otp.join("").length < 4) {
-                setOtpError("Enter all 4 digits");
-                return;
-              }
-              setOtpError("");
-              setStep(3);
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-from to-brand-to py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
+            onClick={goToOtp}
+            disabled={otp.join("").length < OTP_LENGTH}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-from to-brand-to py-3 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
           >
-            Continue &gt;
+            Continue
           </button>
         </div>
       )}
 
-      {/* Step 3: profile + password */}
+      {/* ─── Step 3: profile + password ─────────────────────────────────── */}
       {step === 3 && (
         <div className="space-y-4">
+          {/* Back to OTP */}
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            className="flex items-center gap-1 text-sm font-medium text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back
+          </button>
+
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">Full Name</label>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Full Name
+            </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
@@ -256,7 +387,9 @@ export function SignupForm({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">Password</label>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Password
+            </label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input

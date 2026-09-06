@@ -6,7 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { EmailTemplatesService } from 'src/email-templates/email-templates.service';
 
-const OTP_TTL_MINUTES = 5;
+const OTP_TTL_MINUTES = 10;
 
 /**
  * Facade over the DB-backed EmailTemplatesService for transactional/auth emails.
@@ -25,13 +25,18 @@ export class MailService {
   ) {}
 
   async sendOtpEmail(to: string, code: string): Promise<void> {
-    // Debug aid for local dev (no SMTP configured) — never logged at info level.
-    this.logger.debug(`[OTP] ${to} | Code: ${code}`);
+    // Always log the OTP so it's visible in dev terminal even if SMTP fails.
+    this.logger.log(`[OTP] Verification code for ${to}: ${code}`);
     try {
-      await this.templates.dispatch('otp_verification', to, {
+      const result = await this.templates.dispatch('otp_verification', to, {
         otp_code:  code,
         otp_ttl:   String(OTP_TTL_MINUTES),
       });
+      if (!result.sent) {
+        this.logger.warn(
+          `[OTP] Email not sent (SMTP not configured). Use this code: ${code}`,
+        );
+      }
     } catch (err) {
       this.logger.error('OTP email send failed', err as Error);
       throw new InternalServerErrorException(

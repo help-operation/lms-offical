@@ -10,6 +10,7 @@ import { SidebarProvider } from "@/shared/layout/SidebarContext";
 import { LocalizationProvider } from "@/shared/context/LocalizationContext";
 import { generateBrandScale, isHexColor, brandScaleToCssVars } from "@/shared/utils/color";
 import { getFontClassName, getFontCssVar } from "@/shared/utils/font-registry";
+import { ThemeFlashGuard } from "@/shared/layout/ThemeFlashGuard";
 
 export default function DashboardLayout({
   children,
@@ -91,11 +92,7 @@ async function DashboardLayoutContent({
           suppressHydrationWarning
         >
           {/* Theme flash prevention — applies the persisted class before first paint */}
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `try{if(localStorage.getItem('skillkoro-admin-theme')==='dark')document.getElementById('admin-dashboard-root').classList.add('dark');}catch(e){}`,
-            }}
-          />
+          <ThemeFlashGuard />
           {role === "SUPER_ADMIN" ? (
             <AdminSidebar siteName={settings.general_site_name} />
           ) : (

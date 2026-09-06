@@ -23,6 +23,9 @@ export const userRoleEnum = pgEnum('user_role', [
   'STUDENT',
   'INSTRUCTOR',
   'SUPER_ADMIN',
+  'EDITOR',
+  'MARKETING_OFFICER',
+  'ACCOUNTANT',
 ]);
 
 export const adminRoleEnum = pgEnum('admin_role', ['SUPER_ADMIN', 'INSTRUCTOR']);
@@ -214,6 +217,60 @@ export const users = pgTable('users', {
   tokensValidFrom: timestamp('tokens_valid_from'),
   // Last successful login on the student web app (apps/web). Null until first login.
   lastLoginAt: timestamp('last_login_at'),
+  // ── Staff profile fields ───────────────────────────────────────────────────
+  employeeId: varchar('employee_id', { length: 20 }),
+  department: varchar('department', { length: 100 }),
+  designation: varchar('designation', { length: 100 }),
+  joiningDate: timestamp('joining_date'),
+  employmentType: varchar('employment_type', { length: 20 }), // full_time, part_time, contractual
+  dateOfBirth: timestamp('date_of_birth'),
+  nationalId: varchar('national_id', { length: 50 }),
+  profilePicture: varchar('profile_picture', { length: 500 }),
+  emergencyContactName: varchar('emergency_contact_name', { length: 200 }),
+  emergencyContactPhone: varchar('emergency_contact_phone', { length: 20 }),
+  salary: numeric('salary', { precision: 12, scale: 2 }),
+  bankName: varchar('bank_name', { length: 200 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 50 }),
+  presentAddress: text('present_address'),
+  permanentAddress: text('permanent_address'),
+  // ── Extended staff fields (0071) ──────────────────────────────────────────
+  nidType: varchar('nid_type', { length: 20 }), // nid, passport
+  emergencyContactRelationship: varchar('emergency_contact_relationship', { length: 50 }),
+  bankingType: varchar('banking_type', { length: 20 }), // mobile_banking, bank_account
+  bankingProvider: varchar('banking_provider', { length: 50 }), // bKash, Nagad, etc.
+  division: varchar('division', { length: 100 }),
+  district: varchar('district', { length: 100 }),
+  thana: varchar('thana', { length: 100 }),
+  unionName: varchar('union_name', { length: 100 }),
+  postCode: varchar('post_code', { length: 10 }),
+  // ── Extended staff fields (0072) ──────────────────────────────────────────
+  fatherName: varchar('father_name', { length: 200 }),
+  motherName: varchar('mother_name', { length: 200 }),
+  presentDivision: varchar('present_division', { length: 100 }),
+  presentDistrict: varchar('present_district', { length: 100 }),
+  presentThana: varchar('present_thana', { length: 100 }),
+  presentUnion: varchar('present_union', { length: 100 }),
+  presentPostCode: varchar('present_post_code', { length: 10 }),
+  presentCountry: varchar('present_country', { length: 100 }),
+  sameAsPermanent: boolean('same_as_permanent').default(false),
+  // Payroll breakdown
+  houseRent: numeric('house_rent', { precision: 12, scale: 2 }),
+  medicalAllowance: numeric('medical_allowance', { precision: 12, scale: 2 }),
+  transportAllowance: numeric('transport_allowance', { precision: 12, scale: 2 }),
+  otherAllowance: numeric('other_allowance', { precision: 12, scale: 2 }),
+  grossSalary: numeric('gross_salary', { precision: 12, scale: 2 }),
+  overtimeRate: numeric('overtime_rate', { precision: 12, scale: 2 }),
+  taxDeduction: numeric('tax_deduction', { precision: 12, scale: 2 }),
+  providentFund: numeric('provident_fund', { precision: 12, scale: 2 }),
+  otherDeduction: numeric('other_deduction', { precision: 12, scale: 2 }),
+  netSalary: numeric('net_salary', { precision: 12, scale: 2 }),
+  // Bonus
+  bonusType: varchar('bonus_type', { length: 50 }),
+  bonusCalculationType: varchar('bonus_calculation_type', { length: 20 }),
+  bonusAmount: numeric('bonus_amount', { precision: 12, scale: 2 }),
+  bonusFrequency: varchar('bonus_frequency', { length: 30 }),
+  bonusEligibility: varchar('bonus_eligibility', { length: 20 }),
+  bonusNotes: text('bonus_notes'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -235,6 +292,61 @@ export const adminUsers = pgTable('admin_users', {
   failedLoginAttempts: integer('failed_login_attempts').notNull().default(0),
   lockedUntil: timestamp('locked_until'),
   tokensValidFrom: timestamp('tokens_valid_from'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// ─── User child tables (staff profile data) ───────────────────────────────────
+
+export const userEducation = pgTable('user_education', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  degree: varchar('degree', { length: 200 }),
+  institution: varchar('institution', { length: 300 }),
+  subject: varchar('subject', { length: 200 }),
+  passingYear: integer('passing_year'),
+  result: varchar('result', { length: 50 }),
+  order: integer('order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const userExperience = pgTable('user_experience', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  company: varchar('company', { length: 300 }),
+  designation: varchar('designation', { length: 200 }),
+  department: varchar('department', { length: 100 }),
+  employmentType: varchar('employment_type', { length: 30 }),
+  startDate: timestamp('start_date'),
+  endDate: timestamp('end_date'),
+  currentlyWorking: boolean('currently_working').default(false),
+  responsibilities: text('responsibilities'),
+  referenceNotes: text('reference_notes'),
+  order: integer('order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const userSkills = pgTable('user_skills', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  skillName: varchar('skill_name', { length: 200 }).notNull(),
+  level: varchar('level', { length: 20 }).default('intermediate'),
+  order: integer('order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const userDocuments = pgTable('user_documents', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  documentType: varchar('document_type', { length: 100 }),
+  documentName: varchar('document_name', { length: 300 }),
+  fileUrl: varchar('file_url', { length: 1000 }),
+  uploadDate: timestamp('upload_date').defaultNow(),
+  expiryDate: timestamp('expiry_date'),
+  notes: text('notes'),
+  status: varchar('status', { length: 20 }).default('active'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

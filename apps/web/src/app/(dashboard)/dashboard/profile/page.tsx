@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Profile management has moved into the unified Settings page.
+// Profile management has moved to the dedicated student profile page.
 export default function ProfilePage() {
-  redirect("/dashboard/settings");
+  redirect("/student/profile");
 }

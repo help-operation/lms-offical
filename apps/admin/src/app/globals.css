@@ -177,3 +177,121 @@
   92% { opacity: 0; }
   100% { stroke-dashoffset: 1500; opacity: 0; }
 }
+
+/* ── Print Styles ────────────────────────────────────────────────────────────── */
+/* JS-triggered: body.printing is set by window.print() handler */
+
+html.printing, html.printing body {
+  height: auto !important;
+  background: white !important;
+  color: #111 !important;
+  font-size: 11px !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* Reset dashboard root */
+html.printing #admin-dashboard-root {
+  display: block !important;
+  overflow: visible !important;
+  height: auto !important;
+  position: static !important;
+}
+
+/* Hide sidebar (first two divs) and top header */
+html.printing #admin-dashboard-root > div:first-child,
+html.printing #admin-dashboard-root > div:nth-child(2) {
+  display: none !important;
+}
+
+/* Content wrapper — remove overflow */
+html.printing #admin-dashboard-root > div:last-child {
+  overflow: visible !important;
+  height: auto !important;
+}
+
+/* Hide the top header inside content wrapper */
+html.printing #admin-dashboard-root > div:last-child > header:first-child {
+  display: none !important;
+}
+
+/* Main — no overflow, no padding */
+html.printing main {
+  overflow: visible !important;
+  height: auto !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Hide .no-print (interactive UI wrapper) */
+html.printing .no-print {
+  display: none !important;
+}
+
+/* Hide nav, footer, modals, overlays */
+html.printing nav,
+html.printing aside,
+html.printing footer,
+html.printing [role="navigation"],
+html.printing .modal-overlay-in,
+html.printing [data-radix-popper-content-wrapper] {
+  display: none !important;
+}
+
+/* Show print-only section */
+html.printing .print-only {
+  display: block !important;
+  overflow: visible !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  height: auto !important;
+  position: static !important;
+  visibility: visible !important;
+}
+
+/* Remove shadows, rounded corners */
+html.printing .print-only * {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  overflow: visible !important;
+}
+
+/* Re-enable white background for print container */
+html.printing .print-only,
+html.printing .print-only > div {
+  background: white !important;
+}
+
+/* Tables respect page width */
+html.printing .print-only table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+html.printing .print-only th,
+html.printing .print-only td {
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Prevent awkward page breaks inside sections */
+html.printing .print-only h3 {
+  page-break-after: avoid !important;
+}
+
+/* Page margins */
+@media print {
+  @page {
+    margin: 1.2cm 1.5cm;
+    size: A4;
+  }
+
+  a[href]::after {
+    content: none !important;
+  }
+}

@@ -95,6 +95,39 @@ export function AdminSidebar({ permissions, siteName }: { permissions?: string[]
 
           // ──── Collapsed: icon-only strip ────
           if (collapsed) {
+            // Single-item group → direct link
+            if (group.items.length === 1) {
+              const item = group.items[0]!;
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <div key={group.label} className="relative group">
+                  <Link
+                    href={item.href}
+                    title={item.label}
+                    className={`relative w-full flex items-center justify-center rounded-lg p-2.5 transition-all duration-200 ${
+                      active
+                        ? "bg-brand/8 text-brand dark:bg-brand/10"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    {active && (
+                      <span className="absolute -left-0.5 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-brand" />
+                    )}
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 transition-all ${
+                      active ? `${group.color} shadow-sm` : getTint(group.color).tint
+                    }`}>
+                      <GroupIcon size={15} weight="fill" className={active ? "text-white" : getTint(group.color).icon} />
+                    </span>
+                  </Link>
+                  {/* Tooltip */}
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 rounded-md bg-gray-900 dark:bg-slate-700 text-white text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50 shadow-lg">
+                    {item.label}
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-slate-700" />
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={group.label} className="relative group">
                 <button
@@ -128,6 +161,35 @@ export function AdminSidebar({ permissions, siteName }: { permissions?: string[]
           }
 
           // ──── Expanded: full menu with labels ────
+
+          // Single-item group → direct link (no accordion)
+          if (group.items.length === 1) {
+            const item = group.items[0]!;
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <div key={group.label}>
+                <Link
+                  href={item.href}
+                  className={`relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 ${
+                    active
+                      ? "bg-brand/8 text-brand dark:bg-brand/10"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {active && (
+                    <span className="absolute -left-1 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-brand" />
+                  )}
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 transition-all ${
+                    active ? `${group.color} shadow-sm` : getTint(group.color).tint
+                  }`}>
+                    <GroupIcon size={15} weight="fill" className={active ? "text-white" : getTint(group.color).icon} />
+                  </span>
+                  <span className="flex-1 text-left truncate">{item.label}</span>
+                </Link>
+              </div>
+            );
+          }
+
           return (
             <div key={group.label}>
               {/* Category parent toggle */}
@@ -176,7 +238,6 @@ export function AdminSidebar({ permissions, siteName }: { permissions?: string[]
                             <Icon size={13} weight="fill" className={active ? "text-white" : getTint(color).icon} />
                           </span>
                           <span className="flex-1 truncate">{label}</span>
-                          {active && <CaretRight size={12} weight="bold" className="text-brand" />}
                         </Link>
                       </li>
                     );

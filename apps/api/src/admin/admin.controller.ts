@@ -41,6 +41,13 @@ export class AdminController {
 
   // ─── User management ──────────────────────────────────────────────────────
 
+  @Get('users/stats')
+  @RequirePermissions('view_users')
+  @Message('User stats fetched')
+  getUserStats() {
+    return this.adminService.getUserStats();
+  }
+
   @Get('users')
   @RequirePermissions('view_users')
   @Message('Users fetched')
@@ -66,10 +73,10 @@ export class AdminController {
   @RequirePermissions('update_users')
   @Message('User created')
   async createUser(
-    @Body() body: { firstName: string; lastName: string; email?: string; phone?: string; password: string },
+    @Body() body: Record<string, any>,
     @CurrentUser() actor: RequestUser,
   ) {
-    const result = await this.adminService.createUser(body);
+    const result = await this.adminService.createUser(body as any);
     void this.activityLogs.log({ adminUserId: actor.userId, action: 'user_created', entity: 'user', entityId: (result as any)?.id, meta: { email: body.email } });
     return result;
   }
@@ -116,10 +123,10 @@ export class AdminController {
   @Message('User updated')
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null },
+    @Body() body: Record<string, any>,
     @CurrentUser() actor: RequestUser,
   ) {
-    const result = await this.adminService.updateUser(id, body);
+    const result = await this.adminService.updateUser(id, body as any);
     void this.activityLogs.log({ adminUserId: actor.userId, action: 'user_updated', entity: 'user', entityId: id });
     return result;
   }
@@ -491,6 +498,13 @@ export class AdminController {
   // ─── Student Management ───────────────────────────────────────────────────
 
   @RequirePermissions('view_students')
+  @Get('students/stats')
+  @Message('Student stats fetched')
+  getStudentStats() {
+    return this.adminService.getStudentStats();
+  }
+
+  @RequirePermissions('view_students')
   @Get('students')
   @Message('Students fetched')
   listStudents(@Query() query: TableQueryInput) {
@@ -550,6 +564,22 @@ export class AdminController {
     const result = await this.adminService.deleteStudent(id);
     void this.activityLogs.log({ adminUserId: actor.userId, action: 'student_deleted', entity: 'student', entityId: id });
     return result;
+  }
+
+  // ─── Guest Management ────────────────────────────────────────────────────
+
+  @RequirePermissions('view_students')
+  @Get('students/guests/stats')
+  @Message('Guest stats fetched')
+  getGuestStats() {
+    return this.adminService.getGuestStats();
+  }
+
+  @RequirePermissions('view_students')
+  @Get('students/guests')
+  @Message('Guests fetched')
+  listGuests(@Query() query: TableQueryInput) {
+    return this.adminService.listGuests(query);
   }
 
   // ─── Course Interest Tracking ──────────────────────────────────────────────

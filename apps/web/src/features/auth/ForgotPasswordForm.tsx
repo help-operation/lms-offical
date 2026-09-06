@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequestBrowser } from "@/lib/api-client-browser";
-import { AtSign, Lock, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
+import { AtSign, Lock, Eye, EyeOff, Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
 
 type Step = 1 | 2 | 3;
+
+const OTP_LENGTH = 4;
+const RESEND_SECONDS = 60;
 
 export function ForgotPasswordForm({
   onSuccess,
@@ -14,7 +17,7 @@ export function ForgotPasswordForm({
   const [step, setStep] = useState<Step>(1);
   const [identifier, setIdentifier] = useState("");
   const [idError, setIdError] = useState("");
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -32,19 +35,34 @@ export function ForgotPasswordForm({
 
   const isEmail = identifier.includes("@");
 
-  function handleOtpChange(i: number, val: string) {
+  const handleOtpChange = useCallback((i: number, val: string) => {
     if (!/^[0-9]?$/.test(val)) return;
     const next = [...otp];
     next[i] = val;
     setOtp(next);
-    if (val && i < 3) otpRefs.current[i + 1]?.focus();
-  }
+    setServerError("");
+    if (val && i < OTP_LENGTH - 1) {
+      otpRefs.current[i + 1]?.focus();
+    }
+  }, [otp]);
 
-  function handleOtpKeyDown(i: number, e: React.KeyboardEvent) {
+  const handleOtpKeyDown = useCallback((i: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !otp[i] && i > 0) {
       otpRefs.current[i - 1]?.focus();
     }
-  }
+  }, [otp]);
+
+  const handleOtpPaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+    if (!pasted) return;
+    const next = Array(OTP_LENGTH).fill("");
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
+    setOtp(next);
+    setServerError("");
+    const focusIdx = Math.min(pasted.length, OTP_LENGTH - 1);
+    otpRefs.current[focusIdx]?.focus();
+  }, []);
 
   function validIdentifier() {
     const v = identifier.trim();
@@ -65,9 +83,30 @@ export function ForgotPasswordForm({
         body: JSON.stringify({ identifier: identifier.trim(), purpose: "reset" }),
       });
       setStep(2);
-      setTimer(60);
+      setTimer(RESEND_SECONDS);
+      setOtp(Array(OTP_LENGTH).fill(""));
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (err: any) {
       setIdError(err?.message ?? "Failed to send OTP");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function resendOtp() {
+    if (timer > 0) return;
+    setOtp(Array(OTP_LENGTH).fill(""));
+    setServerError("");
+    setSending(true);
+    try {
+      await apiRequestBrowser<null>("/auth/account/send-otp", {
+        method: "POST",
+        body: JSON.stringify({ identifier: identifier.trim(), purpose: "reset" }),
+      });
+      setTimer(RESEND_SECONDS);
+      otpRefs.current[0]?.focus();
+    } catch (err: any) {
+      setServerError(err?.message ?? "Failed to resend OTP");
     } finally {
       setSending(false);
     }
@@ -77,7 +116,7 @@ export function ForgotPasswordForm({
     e.preventDefault();
     setServerError("");
     const code = otp.join("");
-    if (code.length !== 4 || !/^[0-9]{4}$/.test(code)) {
+    if (code.length !== OTP_LENGTH || !/^[0-9]{4}$/.test(code)) {
       setServerError("Enter the 4-digit OTP");
       return;
     }
@@ -108,7 +147,6 @@ export function ForgotPasswordForm({
     }
   }
 
-  // ── Success ────────────────────────────────────────────────────────────
   if (step === 3) {
     return (
       <div className="text-center">
@@ -118,10 +156,12 @@ export function ForgotPasswordForm({
         <h2 className="mt-4 text-lg font-bold text-gray-900 dark:text-white">
           Password reset successful
         </h2>
-        <p className="mt-1 text-sm text-ink-soft dark:text-gray-400">Redirecting you to sign in…</p>
+        <p className="mt-1 text-sm text-ink-soft dark:text-gray-400">Redirecting you to sign in...</p>
       </div>
     );
   }
+
+  const timerProgress = timer > 0 ? timer / RESEND_SECONDS : 0;
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -136,7 +176,16 @@ export function ForgotPasswordForm({
               <input
                 type="text"
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setIdError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    sendOtp();
+                  }
+                }}
                 placeholder="you@example.com or 01XXXXXXXXX"
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
@@ -162,17 +211,28 @@ export function ForgotPasswordForm({
 
       {step === 2 && (
         <>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            We sent a 4-digit code to{" "}
-            <span className="font-semibold text-gray-900 dark:text-white">{identifier}</span> (
-            {isEmail ? "email" : "SMS"})
-          </p>
+          {/* Back + summary */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <p className="flex-1 text-sm text-gray-600 dark:text-gray-400">
+              OTP sent to{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">{identifier}</span>
+            </p>
+          </div>
 
+          {/* OTP digit boxes */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5 dark:text-gray-300">
-              OTP
+              Enter verification code
             </label>
-            <div className="flex gap-3">
+            <div className="flex items-center justify-center gap-3">
               {otp.map((digit, i) => (
                 <input
                   key={i}
@@ -181,34 +241,53 @@ export function ForgotPasswordForm({
                   }}
                   type="text"
                   inputMode="numeric"
-                  maxLength={1}
+                  autoComplete="one-time-code"
+                  maxLength={OTP_LENGTH}
                   value={digit}
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className="h-12 w-12 text-center text-lg font-bold rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  onPaste={handleOtpPaste}
+                  className={`h-14 w-14 rounded-xl border-2 bg-gray-50/70 text-center text-xl font-bold transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 dark:bg-gray-900/60 dark:text-white dark:focus:bg-gray-900 ${
+                    serverError && serverError.includes("OTP")
+                      ? "border-red-300 focus:border-red-400 dark:border-red-500/40"
+                      : digit
+                        ? "border-brand-300 dark:border-brand-500/50"
+                        : "border-gray-200 dark:border-gray-700"
+                  }`}
+                  aria-label={`Digit ${i + 1}`}
                 />
               ))}
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          {/* Timer bar */}
+          <div className="relative h-1 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-brand-400 transition-all duration-1000 ease-linear"
+              style={{ width: `${timerProgress * 100}%` }}
+            />
+          </div>
+
+          {/* Resend */}
+          <div className="text-center">
             <button
               type="button"
-              onClick={() => setStep(1)}
-              className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              onClick={resendOtp}
+              disabled={timer > 0 || sending}
+              className="text-sm font-medium text-brand-600 transition-colors hover:text-brand-700 disabled:cursor-not-allowed disabled:text-gray-400 dark:text-brand-400 dark:hover:text-brand-300 dark:disabled:text-gray-600"
             >
-              ← Change
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTimer(60);
-                sendOtp();
-              }}
-              disabled={timer > 0}
-              className="text-xs font-medium text-brand-600 hover:text-brand-700 disabled:text-gray-400 dark:text-brand-400 dark:hover:text-brand-300 dark:disabled:text-gray-500"
-            >
-              {timer > 0 ? `Resend in ${timer}s` : "Resend OTP"}
+              {timer > 0 ? (
+                <span>
+                  Resend OTP in{" "}
+                  <span className="font-bold tabular-nums">{timer}s</span>
+                </span>
+              ) : sending ? (
+                <span className="flex items-center justify-center gap-1">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending...
+                </span>
+              ) : (
+                "Resend OTP"
+              )}
             </button>
           </div>
 

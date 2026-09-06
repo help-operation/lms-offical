@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, sql, ilike, or, and, inArray, gte, lte, type SQL } from 'drizzle-orm';
+import { desc, eq, sql, ilike, or, and, inArray, notInArray, gte, lte, isNotNull, type SQL } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
@@ -26,11 +26,17 @@ import {
   orderItems,
   orders,
   payments,
+  permissions,
+  rolePermissions,
   roles,
   shopOrders,
   shopOrderItems,
   studentProfiles,
   userCourseInterests,
+  userEducation,
+  userExperience,
+  userSkills,
+  userDocuments,
   users,
 } from 'src/db/schema';
 import {
@@ -137,6 +143,37 @@ export class AdminService {
 
   // ─── User Management ──────────────────────────────────────────────────────
 
+  async getUserStats() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const adminOnlyRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
+    const adminWhere = inArray(users.role, adminOnlyRoles as any);
+
+    const [totalRow, activeRow, suspendedRow, newThisMonthRow, ...roleRows] = await Promise.all([
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(adminWhere),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(adminWhere, eq(users.status, 'active'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(adminWhere, eq(users.status, 'suspended'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(adminWhere, gte(users.createdAt, startOfMonth))),
+      ...adminOnlyRoles.map((role) =>
+        this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(eq(users.role, role))
+      ),
+    ]);
+
+    const roles: Record<string, number> = {};
+    adminOnlyRoles.forEach((role, i) => {
+      roles[role] = roleRows[i]?.[0]?.count ?? 0;
+    });
+
+    return {
+      total:        totalRow[0]?.count ?? 0,
+      active:       activeRow[0]?.count ?? 0,
+      suspended:    suspendedRow[0]?.count ?? 0,
+      newThisMonth: newThisMonthRow[0]?.count ?? 0,
+      roles,
+    };
+  }
+
   async listUsers(params: TableQueryInput = {}) {
     const q = buildTableQuery(params, {
       searchable: [users.firstName, users.lastName, users.email, users.phone],
@@ -145,6 +182,10 @@ export class AdminService {
       dateColumn:  users.createdAt,
       defaultSort: desc(users.createdAt),
     });
+
+    const adminRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
+    const baseWhere = inArray(users.role, adminRoles as any);
+    const combinedWhere = q.where ? and(baseWhere, q.where) : baseWhere;
 
     const [rows, [countRow]] = await Promise.all([
       this.db
@@ -160,14 +201,14 @@ export class AdminService {
           createdAt: users.createdAt,
         })
         .from(users)
-        .where(q.where)
+        .where(combinedWhere)
         .orderBy(q.orderBy)
         .limit(q.limit)
         .offset(q.offset),
       this.db
         .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
         .from(users)
-        .where(q.where),
+        .where(combinedWhere),
     ]);
 
     return formatPaginatedResponse(rows, countRow?.count ?? 0, q.page, q.perPage);
@@ -254,23 +295,168 @@ export class AdminService {
   }
 
   async getUser(id: number) {
-    const cols = {
-      id:        users.id,
-      firstName: users.firstName,
-      lastName:  users.lastName,
-      email:     users.email,
-      phone:     users.phone,
-      role:      users.role,
-      status:    users.status,
-      avatar:    users.avatar,
-      createdAt: users.createdAt,
+    // 1) Try the `users` table first
+    const userCols = {
+      id:                  users.id,
+      firstName:           users.firstName,
+      lastName:            users.lastName,
+      email:               users.email,
+      phone:               users.phone,
+      role:                users.role,
+      status:              users.status,
+      avatar:              users.avatar,
+      gender:              users.gender,
+      country:             users.country,
+      city:                users.city,
+      employeeId:          users.employeeId,
+      department:          users.department,
+      designation:         users.designation,
+      joiningDate:         users.joiningDate,
+      employmentType:      users.employmentType,
+      dateOfBirth:         users.dateOfBirth,
+      nationalId:          users.nationalId,
+      profilePicture:      users.profilePicture,
+      emergencyContactName:  users.emergencyContactName,
+      emergencyContactPhone: users.emergencyContactPhone,
+      emergencyContactRelationship: users.emergencyContactRelationship,
+      salary:              users.salary,
+      bankName:            users.bankName,
+      bankAccountNumber:   users.bankAccountNumber,
+      presentAddress:      users.presentAddress,
+      permanentAddress:    users.permanentAddress,
+      nidType:             users.nidType,
+      bankingType:         users.bankingType,
+      bankingProvider:     users.bankingProvider,
+      division:            users.division,
+      district:            users.district,
+      thana:               users.thana,
+      unionName:           users.unionName,
+      postCode:            users.postCode,
+      fatherName:          users.fatherName,
+      motherName:          users.motherName,
+      presentDivision:     users.presentDivision,
+      presentDistrict:     users.presentDistrict,
+      presentThana:        users.presentThana,
+      presentUnion:        users.presentUnion,
+      presentPostCode:     users.presentPostCode,
+      presentCountry:      users.presentCountry,
+      sameAsPermanent:     users.sameAsPermanent,
+      houseRent:           users.houseRent,
+      medicalAllowance:    users.medicalAllowance,
+      transportAllowance:  users.transportAllowance,
+      otherAllowance:      users.otherAllowance,
+      grossSalary:         users.grossSalary,
+      overtimeRate:        users.overtimeRate,
+      taxDeduction:        users.taxDeduction,
+      providentFund:       users.providentFund,
+      otherDeduction:      users.otherDeduction,
+      netSalary:           users.netSalary,
+      bonusType:           users.bonusType,
+      bonusCalculationType: users.bonusCalculationType,
+      bonusAmount:         users.bonusAmount,
+      bonusFrequency:      users.bonusFrequency,
+      bonusEligibility:    users.bonusEligibility,
+      bonusNotes:          users.bonusNotes,
+      createdAt:           users.createdAt,
+      updatedAt:           users.updatedAt,
+      lastLoginAt:         users.lastLoginAt,
+      failedLoginAttempts: users.failedLoginAttempts,
+      lockedUntil:         users.lockedUntil,
     };
-    const [user] = await this.db.select(cols).from(users).where(eq(users.id, id)).limit(1);
-    if (!user) throw new NotFoundException('User not found');
-    return user;
+    const [user] = await this.db.select(userCols).from(users).where(eq(users.id, id)).limit(1);
+
+    // 2) Fallback: check `admin_users` table (Super Admin, Instructors)
+    let mappedUser = user;
+    if (!mappedUser) {
+      const [admin] = await this.db
+        .select({
+          id:        adminUsers.id,
+          firstName: adminUsers.firstName,
+          lastName:  adminUsers.lastName,
+          email:     adminUsers.email,
+          phone:     sql<string | null>`null`,
+          role:      adminUsers.role,
+          status:    adminUsers.status,
+          avatar:    adminUsers.avatar,
+          gender:    sql<string | null>`null`,
+          country:   sql<string | null>`null`,
+          city:      sql<string | null>`null`,
+          createdAt: adminUsers.createdAt,
+          updatedAt: adminUsers.updatedAt,
+          lastLoginAt: sql<string | null>`null`,
+          failedLoginAttempts: adminUsers.failedLoginAttempts,
+          lockedUntil: adminUsers.lockedUntil,
+        })
+        .from(adminUsers)
+        .where(eq(adminUsers.id, id))
+        .limit(1);
+
+      if (!admin) throw new NotFoundException('User not found');
+      mappedUser = admin as any;
+    }
+
+    const [roleRow] = await this.db
+      .select({ id: roles.id, name: roles.name, slug: roles.slug, description: roles.description })
+      .from(roles)
+      .innerJoin(adminUsers, eq(adminUsers.roleId, roles.id))
+      .where(eq(adminUsers.id, id))
+      .limit(1);
+
+    let permissionSlugs: string[] = [];
+    if (roleRow) {
+      const perms = await this.db
+        .select({ slug: permissions.slug })
+        .from(permissions)
+        .innerJoin(rolePermissions, eq(rolePermissions.permissionId, permissions.id))
+        .where(eq(rolePermissions.roleId, roleRow.id));
+      permissionSlugs = perms.map((p) => p.slug);
+    }
+
+    // 3) Fetch child tables
+    const [education, experience, skills, documents] = await Promise.all([
+      this.db.select().from(userEducation).where(eq(userEducation.userId, id)).orderBy(userEducation.order),
+      this.db.select().from(userExperience).where(eq(userExperience.userId, id)).orderBy(userExperience.order),
+      this.db.select().from(userSkills).where(eq(userSkills.userId, id)).orderBy(userSkills.order),
+      this.db.select().from(userDocuments).where(eq(userDocuments.userId, id)),
+    ]);
+
+    return {
+      ...mappedUser,
+      roleInfo: roleRow ?? null,
+      permissions: permissionSlugs,
+      education,
+      experience,
+      skills,
+      documents,
+    };
   }
 
-  async createUser(dto: { firstName: string; lastName: string; email?: string; phone?: string; password: string }) {
+  async createUser(dto: {
+    firstName: string; lastName: string; email?: string; phone?: string; password: string;
+    role?: string; gender?: string; country?: string; city?: string;
+    department?: string; designation?: string;
+    dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
+    emergencyContactName?: string; emergencyContactPhone?: string;
+    emergencyContactRelationship?: string;
+    salary?: number; bankName?: string; bankAccountNumber?: string;
+    presentAddress?: string; permanentAddress?: string;
+    nidType?: string; bankingType?: string; bankingProvider?: string;
+    division?: string; district?: string; thana?: string; unionName?: string; postCode?: string;
+    fatherName?: string; motherName?: string;
+    presentDivision?: string; presentDistrict?: string; presentThana?: string;
+    presentUnion?: string; presentPostCode?: string; presentCountry?: string;
+    sameAsPermanent?: boolean;
+    houseRent?: number; medicalAllowance?: number; transportAllowance?: number; otherAllowance?: number;
+    grossSalary?: number; overtimeRate?: number; taxDeduction?: number;
+    providentFund?: number; otherDeduction?: number; netSalary?: number;
+    bonusType?: string; bonusCalculationType?: string; bonusAmount?: number;
+    bonusFrequency?: string; bonusEligibility?: string; bonusNotes?: string;
+    profilePicture?: string;
+    education?: { degree?: string; institution?: string; subject?: string; passingYear?: number; result?: string; order?: number }[];
+    experience?: { company?: string; designation?: string; department?: string; employmentType?: string; startDate?: string; endDate?: string; currentlyWorking?: boolean; responsibilities?: string; referenceNotes?: string; order?: number }[];
+    skills?: { skillName: string; level?: string; order?: number }[];
+    documents?: { documentType?: string; documentName?: string; fileUrl?: string; expiryDate?: string; notes?: string; status?: string }[];
+  }) {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Email or phone is required');
     }
@@ -284,7 +470,15 @@ export class AdminService {
       if (existing) throw new ConflictException('A user with this phone number already exists');
     }
 
+    // Generate employee ID: EMP-YYYYMMDD-XXXX
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const employeeId = `EMP-${dateStr}-${random}`;
+
     const hash = await bcrypt.hash(dto.password, 10);
+    const validRoles = ['GUEST', 'STUDENT', 'INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'];
+    const role = validRoles.includes(dto.role ?? '') ? dto.role! : 'GUEST';
 
     const [created] = await this.db
       .insert(users)
@@ -294,8 +488,60 @@ export class AdminService {
         email:     dto.email || null,
         phone:     dto.phone || null,
         password:  hash,
-        role:      'GUEST',
+        role:      role as any,
         status:    'active',
+        gender:    (dto.gender as any) || null,
+        country:   dto.country || null,
+        city:      dto.city || null,
+        employeeId,
+        department:   dto.department || null,
+        designation:  dto.designation || null,
+        joiningDate:  dto.joiningDate ? new Date(dto.joiningDate) : null,
+        employmentType: dto.employmentType || null,
+        dateOfBirth:  dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+        nationalId:   dto.nationalId || null,
+        emergencyContactName:  dto.emergencyContactName || null,
+        emergencyContactPhone: dto.emergencyContactPhone || null,
+        emergencyContactRelationship: dto.emergencyContactRelationship || null,
+        salary:       dto.salary != null ? String(dto.salary) : null,
+        bankName:     dto.bankName || null,
+        bankAccountNumber: dto.bankAccountNumber || null,
+        presentAddress:  dto.presentAddress || null,
+        permanentAddress: dto.permanentAddress || null,
+        nidType:      dto.nidType || null,
+        bankingType:  dto.bankingType || null,
+        bankingProvider: dto.bankingProvider || null,
+        division:     dto.division || null,
+        district:     dto.district || null,
+        thana:        dto.thana || null,
+        unionName:    dto.unionName || null,
+        postCode:     dto.postCode || null,
+        fatherName:   dto.fatherName || null,
+        motherName:   dto.motherName || null,
+        presentDivision: dto.presentDivision || null,
+        presentDistrict: dto.presentDistrict || null,
+        presentThana:    dto.presentThana || null,
+        presentUnion:    dto.presentUnion || null,
+        presentPostCode: dto.presentPostCode || null,
+        presentCountry:  dto.presentCountry || null,
+        sameAsPermanent: dto.sameAsPermanent ?? false,
+        profilePicture:  dto.profilePicture || null,
+        houseRent:         dto.houseRent != null ? String(dto.houseRent) : null,
+        medicalAllowance:  dto.medicalAllowance != null ? String(dto.medicalAllowance) : null,
+        transportAllowance: dto.transportAllowance != null ? String(dto.transportAllowance) : null,
+        otherAllowance:    dto.otherAllowance != null ? String(dto.otherAllowance) : null,
+        grossSalary:       dto.grossSalary != null ? String(dto.grossSalary) : null,
+        overtimeRate:      dto.overtimeRate != null ? String(dto.overtimeRate) : null,
+        taxDeduction:      dto.taxDeduction != null ? String(dto.taxDeduction) : null,
+        providentFund:     dto.providentFund != null ? String(dto.providentFund) : null,
+        otherDeduction:    dto.otherDeduction != null ? String(dto.otherDeduction) : null,
+        netSalary:         dto.netSalary != null ? String(dto.netSalary) : null,
+        bonusType:           dto.bonusType || null,
+        bonusCalculationType: dto.bonusCalculationType || null,
+        bonusAmount:         dto.bonusAmount != null ? String(dto.bonusAmount) : null,
+        bonusFrequency:      dto.bonusFrequency || null,
+        bonusEligibility:    dto.bonusEligibility || null,
+        bonusNotes:          dto.bonusNotes || null,
       })
       .returning({
         id:        users.id,
@@ -306,18 +552,102 @@ export class AdminService {
         role:      users.role,
         status:    users.status,
         avatar:    users.avatar,
+        employeeId: users.employeeId,
         createdAt: users.createdAt,
       });
+
+    // Insert child tables
+    if (created && dto.education?.length) {
+      await this.db.insert(userEducation).values(
+        dto.education.map((e, i) => ({
+          userId: created.id,
+          degree: e.degree || null,
+          institution: e.institution || null,
+          subject: e.subject || null,
+          passingYear: e.passingYear || null,
+          result: e.result || null,
+          order: e.order ?? i,
+        })),
+      );
+    }
+    if (created && dto.experience?.length) {
+      await this.db.insert(userExperience).values(
+        dto.experience.map((e, i) => ({
+          userId: created.id,
+          company: e.company || null,
+          designation: e.designation || null,
+          department: e.department || null,
+          employmentType: e.employmentType || null,
+          startDate: e.startDate ? new Date(e.startDate) : null,
+          endDate: e.endDate ? new Date(e.endDate) : null,
+          currentlyWorking: e.currentlyWorking ?? false,
+          responsibilities: e.responsibilities || null,
+          referenceNotes: e.referenceNotes || null,
+          order: e.order ?? i,
+        })),
+      );
+    }
+    if (created && dto.skills?.length) {
+      await this.db.insert(userSkills).values(
+        dto.skills.map((s, i) => ({
+          userId: created.id,
+          skillName: s.skillName,
+          level: s.level || 'intermediate',
+          order: s.order ?? i,
+        })),
+      );
+    }
+    if (created && dto.documents?.length) {
+      await this.db.insert(userDocuments).values(
+        dto.documents.map((d) => ({
+          userId: created.id,
+          documentType: d.documentType || null,
+          documentName: d.documentName || null,
+          fileUrl: d.fileUrl || null,
+          expiryDate: d.expiryDate ? new Date(d.expiryDate) : null,
+          notes: d.notes || null,
+          status: d.status || 'active',
+        })),
+      );
+    }
 
     return created;
   }
 
   async updateUser(
     id: number,
-    dto: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null },
+    dto: {
+      firstName?: string; lastName?: string; email?: string | null; phone?: string | null;
+      role?: string; gender?: string; country?: string; city?: string;
+      department?: string; designation?: string;
+      dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
+      emergencyContactName?: string; emergencyContactPhone?: string;
+      emergencyContactRelationship?: string;
+      salary?: number; bankName?: string; bankAccountNumber?: string;
+      presentAddress?: string; permanentAddress?: string;
+      nidType?: string; bankingType?: string; bankingProvider?: string;
+      division?: string; district?: string; thana?: string; unionName?: string; postCode?: string;
+      fatherName?: string; motherName?: string;
+      presentDivision?: string; presentDistrict?: string; presentThana?: string;
+      presentUnion?: string; presentPostCode?: string; presentCountry?: string;
+      sameAsPermanent?: boolean;
+      houseRent?: number; medicalAllowance?: number; transportAllowance?: number; otherAllowance?: number;
+      grossSalary?: number; overtimeRate?: number; taxDeduction?: number;
+      providentFund?: number; otherDeduction?: number; netSalary?: number;
+      bonusType?: string; bonusCalculationType?: string; bonusAmount?: number;
+      bonusFrequency?: string; bonusEligibility?: string; bonusNotes?: string;
+      profilePicture?: string;
+      education?: { id?: number; degree?: string; institution?: string; subject?: string; passingYear?: number; result?: string; order?: number }[];
+      experience?: { id?: number; company?: string; designation?: string; department?: string; employmentType?: string; startDate?: string; endDate?: string; currentlyWorking?: boolean; responsibilities?: string; referenceNotes?: string; order?: number }[];
+      skills?: { id?: number; skillName: string; level?: string; order?: number }[];
+      documents?: { id?: number; documentType?: string; documentName?: string; fileUrl?: string; expiryDate?: string; notes?: string; status?: string }[];
+    },
   ) {
     const [exists] = await this.db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1);
     if (!exists) throw new NotFoundException('User not found');
+
+    const numOrNull = (v: unknown) => v != null ? String(v) : null;
+    const dateOrNull = (v: unknown) => v ? new Date(v as string) : null;
 
     const [updated] = await this.db
       .update(users)
@@ -326,6 +656,58 @@ export class AdminService {
         ...(dto.lastName  !== undefined && { lastName:  dto.lastName  }),
         ...(dto.email     !== undefined && { email:     dto.email     }),
         ...(dto.phone     !== undefined && { phone:     dto.phone     }),
+        ...(dto.role      !== undefined && { role:      dto.role as any }),
+        ...(dto.gender    !== undefined && { gender:    dto.gender as any }),
+        ...(dto.country   !== undefined && { country:   dto.country }),
+        ...(dto.city      !== undefined && { city:      dto.city }),
+        ...(dto.department   !== undefined && { department:   dto.department }),
+        ...(dto.designation  !== undefined && { designation:  dto.designation }),
+        ...(dto.joiningDate  !== undefined && { joiningDate:  dateOrNull(dto.joiningDate) }),
+        ...(dto.employmentType !== undefined && { employmentType: dto.employmentType }),
+        ...(dto.dateOfBirth  !== undefined && { dateOfBirth:  dateOrNull(dto.dateOfBirth) }),
+        ...(dto.nationalId   !== undefined && { nationalId:   dto.nationalId }),
+        ...(dto.emergencyContactName  !== undefined && { emergencyContactName:  dto.emergencyContactName }),
+        ...(dto.emergencyContactPhone !== undefined && { emergencyContactPhone: dto.emergencyContactPhone }),
+        ...(dto.emergencyContactRelationship !== undefined && { emergencyContactRelationship: dto.emergencyContactRelationship }),
+        ...(dto.salary       !== undefined && { salary:       numOrNull(dto.salary) }),
+        ...(dto.bankName     !== undefined && { bankName:     dto.bankName }),
+        ...(dto.bankAccountNumber !== undefined && { bankAccountNumber: dto.bankAccountNumber }),
+        ...(dto.presentAddress  !== undefined && { presentAddress:  dto.presentAddress }),
+        ...(dto.permanentAddress !== undefined && { permanentAddress: dto.permanentAddress }),
+        ...(dto.nidType      !== undefined && { nidType:      dto.nidType }),
+        ...(dto.bankingType  !== undefined && { bankingType:  dto.bankingType }),
+        ...(dto.bankingProvider !== undefined && { bankingProvider: dto.bankingProvider }),
+        ...(dto.division     !== undefined && { division:     dto.division }),
+        ...(dto.district     !== undefined && { district:     dto.district }),
+        ...(dto.thana        !== undefined && { thana:        dto.thana }),
+        ...(dto.unionName    !== undefined && { unionName:    dto.unionName }),
+        ...(dto.postCode     !== undefined && { postCode:     dto.postCode }),
+        ...(dto.fatherName   !== undefined && { fatherName:   dto.fatherName }),
+        ...(dto.motherName   !== undefined && { motherName:   dto.motherName }),
+        ...(dto.presentDivision !== undefined && { presentDivision: dto.presentDivision }),
+        ...(dto.presentDistrict !== undefined && { presentDistrict: dto.presentDistrict }),
+        ...(dto.presentThana    !== undefined && { presentThana:    dto.presentThana }),
+        ...(dto.presentUnion    !== undefined && { presentUnion:    dto.presentUnion }),
+        ...(dto.presentPostCode !== undefined && { presentPostCode: dto.presentPostCode }),
+        ...(dto.presentCountry  !== undefined && { presentCountry:  dto.presentCountry }),
+        ...(dto.sameAsPermanent !== undefined && { sameAsPermanent: dto.sameAsPermanent }),
+        ...(dto.profilePicture  !== undefined && { profilePicture:  dto.profilePicture }),
+        ...(dto.houseRent         !== undefined && { houseRent:         numOrNull(dto.houseRent) }),
+        ...(dto.medicalAllowance  !== undefined && { medicalAllowance:  numOrNull(dto.medicalAllowance) }),
+        ...(dto.transportAllowance !== undefined && { transportAllowance: numOrNull(dto.transportAllowance) }),
+        ...(dto.otherAllowance    !== undefined && { otherAllowance:    numOrNull(dto.otherAllowance) }),
+        ...(dto.grossSalary       !== undefined && { grossSalary:       numOrNull(dto.grossSalary) }),
+        ...(dto.overtimeRate      !== undefined && { overtimeRate:      numOrNull(dto.overtimeRate) }),
+        ...(dto.taxDeduction      !== undefined && { taxDeduction:      numOrNull(dto.taxDeduction) }),
+        ...(dto.providentFund     !== undefined && { providentFund:     numOrNull(dto.providentFund) }),
+        ...(dto.otherDeduction    !== undefined && { otherDeduction:    numOrNull(dto.otherDeduction) }),
+        ...(dto.netSalary         !== undefined && { netSalary:         numOrNull(dto.netSalary) }),
+        ...(dto.bonusType           !== undefined && { bonusType:           dto.bonusType }),
+        ...(dto.bonusCalculationType !== undefined && { bonusCalculationType: dto.bonusCalculationType }),
+        ...(dto.bonusAmount         !== undefined && { bonusAmount:         numOrNull(dto.bonusAmount) }),
+        ...(dto.bonusFrequency      !== undefined && { bonusFrequency:      dto.bonusFrequency }),
+        ...(dto.bonusEligibility    !== undefined && { bonusEligibility:    dto.bonusEligibility }),
+        ...(dto.bonusNotes          !== undefined && { bonusNotes:          dto.bonusNotes }),
       })
       .where(eq(users.id, id))
       .returning({
@@ -339,6 +721,74 @@ export class AdminService {
         avatar:    users.avatar,
         createdAt: users.createdAt,
       });
+
+    // Sync child tables if provided
+    if (dto.education) {
+      await this.db.delete(userEducation).where(eq(userEducation.userId, id));
+      if (dto.education.length) {
+        await this.db.insert(userEducation).values(
+          dto.education.map((e, i) => ({
+            userId: id,
+            degree: e.degree || null,
+            institution: e.institution || null,
+            subject: e.subject || null,
+            passingYear: e.passingYear || null,
+            result: e.result || null,
+            order: e.order ?? i,
+          })),
+        );
+      }
+    }
+    if (dto.experience) {
+      await this.db.delete(userExperience).where(eq(userExperience.userId, id));
+      if (dto.experience.length) {
+        await this.db.insert(userExperience).values(
+          dto.experience.map((e, i) => ({
+            userId: id,
+            company: e.company || null,
+            designation: e.designation || null,
+            department: e.department || null,
+            employmentType: e.employmentType || null,
+            startDate: e.startDate ? new Date(e.startDate) : null,
+            endDate: e.endDate ? new Date(e.endDate) : null,
+            currentlyWorking: e.currentlyWorking ?? false,
+            responsibilities: e.responsibilities || null,
+            referenceNotes: e.referenceNotes || null,
+            order: e.order ?? i,
+          })),
+        );
+      }
+    }
+    if (dto.skills) {
+      await this.db.delete(userSkills).where(eq(userSkills.userId, id));
+      if (dto.skills.length) {
+        await this.db.insert(userSkills).values(
+          dto.skills.map((s, i) => ({
+            userId: id,
+            skillName: s.skillName,
+            level: s.level || 'intermediate',
+            order: s.order ?? i,
+          })),
+        );
+      }
+    }
+    if (dto.documents) {
+      await this.db.delete(userDocuments).where(eq(userDocuments.userId, id));
+      if (dto.documents.length) {
+        await this.db.insert(userDocuments).values(
+          dto.documents.map((d) => ({
+            userId: id,
+            documentType: d.documentType || null,
+            documentName: d.documentName || null,
+            fileUrl: d.fileUrl || null,
+            expiryDate: d.expiryDate ? new Date(d.expiryDate) : null,
+            notes: d.notes || null,
+            status: d.status || 'active',
+          })),
+        );
+      }
+    }
+
     return updated;
   }
 
@@ -2471,6 +2921,29 @@ export class AdminService {
 
   // ─── Student Management ───────────────────────────────────────────────────
 
+  async getStudentStats() {
+    const studentWhere = eq(users.role, 'STUDENT');
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalRow, activeRow, suspendedRow, newThisMonthRow, onlineNowRow] = await Promise.all([
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(studentWhere),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(studentWhere, eq(users.status, 'active'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(studentWhere, eq(users.status, 'suspended'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(studentWhere, gte(users.createdAt, startOfMonth))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(studentWhere, eq(users.status, 'active'), isNotNull(users.lastLoginAt), gte(users.lastLoginAt, new Date(Date.now() - 5 * 60 * 1000)))),
+    ]);
+
+    return {
+      total:        totalRow[0]?.count ?? 0,
+      active:       activeRow[0]?.count ?? 0,
+      suspended:    suspendedRow[0]?.count ?? 0,
+      newThisMonth: newThisMonthRow[0]?.count ?? 0,
+      onlineNow:    onlineNowRow[0]?.count ?? 0,
+    };
+  }
+
   async listStudents(params: TableQueryInput = {}) {
     const q = buildTableQuery(params, {
       searchable: [users.firstName, users.lastName, users.email, users.phone],
@@ -2742,6 +3215,81 @@ export class AdminService {
 
     await this.db.delete(users).where(eq(users.id, id));
     return { success: true };
+  }
+
+  // ─── Guest Management ────────────────────────────────────────────────────
+
+  async getGuestStats() {
+    const guestWhere = eq(users.role, 'GUEST');
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setUTCHours(0, 0, 0, 0);
+
+    const [totalRow, activeRow, suspendedRow, newThisMonthRow, newThisWeekRow] = await Promise.all([
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(guestWhere),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(guestWhere, eq(users.status, 'active'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(guestWhere, eq(users.status, 'suspended'))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(guestWhere, gte(users.createdAt, startOfMonth))),
+      this.db.select({ count: sql<number>`COUNT(*)`.mapWith(Number) }).from(users).where(and(guestWhere, gte(users.createdAt, startOfWeek))),
+    ]);
+
+    return {
+      total:        totalRow[0]?.count ?? 0,
+      active:       activeRow[0]?.count ?? 0,
+      suspended:    suspendedRow[0]?.count ?? 0,
+      newThisMonth: newThisMonthRow[0]?.count ?? 0,
+      newThisWeek:  newThisWeekRow[0]?.count ?? 0,
+    };
+  }
+
+  async listGuests(params: TableQueryInput = {}) {
+    const q = buildTableQuery(params, {
+      searchable: [users.firstName, users.lastName, users.email, users.phone],
+      sortable:   { createdAt: users.createdAt, firstName: users.firstName, email: users.email, lastLoginAt: users.lastLoginAt },
+      filterable: {
+        status: users.status,
+        lastLoginFrom: (value: string) => gte(users.lastLoginAt, new Date(value)) as SQL,
+        lastLoginTo: (value: string) => {
+          const endOfDay = new Date(value);
+          endOfDay.setUTCHours(23, 59, 59, 999);
+          return lte(users.lastLoginAt, endOfDay) as SQL;
+        },
+      },
+      dateColumn:  users.createdAt,
+      defaultSort: desc(users.createdAt),
+    });
+
+    const guestWhere = eq(users.role, 'GUEST');
+    const combinedWhere = q.where ? and(guestWhere, q.where) : guestWhere;
+
+    const [rows, [countRow]] = await Promise.all([
+      this.db
+        .select({
+          id:          users.id,
+          firstName:   users.firstName,
+          lastName:    users.lastName,
+          email:       users.email,
+          phone:       users.phone,
+          status:      users.status,
+          avatar:      users.avatar,
+          createdAt:   users.createdAt,
+          lastLoginAt: users.lastLoginAt,
+        })
+        .from(users)
+        .where(combinedWhere)
+        .orderBy(q.orderBy)
+        .limit(q.limit)
+        .offset(q.offset),
+      this.db
+        .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
+        .from(users)
+        .where(combinedWhere),
+    ]);
+
+    return formatPaginatedResponse(rows, countRow?.count ?? 0, q.page, q.perPage);
   }
 
   /** Admin — paginated course interest list, joinable across users + courses. */

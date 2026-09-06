@@ -46,6 +46,52 @@ export interface PlatformStats {
   live: CourseTypeStats;
 }
 
+export interface UserEducation {
+  id?: number;
+  userId?: number;
+  degree?: string | null;
+  institution?: string | null;
+  subject?: string | null;
+  passingYear?: number | null;
+  result?: string | null;
+  order?: number | null;
+}
+
+export interface UserExperience {
+  id?: number;
+  userId?: number;
+  company?: string | null;
+  designation?: string | null;
+  department?: string | null;
+  employmentType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  currentlyWorking?: boolean | null;
+  responsibilities?: string | null;
+  referenceNotes?: string | null;
+  order?: number | null;
+}
+
+export interface UserSkill {
+  id?: number;
+  userId?: number;
+  skillName?: string;
+  level?: string | null;
+  order?: number | null;
+}
+
+export interface UserDocument {
+  id?: number;
+  userId?: number;
+  documentType?: string | null;
+  documentName?: string | null;
+  fileUrl?: string | null;
+  uploadDate?: string | null;
+  expiryDate?: string | null;
+  notes?: string | null;
+  status?: string | null;
+}
+
 export interface AdminUser {
   id: number;
   firstName: string;
@@ -55,7 +101,74 @@ export interface AdminUser {
   role: string;
   status: string;
   avatar: string | null;
+  employeeId?: string | null;
+  department?: string | null;
+  designation?: string | null;
+  joiningDate?: string | null;
+  employmentType?: string | null;
+  dateOfBirth?: string | null;
+  nationalId?: string | null;
+  profilePicture?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelationship?: string | null;
+  salary?: string | null;
+  bankName?: string | null;
+  bankBranch?: string | null;
+  bankAccountNumber?: string | null;
+  presentAddress?: string | null;
+  permanentAddress?: string | null;
+  gender?: string | null;
+  bloodGroup?: string | null;
+  maritalStatus?: string | null;
+  religion?: string | null;
+  nationality?: string | null;
+  country?: string | null;
+  city?: string | null;
+  nidType?: string | null;
+  bankingType?: string | null;
+  bankingProvider?: string | null;
+  division?: string | null;
+  district?: string | null;
+  thana?: string | null;
+  unionName?: string | null;
+  postCode?: string | null;
+  fatherName?: string | null;
+  motherName?: string | null;
+  presentDivision?: string | null;
+  presentDistrict?: string | null;
+  presentThana?: string | null;
+  presentUnion?: string | null;
+  presentPostCode?: string | null;
+  presentCountry?: string | null;
+  sameAsPermanent?: boolean | null;
+  houseRent?: string | null;
+  medicalAllowance?: string | null;
+  transportAllowance?: string | null;
+  otherAllowance?: string | null;
+  grossSalary?: string | null;
+  overtimeRate?: string | null;
+  taxDeduction?: string | null;
+  providentFund?: string | null;
+  otherDeduction?: string | null;
+  netSalary?: string | null;
+  bonusType?: string | null;
+  bonusCalculationType?: string | null;
+  bonusAmount?: string | null;
+  bonusFrequency?: string | null;
+  bonusEligibility?: string | null;
+  bonusNotes?: string | null;
   createdAt: string | null;
+  updatedAt?: string | null;
+  lastLoginAt?: string | null;
+  failedLoginAttempts?: number;
+  lockedUntil?: string | null;
+  roleInfo?: { id: number; name: string; slug: string; description: string | null } | null;
+  permissions?: string[];
+  education?: UserEducation[];
+  experience?: UserExperience[];
+  skills?: UserSkill[];
+  documents?: UserDocument[];
 }
 
 export interface RevenueOrder {
@@ -126,6 +239,8 @@ export interface PickerCourse {
 export const adminApi = {
   stats: () => apiRequest<PlatformStats>("/admin/stats"),
 
+  userStats: () => apiRequest<{ total: number; active: number; suspended: number; newThisMonth: number; roles: Record<string, number> }>("/admin/users/stats"),
+
   users: (params?: TableQueryParams) => {
     const q = new URLSearchParams();
     if (params) {
@@ -163,13 +278,13 @@ export const adminApi = {
   getUser: (id: number) =>
     apiRequest<AdminUser>(`/admin/users/${id}`),
 
-  createUser: (data: { firstName: string; lastName: string; email?: string; phone?: string; password: string }) =>
+  createUser: (data: Record<string, any>) =>
     apiRequest<AdminUser>(`/admin/users`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  updateUser: (id: number, data: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null }) =>
+  updateUser: (id: number, data: Record<string, any>) =>
     apiRequest<AdminUser>(`/admin/users/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),

@@ -3,13 +3,21 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import type { DB } from 'src/db';
 import { DB_TOKEN } from 'src/db/db.module';
-import { users, type NewUser, type User } from 'src/db/schema';
+import {
+  users,
+  userEducation,
+  userExperience,
+  userSkills,
+  type NewUser,
+  type User,
+} from 'src/db/schema';
 import { verifyPassword } from 'src/auth/password.util';
 
 const SALT_ROUNDS = 10;
@@ -213,5 +221,251 @@ export class UsersService {
       .update(users)
       .set({ password: hashed, updatedAt: new Date() })
       .where(eq(users.id, id));
+  }
+
+  // ── Address ────────────────────────────────────────────────────────────────
+
+  async updateAddress(
+    id: number,
+    data: Record<string, string | boolean | undefined>,
+  ): Promise<PublicUser | undefined> {
+    const set: Record<string, unknown> = { updatedAt: new Date() };
+    const fieldMap: Record<string, string> = {
+      permanentCountry: 'country',
+      permanentDivision: 'division',
+      permanentDistrict: 'district',
+      permanentThana: 'thana',
+      permanentUnion: 'unionName',
+      permanentPostCode: 'postCode',
+      permanentAddress: 'permanentAddress',
+      sameAsPermanent: 'sameAsPermanent',
+      presentCountry: 'presentCountry',
+      presentDivision: 'presentDivision',
+      presentDistrict: 'presentDistrict',
+      presentThana: 'presentThana',
+      presentUnion: 'presentUnion',
+      presentPostCode: 'presentPostCode',
+      presentAddress: 'presentAddress',
+    };
+    for (const [key, value] of Object.entries(data)) {
+      const col = fieldMap[key];
+      if (col && value !== undefined) set[col] = value;
+    }
+    const result = await this.db
+      .update(users)
+      .set(set)
+      .where(eq(users.id, id))
+      .returning();
+
+    if (!result[0]) return undefined;
+    const { password, ...rest } = result[0];
+    return { ...rest, hasPassword: password != null };
+  }
+
+  async getAddress(id: number) {
+    const [user] = await this.db
+      .select({
+        permanentCountry: users.country,
+        permanentDivision: users.division,
+        permanentDistrict: users.district,
+        permanentThana: users.thana,
+        permanentUnion: users.unionName,
+        permanentPostCode: users.postCode,
+        permanentAddress: users.permanentAddress,
+        sameAsPermanent: users.sameAsPermanent,
+        presentCountry: users.presentCountry,
+        presentDivision: users.presentDivision,
+        presentDistrict: users.presentDistrict,
+        presentThana: users.presentThana,
+        presentUnion: users.presentUnion,
+        presentPostCode: users.presentPostCode,
+        presentAddress: users.presentAddress,
+      })
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return user ?? null;
+  }
+
+  // ── Emergency Contact ──────────────────────────────────────────────────────
+
+  async updateEmergencyContact(
+    id: number,
+    data: {
+      emergencyContactName: string;
+      emergencyContactPhone: string;
+      emergencyContactRelationship?: string;
+    },
+  ): Promise<PublicUser | undefined> {
+    const result = await this.db
+      .update(users)
+      .set({
+        emergencyContactName: data.emergencyContactName,
+        emergencyContactPhone: data.emergencyContactPhone,
+        emergencyContactRelationship: data.emergencyContactRelationship ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+
+    if (!result[0]) return undefined;
+    const { password, ...rest } = result[0];
+    return { ...rest, hasPassword: password != null };
+  }
+
+  async getEmergencyContact(id: number) {
+    const [user] = await this.db
+      .select({
+        emergencyContactName: users.emergencyContactName,
+        emergencyContactPhone: users.emergencyContactPhone,
+        emergencyContactRelationship: users.emergencyContactRelationship,
+      })
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return user ?? null;
+  }
+
+  // ── Education ──────────────────────────────────────────────────────────────
+
+  async listEducation(userId: number) {
+    return this.db
+      .select()
+      .from(userEducation)
+      .where(eq(userEducation.userId, userId))
+      .orderBy(asc(userEducation.order), asc(userEducation.id));
+  }
+
+  async createEducation(
+    userId: number,
+    data: {
+      degree?: string;
+      institution?: string;
+      subject?: string;
+      passingYear?: number;
+      result?: string;
+      order?: number;
+    },
+  ) {
+    const [result] = await this.db
+      .insert(userEducation)
+      .values({ userId, ...data })
+      .returning();
+    return result;
+  }
+
+  async updateEducation(
+    userId: number,
+    id: number,
+    data: Record<string, unknown>,
+  ) {
+    const [existing] = await this.db
+      .select({ id: userEducation.id })
+      .from(userEducation)
+      .where(and(eq(userEducation.id, id), eq(userEducation.userId, userId)))
+      .limit(1);
+    if (!existing) throw new NotFoundException('Education record not found');
+
+    const [result] = await this.db
+      .update(userEducation)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userEducation.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteEducation(userId: number, id: number) {
+    const [existing] = await this.db
+      .select({ id: userEducation.id })
+      .from(userEducation)
+      .where(and(eq(userEducation.id, id), eq(userEducation.userId, userId)))
+      .limit(1);
+    if (!existing) throw new NotFoundException('Education record not found');
+
+    await this.db.delete(userEducation).where(eq(userEducation.id, id));
+  }
+
+  // ── Experience ─────────────────────────────────────────────────────────────
+
+  async listExperience(userId: number) {
+    return this.db
+      .select()
+      .from(userExperience)
+      .where(eq(userExperience.userId, userId))
+      .orderBy(asc(userExperience.order), asc(userExperience.id));
+  }
+
+  async createExperience(
+    userId: number,
+    data: Record<string, unknown>,
+  ) {
+    const [result] = await this.db
+      .insert(userExperience)
+      .values({ userId, ...data } as any)
+      .returning();
+    return result;
+  }
+
+  async updateExperience(
+    userId: number,
+    id: number,
+    data: Record<string, unknown>,
+  ) {
+    const [existing] = await this.db
+      .select({ id: userExperience.id })
+      .from(userExperience)
+      .where(and(eq(userExperience.id, id), eq(userExperience.userId, userId)))
+      .limit(1);
+    if (!existing) throw new NotFoundException('Experience record not found');
+
+    const [result] = await this.db
+      .update(userExperience)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userExperience.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteExperience(userId: number, id: number) {
+    const [existing] = await this.db
+      .select({ id: userExperience.id })
+      .from(userExperience)
+      .where(and(eq(userExperience.id, id), eq(userExperience.userId, userId)))
+      .limit(1);
+    if (!existing) throw new NotFoundException('Experience record not found');
+
+    await this.db.delete(userExperience).where(eq(userExperience.id, id));
+  }
+
+  // ── Skills ─────────────────────────────────────────────────────────────────
+
+  async listSkills(userId: number) {
+    return this.db
+      .select()
+      .from(userSkills)
+      .where(eq(userSkills.userId, userId))
+      .orderBy(asc(userSkills.order), asc(userSkills.id));
+  }
+
+  async addSkill(
+    userId: number,
+    data: { skillName: string; level?: string },
+  ) {
+    const [result] = await this.db
+      .insert(userSkills)
+      .values({ userId, skillName: data.skillName, level: data.level ?? 'intermediate' })
+      .returning();
+    return result;
+  }
+
+  async removeSkill(userId: number, id: number) {
+    const [existing] = await this.db
+      .select({ id: userSkills.id })
+      .from(userSkills)
+      .where(and(eq(userSkills.id, id), eq(userSkills.userId, userId)))
+      .limit(1);
+    if (!existing) throw new NotFoundException('Skill not found');
+
+    await this.db.delete(userSkills).where(eq(userSkills.id, id));
   }
 }

@@ -1,28 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "@repo/ui/sonner";
 import {
   fetchUsersAction,
   fetchAllUsersForExportAction,
 } from "@/features/admin/actions/admin.actions";
 import type { AdminUser, PaginatedResponse, TableQueryParams } from "@/features/admin/api";
-import { Eye, UserPlus } from "lucide-react";
+import { Eye, UserPlus, Users, UserCheck, UserX, CalendarClock, Pencil, ShieldOff, ShieldCheck, Trash2 } from "lucide-react";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
-import { formatUserDate } from "./utils/export-users";
-import { CreateUserModal } from "./CreateUserModal";
+import { ConfirmModal } from "@/shared/components/ConfirmModal";
+import {
+  suspendUserAction,
+  activateUserAction,
+  deleteUserAction,
+} from "@/features/admin/actions/admin.actions";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import type { ExportField } from "@/utils/table-export";
 import { useLocalization } from "@/shared/context/LocalizationContext";
 
-interface Props { initialData: PaginatedResponse<AdminUser> }
+interface Props {
+  initialData: PaginatedResponse<AdminUser>;
+  initialStats?: {
+    total: number;
+    active: number;
+    suspended: number;
+    newThisMonth: number;
+    roles: Record<string, number>;
+  };
+}
 
 const avatarColors = [
   "bg-pink-400", "bg-violet-400", "bg-blue-400",
   "bg-amber-400", "bg-green-400", "bg-rose-400",
 ];
 
-const ROLES = ["GUEST", "STUDENT", "INSTRUCTOR", "SUPER_ADMIN"];
+const ROLES = ["INSTRUCTOR", "SUPER_ADMIN", "EDITOR", "MARKETING_OFFICER", "ACCOUNTANT"];
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
@@ -80,14 +95,26 @@ const DEFAULT_VISIBLE = new Set(ALL_COLS.filter((c) => c.defaultVisible).map((c)
 
 function RoleBadge({ role }: { role: string }) {
   const map: Record<string, string> = {
-    SUPER_ADMIN: "bg-violet-100 text-violet-700 dark:bg-brand/15 dark:text-brand",
-    INSTRUCTOR:  "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
-    STUDENT:     "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
-    GUEST:       "bg-gray-100 text-gray-500 dark:bg-slate-500/15 dark:text-slate-400",
+    SUPER_ADMIN:       "bg-violet-100 text-violet-700 dark:bg-brand/15 dark:text-brand",
+    INSTRUCTOR:        "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+    EDITOR:            "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
+    MARKETING_OFFICER: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400",
+    ACCOUNTANT:        "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400",
+    STUDENT:           "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+    GUEST:             "bg-gray-100 text-gray-500 dark:bg-slate-500/15 dark:text-slate-400",
+  };
+  const labels: Record<string, string> = {
+    SUPER_ADMIN: "Super Admin",
+    INSTRUCTOR: "Instructor",
+    EDITOR: "Editor",
+    MARKETING_OFFICER: "Marketing",
+    ACCOUNTANT: "Accountant",
+    STUDENT: "Student",
+    GUEST: "Guest",
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold ${map[role] ?? "bg-gray-100 text-gray-600 dark:bg-slate-500/15 dark:text-slate-400"}`}>
-      {role}
+      {labels[role] ?? role}
     </span>
   );
 }
@@ -105,13 +132,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-/**
- * Route to the richer Student detail page when this row really is a student
- * (Student.id is the same users.id, confirmed by the students API). There is
- * no equivalent shortcut for INSTRUCTOR: Teachers live in the separate
- * admin_users table with an unrelated id sequence, so a users.id can't be
- * used to look up a teacher record — those fall through to the generic page.
- */
 function viewHref(user: AdminUser): string {
   if (user.role === "STUDENT") return `/admin/students/${user.id}`;
   return `/admin/users/${user.id}`;
@@ -119,7 +139,8 @@ function viewHref(user: AdminUser): string {
 
 // ─── Main Client ──────────────────────────────────────────────────────────────
 
-export function UsersClient({ initialData }: Props) {
+export function UsersClient({ initialData, initialStats }: Props) {
+  const router = useRouter();
   const { formatDate } = useLocalization();
   const [users, setUsers]             = useState(initialData.data);
   const [pagination, setPagination]   = useState<TablePagination>(initialData.pagination);
@@ -129,9 +150,10 @@ export function UsersClient({ initialData }: Props) {
     per_page: initialData.pagination.per_page,
   });
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(DEFAULT_VISIBLE));
-  const [showCreate, setShowCreate] = useState(false);
+  const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, roles: {} });
+  const [isPending, startTransition] = useTransition();
+  const [actionUser, setActionUser] = useState<{ user: AdminUser; type: "suspend" | "activate" | "delete" } | null>(null);
 
-  // Derive export fields from visible columns (preserves ALL_COLS order)
   const exportFields: ExportField<AdminUser>[] = ALL_COLS
     .filter((c) => visibleCols.has(c.key))
     .flatMap((c) => c.exportFields ?? []);
@@ -139,6 +161,34 @@ export function UsersClient({ initialData }: Props) {
   async function fetchAllForExport(): Promise<AdminUser[]> {
     const res = await fetchAllUsersForExportAction(currentParams);
     return res.success ? (res.data as AdminUser[]) : [];
+  }
+
+  function handleAction() {
+    if (!actionUser) return;
+    const { user, type } = actionUser;
+    setActionUser(null);
+
+    startTransition(async () => {
+      let res;
+      if (type === "suspend") {
+        res = await suspendUserAction(user.id);
+      } else if (type === "activate") {
+        res = await activateUserAction(user.id);
+      } else if (type === "delete") {
+        res = await deleteUserAction(user.id);
+      }
+      if (res?.success) {
+        toast.success(type === "delete" ? "User deleted" : "Status updated");
+        if (type === "delete") {
+          setUsers((prev) => prev.filter((u) => u.id !== user.id));
+          setStats((prev) => ({ ...prev, total: prev.total - 1 }));
+        } else {
+          setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, status: type === "suspend" ? "suspended" : "active" } : u));
+        }
+      } else {
+        toast.error((res as any)?.message ?? "Action failed");
+      }
+    });
   }
 
   async function fetchUsers(params: TableQueryParams) {
@@ -155,10 +205,8 @@ export function UsersClient({ initialData }: Props) {
     }
   }
 
-  // Build table columns dynamically based on visibleCols (preserves order)
   const columns: Column<AdminUser>[] = [
     ...ALL_COLS.filter((c) => visibleCols.has(c.key)).map((col, _, arr) => {
-      const isFirst = arr[0]?.key === col.key;
       if (col.key === "id") return {
         key: "id" as keyof AdminUser,
         header: "ID",
@@ -213,12 +261,11 @@ export function UsersClient({ initialData }: Props) {
       };
       return { key: col.key as keyof AdminUser, header: col.header };
     }),
-    // Action column always last, never exported
     {
       key: "actions",
       header: "Actions",
       render: (user: AdminUser) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <Link
             href={viewHref(user)}
             title="View"
@@ -226,20 +273,54 @@ export function UsersClient({ initialData }: Props) {
           >
             <Eye className="h-3.5 w-3.5" />
           </Link>
+          <Link
+            href={`${viewHref(user)}/edit`}
+            title="Edit"
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Link>
+          <button
+            title={user.status === "active" ? "Suspend" : "Activate"}
+            onClick={() => setActionUser({ user, type: user.status === "active" ? "suspend" : "activate" })}
+            disabled={isPending}
+            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 ${
+              user.status === "active"
+                ? "bg-yellow-50 text-yellow-600 hover:bg-yellow-100 dark:bg-yellow-500/10 dark:text-yellow-400 dark:hover:bg-yellow-500/20"
+                : "bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
+            }`}
+          >
+            {user.status === "active" ? <ShieldOff className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            title="Delete"
+            onClick={() => setActionUser({ user, type: "delete" })}
+            disabled={isPending}
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       ),
     },
   ];
 
+  const kpiCards = [
+    { label: "Total Users", value: stats.total, icon: Users, iconBg: "bg-gradient-to-br from-brand-500 to-brand-600", cardBg: "bg-gradient-to-br from-brand-50/80 to-white dark:from-brand-500/10 dark:to-slate-900" },
+    { label: "Active", value: stats.active, icon: UserCheck, iconBg: "bg-gradient-to-br from-emerald-500 to-emerald-600", cardBg: "bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-500/10 dark:to-slate-900" },
+    { label: "Suspended", value: stats.suspended, icon: UserX, iconBg: "bg-gradient-to-br from-red-500 to-red-600", cardBg: "bg-gradient-to-br from-red-50/80 to-white dark:from-red-500/10 dark:to-slate-900" },
+    { label: "New This Month", value: stats.newThisMonth, icon: CalendarClock, iconBg: "bg-gradient-to-br from-blue-500 to-blue-600", cardBg: "bg-gradient-to-br from-blue-50/80 to-white dark:from-blue-500/10 dark:to-slate-900" },
+  ];
+
   return (
     <div className="space-y-5">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
+      {/* Single Header Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
-          <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Let&apos;s check your update today</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Admin & staff accounts</p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <ColumnsDropdown
             cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
             visible={visibleCols}
@@ -253,7 +334,7 @@ export function UsersClient({ initialData }: Props) {
             exportTitle="Users Export"
           />
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={() => router.push("/admin/users/new")}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 dark:bg-brand dark:hover:bg-brand/90 text-white text-sm font-medium transition-colors"
           >
             <UserPlus className="h-4 w-4" /> Add User
@@ -261,20 +342,26 @@ export function UsersClient({ initialData }: Props) {
         </div>
       </div>
 
-      {showCreate && (
-        <CreateUserModal
-          onClose={() => setShowCreate(false)}
-          onCreated={(user) => {
-            setUsers((prev) => [user, ...prev]);
-            setShowCreate(false);
-          }}
-        />
-      )}
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {kpiCards.map((card) => (
+          <div
+            key={card.label}
+            className={`rounded-2xl ${card.cardBg} p-4 border border-white/60 dark:border-slate-800 shadow-sm flex items-center gap-3`}
+          >
+            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${card.iconBg} shrink-0`}>
+              <card.icon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{card.label}</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{card.value.toLocaleString()}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
+      {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 dark:border-slate-800">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">All Users</h2>
-        </div>
         <div className="px-6 pt-5 pb-6">
           <DataTable
             data={users}
@@ -307,6 +394,44 @@ export function UsersClient({ initialData }: Props) {
           />
         </div>
       </div>
+
+      {/* Action Confirmation Modal */}
+      {actionUser && (
+        <ConfirmModal
+          open
+          title={
+            actionUser.type === "suspend" ? "Suspend User"
+            : actionUser.type === "activate" ? "Activate User"
+            : "Delete User"
+          }
+          message={
+            actionUser.type === "delete"
+              ? <>Delete <strong>{actionUser.user.firstName} {actionUser.user.lastName}</strong>? This cannot be undone.</>
+              : actionUser.type === "suspend"
+              ? <>Suspend <strong>{actionUser.user.firstName} {actionUser.user.lastName}</strong>? They will lose access.</>
+              : <>Activate <strong>{actionUser.user.firstName} {actionUser.user.lastName}</strong>? They will regain access.</>
+          }
+          confirmLabel={
+            actionUser.type === "delete" ? "Yes, Delete"
+            : actionUser.type === "suspend" ? "Yes, Suspend"
+            : "Yes, Activate"
+          }
+          variant={actionUser.type === "delete" ? "danger" : actionUser.type === "suspend" ? "warning" : "success"}
+          icon={
+            actionUser.type === "delete" ? <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+            : actionUser.type === "suspend" ? <ShieldOff className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+            : <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+          }
+          isPending={isPending}
+          onConfirm={handleAction}
+          onClose={() => setActionUser(null)}
+        />
+      )}
     </div>
   );
+}
+
+function formatUserDate(date: string | null | undefined): string {
+  if (!date) return "";
+  return new Date(date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
