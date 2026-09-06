@@ -5,14 +5,9 @@ import { certificatesApi } from "@/features/courses/api/certificates";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Progress } from "@repo/ui/progress";
+import { progressOf } from "@/lib/utils";
 
 export const metadata = { title: "My Progress" };
-
-function progressOf(e: { totalLessons: number; completedLessons: number }) {
-  return e.totalLessons > 0
-    ? Math.round((e.completedLessons / e.totalLessons) * 100)
-    : 0;
-}
 
 export default async function StudentProgressPage() {
   const user = await authApi.me().catch(() => null);

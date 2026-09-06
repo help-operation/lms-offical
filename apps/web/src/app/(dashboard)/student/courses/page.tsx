@@ -6,14 +6,9 @@ import {
   type DashboardCtaSettings,
 } from "@/features/cms/api/settings";
 import { StudentCoursesClient } from "@/features/courses/StudentCoursesClient";
+import { progressOf } from "@/lib/utils";
 
 export const metadata = { title: "My Courses" };
-
-function progressOf(e: Enrollment) {
-  return e.totalLessons > 0
-    ? Math.round((e.completedLessons / e.totalLessons) * 100)
-    : 0;
-}
 
 export default async function StudentCoursesPage() {
   const [res, ctaLabels] = await Promise.all([

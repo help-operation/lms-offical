@@ -196,11 +196,11 @@ function ProfilePhotoSection({
 
       {/* Crop Modal */}
       {cropOpen && cropImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onKeyDown={(e) => { if (e.key === "Escape") { setCropOpen(false); setCropImage(null); } }}>
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Crop Photo</h3>
-              <button onClick={() => { setCropOpen(false); setCropImage(null); }} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+              <button onClick={() => { setCropOpen(false); setCropImage(null); }} aria-label="Close crop modal" className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -633,8 +633,8 @@ function EducationSection() {
                   <p className="text-xs text-slate-500 dark:text-slate-400">{r.passingYear ? `Passed ${r.passingYear}` : ""}{r.result ? ` - ${r.result}` : ""}</p>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => startEdit(r)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"><Edit3 className="h-4 w-4" /></button>
-                  <button onClick={() => deleteRecord(r.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => startEdit(r)} aria-label={`Edit ${r.degree || "education record"}`} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"><Edit3 className="h-4 w-4" /></button>
+                  <button onClick={() => deleteRecord(r.id)} aria-label={`Delete ${r.degree || "education record"}`} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
             )}
@@ -777,8 +777,8 @@ function ExperienceSection() {
                   <p className="text-xs text-slate-500 dark:text-slate-400">{r.startDate ? new Date(r.startDate).toLocaleDateString() : ""}{r.currentlyWorking ? " - Present" : r.endDate ? ` - ${new Date(r.endDate).toLocaleDateString()}` : ""}</p>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => startEdit(r)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"><Edit3 className="h-4 w-4" /></button>
-                  <button onClick={() => deleteRecord(r.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => startEdit(r)} aria-label={`Edit ${r.designation || "experience record"}`} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"><Edit3 className="h-4 w-4" /></button>
+                  <button onClick={() => deleteRecord(r.id)} aria-label={`Delete ${r.designation || "experience record"}`} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
             )}
@@ -920,7 +920,7 @@ function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input type={showCurrent ? "text" : "password"} className={`${inputClass} pl-10 pr-10`} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" />
-              <button type="button" onClick={() => setShowCurrent((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              <button type="button" onClick={() => setShowCurrent((v) => !v)} aria-label={showCurrent ? "Hide current password" : "Show current password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
                 {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -932,7 +932,7 @@ function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input type={showNew ? "text" : "password"} className={`${inputClass} pl-10 pr-10`} value={newPass} onChange={(e) => setNewPass(e.target.value)} autoComplete="new-password" />
-              <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              <button type="button" onClick={() => setShowNew((v) => !v)} aria-label={showNew ? "Hide new password" : "Show new password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
                 {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>

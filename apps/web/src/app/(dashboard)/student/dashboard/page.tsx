@@ -23,12 +23,7 @@ import { enrollmentsApi } from "@/features/courses/api/enrollments";
 import { myPaymentsApi } from "@/features/payments/api";
 import { liveClassesApi } from "@/features/live-classes/api";
 import { DuePaymentBanner } from "@/features/courses/DuePaymentBanner";
-
-function progressOf(e: { totalLessons: number; completedLessons: number }) {
-  return e.totalLessons > 0
-    ? Math.round((e.completedLessons / e.totalLessons) * 100)
-    : 0;
-}
+import { progressOf } from "@/lib/utils";
 
 function getGreeting() {
   const h = new Date().getHours();

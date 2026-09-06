@@ -91,7 +91,8 @@ export function NotificationsList() {
           <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
             <button
               onClick={() => setFilter("all")}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              aria-label="Show all notifications"
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                 filter === "all" ? "bg-brand text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
               }`}
             >
@@ -99,7 +100,8 @@ export function NotificationsList() {
             </button>
             <button
               onClick={() => setFilter("unread")}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              aria-label={`Show unread notifications (${unread})`}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                 filter === "unread" ? "bg-brand text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
               }`}
             >
@@ -110,7 +112,8 @@ export function NotificationsList() {
             <button
               onClick={markAllRead}
               disabled={isPending}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
+              aria-label="Mark all notifications as read"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <CheckCheck className="h-4 w-4" />
               <span className="hidden sm:inline">Mark all read</span>
@@ -137,8 +140,17 @@ export function NotificationsList() {
           return (
             <div
               key={n.id}
+              role={n.link ? "link" : "button"}
+              tabIndex={0}
               onClick={() => handleClick(n)}
-              className={`flex gap-3 px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleClick(n);
+                }
+              }}
+              aria-label={`${n.title}${n.body ? `: ${n.body}` : ""}${!n.isRead ? " (unread)" : ""}`}
+              className={`flex gap-3 px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset ${
                 n.link ? "cursor-pointer" : ""
               } ${!n.isRead ? "bg-brand-50/60 dark:bg-brand-950/20" : ""}`}
             >

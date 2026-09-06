@@ -6,12 +6,7 @@ import Link from "next/link";
 import { Radio, GraduationCap, Search, Filter, BookOpen } from "lucide-react";
 import type { Enrollment } from "@/features/courses/api/enrollments";
 import type { DashboardCtaSettings } from "@/features/cms/api/settings";
-
-function progressOf(e: Enrollment) {
-  return e.totalLessons > 0
-    ? Math.round((e.completedLessons / e.totalLessons) * 100)
-    : 0;
-}
+import { progressOf } from "@/lib/utils";
 
 type StatusFilter = "all" | "not_started" | "in_progress" | "completed";
 
@@ -194,7 +189,7 @@ function CourseCard({
 
       <div className="relative aspect-video bg-slate-100 dark:bg-slate-800">
         {enrollment.courseThumbnail ? (
-          <Image src={enrollment.courseThumbnail} alt={enrollment.courseTitle} fill className={`object-cover ${isBlocked ? "grayscale" : ""}`} />
+          <Image src={enrollment.courseThumbnail} alt={enrollment.courseTitle} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw" className={`object-cover ${isBlocked ? "grayscale" : ""}`} />
         ) : (
           <div className={`absolute inset-0 flex items-center justify-center ${
             isBlocked ? "bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700" : isLive ? "bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-500/10 dark:to-emerald-500/10" : "bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-solid/10 dark:to-indigo-500/10"
