@@ -189,27 +189,52 @@
     print-color-adjust: exact !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
   }
 
-  /* Remove main app shell completely from layout */
-  #admin-dashboard-root,
-  #admin-dashboard-root > *,
-  .no-print,
-  nav, aside, header, footer, [role="navigation"],
+  /* Reset dashboard root */
+  #admin-dashboard-root {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    position: static !important;
+  }
+
+  /* Hide sidebar (first two divs) and top header */
+  #admin-dashboard-root > div:first-child,
+  #admin-dashboard-root > div:nth-child(2) {
+    display: none !important;
+  }
+
+  /* Content wrapper — remove overflow */
+  #admin-dashboard-root > div:last-child {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Hide the top header inside content wrapper */
+  #admin-dashboard-root > div:last-child > header:first-child {
+    display: none !important;
+  }
+
+  /* Main — no overflow, no padding */
+  main {
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Hide .no-print (interactive UI wrapper) */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Hide nav, footer, modals, overlays */
+  nav, aside, footer, [role="navigation"],
   .modal-overlay-in,
   [data-radix-popper-content-wrapper] {
     display: none !important;
-    position: absolute !important;
-    left: -9999px !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    overflow: hidden !important;
-  }
-
-  /* Ensure the main content area doesn't show scrollbar */
-  main, main * {
-    overflow: visible !important;
-    height: auto !important;
   }
 
   /* Show print-only section */
