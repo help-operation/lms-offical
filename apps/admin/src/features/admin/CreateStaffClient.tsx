@@ -577,7 +577,7 @@ export function CreateStaffClient() {
           SECTION 1: Profile Photo & Basic Info (blue)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Profile Photo & Basic Info" icon={<Camera className="h-4 w-4" />} color="blue">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="flex flex-col items-center gap-3">
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
               <div className="h-28 w-28 rounded-full bg-white dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden transition-all group-hover:border-brand-400 dark:group-hover:border-brand group-hover:shadow-lg group-hover:shadow-brand-500/10">
@@ -604,7 +604,7 @@ export function CreateStaffClient() {
             <p className="text-[10px] text-gray-400 dark:text-slate-500">JPG, PNG, WebP. Max 2 MB.</p>
           </div>
 
-          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <FieldLabel label="First Name" required />
               <input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} placeholder="Enter first name" className={inputCls} />
@@ -654,7 +654,7 @@ export function CreateStaffClient() {
           SECTION 2: Personal Info (purple)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Personal Info" icon={<User className="h-4 w-4" />} color="purple">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <FieldLabel label="Father's Name" />
             <input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} placeholder="Enter father's name" className={inputCls} />
@@ -696,15 +696,15 @@ export function CreateStaffClient() {
           SECTION 3: Employment Details (green)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Employment Details" icon={<Briefcase className="h-4 w-4" />} color="green">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5 relative overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-0.5 bg-brand-500" />
-            <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Employee ID</span>
+            <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Employee ID</span>
             <p className="text-sm font-mono font-bold text-brand-600 dark:text-brand">Auto-generated</p>
           </div>
           <div>
             <FieldLabel label="Role" required />
-            <div className="flex flex-wrap gap-1.5 mb-2 min-h-[32px]">
+            <div className="flex flex-wrap gap-1.5 mb-1.5 min-h-[28px]">
               {roles.map((r) => {
                 const roleObj = STAFF_ROLES.find((sr) => sr.value === r);
                 const roleColors: Record<string, string> = {
@@ -755,7 +755,7 @@ export function CreateStaffClient() {
           SECTION 4: Emergency Contact (rose)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Emergency Contact" icon={<Heart className="h-4 w-4" />} color="rose">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <FieldLabel label="Relationship" />
             <Select value={form.emergencyContactRelationship} onChange={(v) => set("emergencyContactRelationship", v)} options={[{ value: "", label: "Select relationship" }, ...RELATIONSHIPS.map((r) => ({ value: r.toLowerCase(), label: r }))]} />
@@ -776,8 +776,8 @@ export function CreateStaffClient() {
           SECTION 5: Payroll (emerald)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Payroll" icon={<CreditCard className="h-4 w-4" />} color="emerald">
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <FieldLabel label="Basic Salary (BDT)" />
               <input type="number" value={form.basicSalary} onChange={(e) => set("basicSalary", e.target.value)} placeholder="0.00" className={inputCls} />
@@ -798,9 +798,9 @@ export function CreateStaffClient() {
               <FieldLabel label="Other Allowance (BDT)" />
               <input type="number" value={form.otherAllowance} onChange={(e) => set("otherAllowance", e.target.value)} placeholder="0.00" className={inputCls} />
             </div>
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3.5 relative overflow-hidden">
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-0.5 bg-emerald-500" />
-              <span className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Gross Salary</span>
+              <span className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">Gross Salary</span>
               <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{"\u09F3"} {grossSalary.toLocaleString()}</p>
             </div>
             <div>
@@ -811,7 +811,7 @@ export function CreateStaffClient() {
 
           <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-4">
             <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-3">Deductions</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel label="Tax / Deduction (BDT)" />
                 <input type="number" value={form.taxDeduction} onChange={(e) => set("taxDeduction", e.target.value)} placeholder="0.00" className={inputCls} />
@@ -827,15 +827,15 @@ export function CreateStaffClient() {
             </div>
           </div>
 
-          <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-4 flex flex-col sm:flex-row gap-3">
-            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5 flex-1 relative overflow-hidden">
+          <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-3 flex flex-col sm:flex-row gap-3">
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3 flex-1 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-0.5 bg-red-400" />
-              <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Deductions</span>
+              <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Total Deductions</span>
               <p className="text-sm font-bold text-red-600 dark:text-red-400">{"\u09F3"} {totalDeductions.toLocaleString()}</p>
             </div>
-            <div className="rounded-xl bg-brand-50 dark:bg-brand/10 border border-brand-200 dark:border-brand/20 p-3.5 flex-1 relative overflow-hidden">
+            <div className="rounded-xl bg-brand-50 dark:bg-brand/10 border border-brand-200 dark:border-brand/20 p-3 flex-1 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-0.5 bg-brand-500" />
-              <span className="block text-[10px] font-semibold text-brand-600 dark:text-brand uppercase tracking-wider mb-1">Net Salary</span>
+              <span className="block text-[10px] font-semibold text-brand-600 dark:text-brand uppercase tracking-wider mb-0.5">Net Salary</span>
               <p className="text-sm font-bold text-brand-700 dark:text-brand">{"\u09F3"} {netSalary.toLocaleString()}</p>
             </div>
           </div>
@@ -846,7 +846,7 @@ export function CreateStaffClient() {
           SECTION 6: Bonus (yellow)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Bonus" icon={<Award className="h-4 w-4" />} color="yellow">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <FieldLabel label="Bonus Type" />
             <Select value={form.bonusType} onChange={(v) => set("bonusType", v)} options={[{ value: "", label: "Select bonus type" }, ...BONUS_TYPES]} />
@@ -895,7 +895,7 @@ export function CreateStaffClient() {
           </div>
 
           {form.bankingType === "mobile_banking" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <FieldLabel label="Provider" />
                 <Select value={form.bankingProvider} onChange={(v) => set("bankingProvider", v)} options={[{ value: "", label: "Select provider" }, ...mobileBankingProviders]} />
@@ -910,7 +910,7 @@ export function CreateStaffClient() {
           )}
 
           {form.bankingType === "bank_account" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel label="Bank Name" />
                 <Select value={form.bankName} onChange={(v) => set("bankName", v)} options={[{ value: "", label: "Select bank" }, ...bangladeshBanks.map((b) => ({ value: b.name, label: b.name }))]} />
@@ -943,7 +943,7 @@ export function CreateStaffClient() {
           SECTION 8: Permanent Address (amber)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Permanent Address" icon={<MapPin className="h-4 w-4" />} color="amber">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <FieldLabel label="Country" />
             <Select value={form.permCountry} onChange={(v) => set("permCountry", v)} options={countries.map((c) => ({ value: c, label: c }))} />
@@ -999,7 +999,7 @@ export function CreateStaffClient() {
           </label>
 
           {!form.sameAsPresent && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel label="Country" />
                 <Select value={form.presCountry} onChange={(v) => set("presCountry", v)} options={countries.map((c) => ({ value: c, label: c }))} />
@@ -1052,8 +1052,8 @@ export function CreateStaffClient() {
             </div>
           )}
           {educations.map((edu, idx) => (
-            <div key={edu.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative border-l-4 border-l-indigo-400 dark:border-l-indigo-500/50">
-              <div className="flex items-center justify-between mb-3">
+            <div key={edu.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-3 relative border-l-4 border-l-indigo-400 dark:border-l-indigo-500/50">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Education #{idx + 1}</span>
                 <button type="button" onClick={() => removeEducation(edu.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
@@ -1102,8 +1102,8 @@ export function CreateStaffClient() {
             </div>
           )}
           {experiences.map((exp, idx) => (
-            <div key={exp.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative border-l-4 border-l-cyan-400 dark:border-l-cyan-500/50">
-              <div className="flex items-center justify-between mb-3">
+            <div key={exp.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-3 relative border-l-4 border-l-cyan-400 dark:border-l-cyan-500/50">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">Experience #{idx + 1}</span>
                 <button type="button" onClick={() => removeExperience(exp.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
@@ -1199,8 +1199,8 @@ export function CreateStaffClient() {
             </div>
           )}
           {staffDocuments.map((doc, idx) => (
-            <div key={doc.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative border-l-4 border-l-slate-400 dark:border-l-slate-500/50">
-              <div className="flex items-center justify-between mb-3">
+            <div key={doc.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-3 relative border-l-4 border-l-slate-400 dark:border-l-slate-500/50">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Document #{idx + 1}</span>
                 <button type="button" onClick={() => removeDocument(doc.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
@@ -1241,8 +1241,8 @@ export function CreateStaffClient() {
       </SectionCard>
 
       {/* Bottom Action Bar */}
-      <div className="sticky bottom-0 mt-6 py-4 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent">
-        <div className="flex items-center justify-between gap-4">
+      <div className="sticky bottom-0 mt-4 py-3 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500">
               <div className="flex items-center gap-1">
@@ -1290,12 +1290,12 @@ export function CreateStaffClient() {
 
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 
-const inputCls = "w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand transition-colors placeholder:text-gray-300 dark:placeholder:text-slate-600";
+const inputCls = "w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand transition-colors placeholder:text-gray-300 dark:placeholder:text-slate-600";
 
 /* ─── Helper Components ────────────────────────────────────────────────────── */
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
-  return <span className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1.5">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</span>;
+  return <span className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</span>;
 }
 
 function SectionCard({ title, icon, color = "blue" as string, children }: { title: string; icon: React.ReactNode; color?: string; children: React.ReactNode }) {
@@ -1317,9 +1317,9 @@ function SectionCard({ title, icon, color = "blue" as string, children }: { titl
   const fallback = colorMap.blue!;
   const c = colorMap[color] ?? fallback;
   return (
-    <div className={`rounded-2xl border ${c.border} ${c.bg} p-5 mb-5`}>
-      <div className="flex items-center gap-2 mb-4">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${c.iconBg} ${c.iconText}`}>{icon}</div>
+    <div className={`rounded-2xl border ${c.border} ${c.bg} p-4 mb-4`}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${c.iconBg} ${c.iconText}`}>{icon}</div>
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
       </div>
       {children}
