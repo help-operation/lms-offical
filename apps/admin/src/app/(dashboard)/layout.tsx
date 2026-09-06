@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Script from "next/script";
 import { Suspense, type CSSProperties, type ReactNode } from "react";
 import { authApi } from "@/features/auth/api";
 import { generalSettingsApi } from "@/features/general-settings/api";
@@ -92,9 +91,7 @@ async function DashboardLayoutContent({
           suppressHydrationWarning
         >
           {/* Theme flash prevention — applies the persisted class before first paint */}
-          <Script
-            id="theme-flash"
-            strategy="beforeInteractive"
+          <script
             dangerouslySetInnerHTML={{
               __html: `try{if(localStorage.getItem('skillkoro-admin-theme')==='dark')document.getElementById('admin-dashboard-root').classList.add('dark');}catch(e){}`,
             }}
