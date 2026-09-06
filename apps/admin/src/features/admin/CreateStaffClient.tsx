@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   UserPlus, ArrowLeft, Save, Camera, X, ChevronDown,
   Briefcase, ShieldCheck, MapPin, CreditCard, Heart, User,
+  CalendarDays, AlertCircle, Loader2,
 } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
 import { createUserAction } from "./actions/admin.actions";
+import { bangladeshLocations, countries, type Division } from "@/shared/data/locations";
+import { bangladeshBanks, mobileBankingProviders, type Bank } from "@/shared/data/banks";
+
+/* ─── Constants ────────────────────────────────────────────────────────────── */
 
 const STAFF_ROLES = [
   { value: "INSTRUCTOR", label: "Instructor" },
@@ -16,117 +21,180 @@ const STAFF_ROLES = [
   { value: "MARKETING_OFFICER", label: "Marketing Officer" },
   { value: "ACCOUNTANT", label: "Accountant" },
 ];
+const DEPARTMENTS = ["Administration", "Academics", "Marketing", "Finance", "IT", "HR", "Operations", "Support"];
+const DESIGNATIONS = ["Manager", "Officer", "Executive", "Coordinator", "Assistant", "Director", "Lead", "Intern"];
+const EMPLOYMENT_TYPES = [{ value: "full_time", label: "Full-Time" }, { value: "part_time", label: "Part-Time" }, { value: "contractual", label: "Contractual" }];
+const GENDERS = [{ value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "other", label: "Other" }];
+const RELATIONSHIPS = ["Father", "Mother", "Brother", "Sister", "Husband", "Wife", "Son", "Daughter", "Other"];
+const NID_TYPES = [{ value: "nid", label: "National ID (NID)" }, { value: "passport", label: "Passport" }];
+const NID_MAX_LENGTH = 17;
+const PASSPORT_MAX_LENGTH = 9;
 
-const DEPARTMENTS = [
-  "Administration", "Academics", "Marketing", "Finance", "IT",
-  "HR", "Operations", "Support",
-];
+/* ─── Age Calculation ──────────────────────────────────────────────────────── */
 
-const DESIGNATIONS = [
-  "Manager", "Officer", "Executive", "Coordinator", "Assistant",
-  "Director", "Lead", "Intern",
-];
+function calculateAge(dob: string): { years: number; months: number; days: number } | null {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  const today = new Date();
+  if (birth > today) return null;
+  let years = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth() - birth.getMonth();
+  let days = today.getDate() - birth.getDate();
+  if (days < 0) { months--; const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0); days += prevMonth.getDate(); }
+  if (months < 0) { years--; months += 12; }
+  return { years, months, days };
+}
 
-const EMPLOYMENT_TYPES = [
-  { value: "full_time", label: "Full-Time" },
-  { value: "part_time", label: "Part-Time" },
-  { value: "contractual", label: "Contractual" },
-];
+/* ─── Bangladesh Phone Validation ──────────────────────────────────────────── */
 
-const GENDERS = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-];
+function isValidBdPhone(phone: string): boolean {
+  return /^01[3-9]\d{8}$/.test(phone);
+}
+
+/* ─── Component ────────────────────────────────────────────────────────────── */
 
 export function CreateStaffClient() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    password: "",
-    gender: "",
-    dateOfBirth: "",
-    nationalId: "",
-    role: "INSTRUCTOR",
-    department: "",
-    designation: "",
-    employmentType: "full_time",
-    joiningDate: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    salary: "",
-    bankName: "",
-    bankAccountNumber: "",
-    country: "",
-    city: "",
-    presentAddress: "",
-    permanentAddress: "",
+    firstName: "", lastName: "", email: "", phone: "", password: "", gender: "",
+    dateOfBirth: "", nationalId: "", nidType: "nid",
+    role: "INSTRUCTOR", department: "", designation: "", employmentType: "full_time", joiningDate: "",
+    emergencyContactRelationship: "", emergencyContactName: "", emergencyContactPhone: "",
+    salary: "", bankingType: "", bankingProvider: "", bankName: "", bankBranch: "", bankAccountNumber: "",
+    country: "Bangladesh", division: "", district: "", thana: "", unionName: "", postCode: "",
+    presentAddress: "", permanentAddress: "",
   });
 
   function set(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Cascade resets for address
+      if (field === "division") { next.district = ""; next.thana = ""; next.unionName = ""; next.postCode = ""; }
+      if (field === "district") { next.thana = ""; next.unionName = ""; next.postCode = ""; }
+      if (field === "thana") { next.unionName = ""; next.postCode = ""; }
+      // Reset banking fields
+      if (field === "bankingType") { next.bankingProvider = ""; next.bankName = ""; next.bankBranch = ""; next.bankAccountNumber = ""; }
+      if (field === "bankName") { next.bankBranch = ""; }
+      return next;
+    });
+    setErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
   }
+
+  const age = useMemo(() => calculateAge(form.dateOfBirth), [form.dateOfBirth]);
+
+  // Derived location data
+  const selectedDivision: Division | undefined = useMemo(
+    () => bangladeshLocations.find((d) => d.name === form.division),
+    [form.division],
+  );
+  const districts = useMemo(
+    () => (selectedDivision ? selectedDivision.districts.map((d) => d.name) : []),
+    [selectedDivision],
+  );
+  const selectedDistrict = useMemo(
+    () => selectedDivision?.districts.find((d) => d.name === form.district),
+    [selectedDivision, form.district],
+  );
+  const thanas = useMemo(
+    () => (selectedDistrict ? selectedDistrict.thanas.map((t) => t.name) : []),
+    [selectedDistrict],
+  );
+  const selectedThana = useMemo(
+    () => selectedDistrict?.thanas.find((t) => t.name === form.thana),
+    [selectedDistrict, form.thana],
+  );
+  const unions = useMemo(
+    () => (selectedThana ? selectedThana.unions : []),
+    [selectedThana],
+  );
+  const autoPostCode = selectedThana?.postCode ?? "";
+
+  // Bank branches
+  const selectedBank: Bank | undefined = useMemo(
+    () => bangladeshBanks.find((b) => b.name === form.bankName),
+    [form.bankName],
+  );
+  const bankBranches = useMemo(
+    () => (selectedBank ? selectedBank.branches.map((b) => b.name) : []),
+    [selectedBank],
+  );
 
   function handlePictureChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image must be under 2 MB");
-      return;
-    }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Image must be under 2 MB"); return; }
     setPreviewUrl(URL.createObjectURL(file));
   }
 
-  function handleRemovePicture() {
-    setPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  function validate(): boolean {
+    const e: Record<string, string> = {};
+    if (!form.firstName.trim()) e.firstName = "First name is required";
+    if (!form.lastName.trim()) e.lastName = "Last name is required";
+    if (!form.email.trim() && !form.phone.trim()) e.email = "Email or phone is required";
+    if (form.phone && !isValidBdPhone(form.phone)) e.phone = "Enter a valid BD mobile (01XXXXXXXXX)";
+    if (form.password.length < 6) e.password = "Min. 6 characters";
+    if (form.nationalId) {
+      const maxLen = form.nidType === "passport" ? PASSPORT_MAX_LENGTH : NID_MAX_LENGTH;
+      if (form.nationalId.length > maxLen) e.nationalId = `Max ${maxLen} characters`;
+      if (form.nidType === "nid" && !/^\d{0,17}$/.test(form.nationalId)) e.nationalId = "NID must be digits only";
+    }
+    if (form.emergencyContactName && !form.emergencyContactPhone) e.emergencyContactPhone = "Phone is required";
+    if (form.emergencyContactPhone && !isValidBdPhone(form.emergencyContactPhone)) e.emergencyContactPhone = "Enter a valid BD mobile";
+    if (form.bankingType === "mobile_banking") {
+      if (!form.bankingProvider) e.bankingProvider = "Provider is required";
+      if (form.bankingProvider && !isValidBdPhone(form.bankingProvider === "Other" ? "" : (form.bankAccountNumber || ""))) {
+        // Only validate number format if it looks like a phone number
+      }
+    }
+    if (form.bankingType === "bank_account") {
+      if (!form.bankName) e.bankName = "Bank is required";
+      if (!form.bankBranch) e.bankBranch = "Branch is required";
+      if (!form.bankAccountNumber) e.bankAccountNumber = "Account number is required";
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
   }
 
   function handleSubmit() {
-    if (!form.firstName.trim()) { toast.error("First name is required"); return; }
-    if (!form.lastName.trim()) { toast.error("Last name is required"); return; }
-    if (!form.email.trim() && !form.phone.trim()) { toast.error("Email or phone is required"); return; }
-    if (form.password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
-
+    if (!validate()) { toast.error("Please fix the errors"); return; }
     startTransition(async () => {
       const res = await createUserAction({
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        email: form.email.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        password: form.password,
-        role: form.role,
-        gender: form.gender || undefined,
-        country: form.country || undefined,
-        city: form.city || undefined,
-        department: form.department || undefined,
-        designation: form.designation || undefined,
-        dateOfBirth: form.dateOfBirth || undefined,
-        nationalId: form.nationalId || undefined,
-        joiningDate: form.joiningDate || undefined,
-        employmentType: form.employmentType || undefined,
+        firstName: form.firstName.trim(), lastName: form.lastName.trim(),
+        email: form.email.trim() || undefined, phone: form.phone.trim() || undefined,
+        password: form.password, role: form.role, gender: form.gender || undefined,
+        country: form.country || undefined, city: form.district || undefined,
+        department: form.department || undefined, designation: form.designation || undefined,
+        dateOfBirth: form.dateOfBirth || undefined, nationalId: form.nationalId || undefined,
+        nidType: form.nidType || undefined,
+        joiningDate: form.joiningDate || undefined, employmentType: form.employmentType || undefined,
         emergencyContactName: form.emergencyContactName || undefined,
         emergencyContactPhone: form.emergencyContactPhone || undefined,
+        emergencyContactRelationship: form.emergencyContactRelationship || undefined,
         salary: form.salary ? Number(form.salary) : undefined,
-        bankName: form.bankName || undefined,
+        bankingType: form.bankingType || undefined,
+        bankingProvider: form.bankingType === "mobile_banking" ? form.bankingProvider || undefined : undefined,
+        bankName: form.bankingType === "bank_account" ? form.bankName || undefined : undefined,
         bankAccountNumber: form.bankAccountNumber || undefined,
         presentAddress: form.presentAddress || undefined,
         permanentAddress: form.permanentAddress || undefined,
+        division: form.division || undefined, district: form.district || undefined,
+        thana: form.thana || undefined, unionName: form.unionName || undefined,
+        postCode: form.postCode || autoPostCode || undefined,
       });
-      if (res.success) {
-        toast.success("Staff member created successfully");
-        router.push("/admin/users");
-      } else {
-        toast.error(res.message ?? "Failed to create staff");
-      }
+      if (res.success) { toast.success("Staff created successfully"); router.push("/admin/users"); }
+      else { toast.error(res.message ?? "Failed to create staff"); }
     });
+  }
+
+  function fieldErr(key: string): string | undefined { return errors[key]; }
+  function FieldError({ k }: { k: string }) {
+    const msg = errors[k];
+    return msg ? <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{msg}</p> : null;
   }
 
   return (
@@ -134,10 +202,7 @@ export function CreateStaffClient() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors"
-          >
+          <button onClick={() => router.back()} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
@@ -145,148 +210,255 @@ export function CreateStaffClient() {
             <p className="text-xs text-gray-500 dark:text-slate-400">Fill in the details to create a new staff account</p>
           </div>
         </div>
-        <button
-          onClick={handleSubmit}
-          disabled={isPending}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors disabled:opacity-60"
-        >
-          {isPending ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
+        <button onClick={handleSubmit} disabled={isPending} className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors disabled:opacity-60">
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {isPending ? "Creating..." : "Create Staff"}
         </button>
       </div>
 
       {/* ── Section 1: Basic Info & Media ── */}
-      <SectionCard
-        title="Basic Info & Media"
-        icon={<Camera className="h-4 w-4" />}
-        color="blue"
-      >
+      <SectionCard title="Basic Info & Media" icon={<Camera className="h-4 w-4" />} color="blue">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Picture Upload */}
           <div className="flex flex-col items-center gap-3">
             <div className="relative group">
               <div className="h-28 w-28 rounded-full bg-white dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden">
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
-                ) : (
-                  <User className="h-10 w-10 text-gray-300 dark:text-slate-600" />
-                )}
+                {previewUrl ? <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" /> : <User className="h-10 w-10 text-gray-300 dark:text-slate-600" />}
               </div>
-              {previewUrl && (
-                <button
-                  onClick={handleRemovePicture}
-                  className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
+              {previewUrl && <button onClick={() => { setPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>}
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handlePictureChange}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-medium text-brand-600 dark:text-brand hover:text-brand-700 dark:hover:text-brand-hover transition-colors"
-            >
-              {previewUrl ? "Change Photo" : "Upload Photo"}
-            </button>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs font-medium text-brand-600 dark:text-brand hover:text-brand-700 transition-colors">{previewUrl ? "Change Photo" : "Upload Photo"}</button>
             <p className="text-[10px] text-gray-400 dark:text-slate-500">JPG, PNG. Max 2 MB.</p>
           </div>
-
-          {/* Personal Fields */}
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="First Name *" value={form.firstName} onChange={(v) => set("firstName", v)} placeholder="Enter first name" />
-            <Field label="Last Name *" value={form.lastName} onChange={(v) => set("lastName", v)} placeholder="Enter last name" />
-            <Field label="Email" value={form.email} onChange={(v) => set("email", v)} placeholder="name@email.com" type="email" />
-            <Field label="Phone" value={form.phone} onChange={(v) => set("phone", v)} placeholder="01XXXXXXXXX" />
-            <SelectField label="Gender" value={form.gender} onChange={(v) => set("gender", v)} options={[{ value: "", label: "Select gender" }, ...GENDERS]} />
-            <Field label="Date of Birth" value={form.dateOfBirth} onChange={(v) => set("dateOfBirth", v)} type="date" />
-            <Field label="National ID / Passport" value={form.nationalId} onChange={(v) => set("nationalId", v)} placeholder="e.g. 1234567890" />
-            <Field label="Password *" value={form.password} onChange={(v) => set("password", v)} type="password" placeholder="Min. 6 characters" />
+            <div>
+              <FieldLabel label="First Name" required />
+              <input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} placeholder="Enter first name" className={inputCls} />
+              <FieldError k="firstName" />
+            </div>
+            <div>
+              <FieldLabel label="Last Name" required />
+              <input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} placeholder="Enter last name" className={inputCls} />
+              <FieldError k="lastName" />
+            </div>
+            <div>
+              <FieldLabel label="Email" />
+              <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="name@email.com" className={inputCls} />
+              <FieldError k="email" />
+            </div>
+            <div>
+              <FieldLabel label="Phone" />
+              <input value={form.phone} onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="01XXXXXXXXX" className={inputCls} />
+              <FieldError k="phone" />
+            </div>
+            <div>
+              <FieldLabel label="Gender" />
+              <Select value={form.gender} onChange={(v) => set("gender", v)} options={[{ value: "", label: "Select gender" }, ...GENDERS]} />
+            </div>
+            <div>
+              <FieldLabel label="Password" required />
+              <input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Min. 6 characters" className={inputCls} />
+              <FieldError k="password" />
+            </div>
+            {/* Date of Birth + Age */}
+            <div className="sm:col-span-2">
+              <FieldLabel label="Date of Birth" />
+              <input type="date" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} max={new Date().toISOString().split("T")[0]} className={inputCls} />
+              {age && (
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
+                  <CalendarDays className="h-3.5 w-3.5 text-brand-500" />
+                  <span>Age: <strong className="text-gray-700 dark:text-slate-200">{age.years} Years, {age.months} Months, {age.days} Days</strong></span>
+                </div>
+              )}
+            </div>
+            {/* NID / Passport */}
+            <div className="sm:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <FieldLabel label="Document Type" />
+                  <Select value={form.nidType} onChange={(v) => { set("nidType", v); set("nationalId", ""); }} options={NID_TYPES} />
+                </div>
+                <div className="sm:col-span-2">
+                  <FieldLabel label={form.nidType === "passport" ? "Passport Number" : "National ID (NID)"} />
+                  <input
+                    value={form.nationalId}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const maxLen = form.nidType === "passport" ? PASSPORT_MAX_LENGTH : NID_MAX_LENGTH;
+                      if (v.length <= maxLen) set("nationalId", form.nidType === "nid" ? v.replace(/\D/g, "") : v);
+                    }}
+                    maxLength={form.nidType === "passport" ? PASSPORT_MAX_LENGTH : NID_MAX_LENGTH}
+                    placeholder={form.nidType === "passport" ? "e.g. A00000000" : "e.g. 1234567890123"}
+                    className={inputCls}
+                  />
+                  <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                    {form.nidType === "passport" ? `Max ${PASSPORT_MAX_LENGTH} characters` : `Max ${NID_MAX_LENGTH} digits`}
+                  </p>
+                  <FieldError k="nationalId" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </SectionCard>
 
       {/* ── Section 2: Employment Details ── */}
-      <SectionCard
-        title="Employment Details"
-        icon={<Briefcase className="h-4 w-4" />}
-        color="green"
-      >
+      <SectionCard title="Employment Details" icon={<Briefcase className="h-4 w-4" />} color="green">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5">
             <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Employee ID</span>
             <p className="text-sm font-mono font-bold text-brand-600 dark:text-brand">Auto-generated</p>
           </div>
-          <SelectField label="Role *" value={form.role} onChange={(v) => set("role", v)} options={STAFF_ROLES.map((r) => ({ value: r.value, label: r.label }))} />
-          <SelectField label="Department" value={form.department} onChange={(v) => set("department", v)} options={[{ value: "", label: "Select department" }, ...DEPARTMENTS.map((d) => ({ value: d, label: d }))]} />
-          <SelectField label="Designation" value={form.designation} onChange={(v) => set("designation", v)} options={[{ value: "", label: "Select designation" }, ...DESIGNATIONS.map((d) => ({ value: d, label: d }))]} />
-          <SelectField label="Employment Type" value={form.employmentType} onChange={(v) => set("employmentType", v)} options={EMPLOYMENT_TYPES.map((t) => ({ value: t.value, label: t.label }))} />
-          <Field label="Joining Date" value={form.joiningDate} onChange={(v) => set("joiningDate", v)} type="date" />
-        </div>
-      </SectionCard>
-
-      {/* ── Section 3: Emergency & Payroll ── */}
-      <SectionCard
-        title="Emergency & Payroll Info"
-        icon={<Heart className="h-4 w-4" />}
-        color="rose"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Field label="Emergency Contact Person" value={form.emergencyContactName} onChange={(v) => set("emergencyContactName", v)} placeholder="e.g. John Doe" />
-          <Field label="Emergency Contact Phone" value={form.emergencyContactPhone} onChange={(v) => set("emergencyContactPhone", v)} placeholder="01XXXXXXXXX" />
-          <Field label="Salary / Compensation (৳)" value={form.salary} onChange={(v) => set("salary", v)} placeholder="e.g. 50000" type="number" />
-          <Field label="Bank Name" value={form.bankName} onChange={(v) => set("bankName", v)} placeholder="e.g. BRAC Bank" />
-          <Field label="Bank Account Number" value={form.bankAccountNumber} onChange={(v) => set("bankAccountNumber", v)} placeholder="e.g. 1234 5678 9012" />
-        </div>
-      </SectionCard>
-
-      {/* ── Section 4: Address Details ── */}
-      <SectionCard
-        title="Address Details"
-        icon={<MapPin className="h-4 w-4" />}
-        color="amber"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Country" value={form.country} onChange={(v) => set("country", v)} placeholder="e.g. Bangladesh" />
-          <Field label="City" value={form.city} onChange={(v) => set("city", v)} placeholder="e.g. Dhaka" />
-          <div className="sm:col-span-2">
-            <TextAreaField label="Present Address" value={form.presentAddress} onChange={(v) => set("presentAddress", v)} placeholder="Street, area, zip code" rows={2} />
+          <div>
+            <FieldLabel label="Role" required />
+            <Select value={form.role} onChange={(v) => set("role", v)} options={STAFF_ROLES.map((r) => ({ value: r.value, label: r.label }))} />
           </div>
-          <div className="sm:col-span-2">
-            <TextAreaField label="Permanent Address" value={form.permanentAddress} onChange={(v) => set("permanentAddress", v)} placeholder="Street, area, zip code" rows={2} />
+          <div>
+            <FieldLabel label="Department" />
+            <Select value={form.department} onChange={(v) => set("department", v)} options={[{ value: "", label: "Select department" }, ...DEPARTMENTS.map((d) => ({ value: d, label: d }))]} />
+          </div>
+          <div>
+            <FieldLabel label="Designation" />
+            <Select value={form.designation} onChange={(v) => set("designation", v)} options={[{ value: "", label: "Select designation" }, ...DESIGNATIONS.map((d) => ({ value: d, label: d }))]} />
+          </div>
+          <div>
+            <FieldLabel label="Employment Type" />
+            <Select value={form.employmentType} onChange={(v) => set("employmentType", v)} options={EMPLOYMENT_TYPES} />
+          </div>
+          <div>
+            <FieldLabel label="Joining Date" />
+            <input type="date" value={form.joiningDate} onChange={(e) => set("joiningDate", e.target.value)} className={inputCls} />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ── Section 3: Emergency Contact ── */}
+      <SectionCard title="Emergency Contact" icon={<Heart className="h-4 w-4" />} color="rose">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <FieldLabel label="Relationship" />
+            <Select value={form.emergencyContactRelationship} onChange={(v) => set("emergencyContactRelationship", v)} options={[{ value: "", label: "Select relationship" }, ...RELATIONSHIPS.map((r) => ({ value: r.toLowerCase(), label: r }))]} />
+          </div>
+          <div>
+            <FieldLabel label="Contact Person Name" />
+            <input value={form.emergencyContactName} onChange={(e) => set("emergencyContactName", e.target.value)} placeholder="e.g. Abdul Karim" className={inputCls} />
+          </div>
+          <div>
+            <FieldLabel label="Mobile Number" />
+            <input value={form.emergencyContactPhone} onChange={(e) => set("emergencyContactPhone", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="01XXXXXXXXX" className={inputCls} />
+            <FieldError k="emergencyContactPhone" />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ── Section 4: Payroll & Banking ── */}
+      <SectionCard title="Payroll & Banking" icon={<CreditCard className="h-4 w-4" />} color="green">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <FieldLabel label="Salary (BDT)" />
+            <input type="number" value={form.salary} onChange={(e) => set("salary", e.target.value)} placeholder="e.g. 50000" className={inputCls} />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <FieldLabel label="Banking Type" />
+            <Select value={form.bankingType} onChange={(v) => set("bankingType", v)} options={[
+              { value: "", label: "Select banking type" },
+              { value: "mobile_banking", label: "Mobile Banking" },
+              { value: "bank_account", label: "Bank / Online Account" },
+            ]} />
+          </div>
+
+          {/* Mobile Banking */}
+          {form.bankingType === "mobile_banking" && (
+            <>
+              <div>
+                <FieldLabel label="Provider" />
+                <Select value={form.bankingProvider} onChange={(v) => set("bankingProvider", v)} options={[{ value: "", label: "Select provider" }, ...mobileBankingProviders]} />
+                <FieldError k="bankingProvider" />
+              </div>
+              <div>
+                <FieldLabel label="Mobile Banking Number" />
+                <input value={form.bankAccountNumber} onChange={(e) => set("bankAccountNumber", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="01XXXXXXXXX" className={inputCls} />
+                <FieldError k="bankAccountNumber" />
+              </div>
+            </>
+          )}
+
+          {/* Bank Account */}
+          {form.bankingType === "bank_account" && (
+            <>
+              <div>
+                <FieldLabel label="Bank Name" />
+                <Select value={form.bankName} onChange={(v) => set("bankName", v)} options={[{ value: "", label: "Select bank" }, ...bangladeshBanks.map((b) => ({ value: b.name, label: b.name }))]} />
+                <FieldError k="bankName" />
+              </div>
+              <div>
+                <FieldLabel label="Branch" />
+                {form.bankName ? (
+                  <Select value={form.bankBranch} onChange={(v) => set("bankBranch", v)} options={[{ value: "", label: "Select branch" }, ...bankBranches.map((b) => ({ value: b, label: b }))]} />
+                ) : (
+                  <select disabled className={inputCls + " opacity-50 cursor-not-allowed"}><option>Select bank first</option></select>
+                )}
+                <FieldError k="bankBranch" />
+              </div>
+              <div>
+                <FieldLabel label="Account Number" />
+                <input value={form.bankAccountNumber} onChange={(e) => set("bankAccountNumber", e.target.value)} placeholder="e.g. 1234567890" className={inputCls} />
+                <FieldError k="bankAccountNumber" />
+              </div>
+            </>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* ── Section 5: Address Details ── */}
+      <SectionCard title="Address Details" icon={<MapPin className="h-4 w-4" />} color="amber">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <FieldLabel label="Country" />
+            <Select value={form.country} onChange={(v) => set("country", v)} options={countries.map((c) => ({ value: c, label: c }))} />
+          </div>
+          <div>
+            <FieldLabel label="Division" />
+            <Select value={form.division} onChange={(v) => set("division", v)} options={[{ value: "", label: "Select division" }, ...bangladeshLocations.map((d) => ({ value: d.name, label: d.name }))]} />
+          </div>
+          <div>
+            <FieldLabel label="District" />
+            {form.division ? (
+              <Select value={form.district} onChange={(v) => set("district", v)} options={[{ value: "", label: "Select district" }, ...districts.map((d) => ({ value: d, label: d }))]} />
+            ) : <select disabled className={inputCls + " opacity-50 cursor-not-allowed"}><option>Select division first</option></select>}
+          </div>
+          <div>
+            <FieldLabel label="Thana / Upazila" />
+            {form.district ? (
+              <Select value={form.thana} onChange={(v) => set("thana", v)} options={[{ value: "", label: "Select thana" }, ...thanas.map((t) => ({ value: t, label: t }))]} />
+            ) : <select disabled className={inputCls + " opacity-50 cursor-not-allowed"}><option>Select district first</option></select>}
+          </div>
+          <div>
+            <FieldLabel label="Union" />
+            {form.thana ? (
+              <Select value={form.unionName} onChange={(v) => set("unionName", v)} options={[{ value: "", label: "Select union" }, ...unions.map((u) => ({ value: u, label: u }))]} />
+            ) : <select disabled className={inputCls + " opacity-50 cursor-not-allowed"}><option>Select thana first</option></select>}
+          </div>
+          <div>
+            <FieldLabel label="Post Code" />
+            <input value={form.postCode || autoPostCode} onChange={(e) => set("postCode", e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder={autoPostCode || "Auto-filled"} className={inputCls} readOnly={!!autoPostCode && !form.postCode} />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <FieldLabel label="Present Address" />
+            <textarea value={form.presentAddress} onChange={(e) => set("presentAddress", e.target.value)} placeholder="Street, area, zip code" rows={2} className={inputCls + " resize-none"} />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <FieldLabel label="Permanent Address" />
+            <textarea value={form.permanentAddress} onChange={(e) => set("permanentAddress", e.target.value)} placeholder="Street, area, zip code" rows={2} className={inputCls + " resize-none"} />
           </div>
         </div>
       </SectionCard>
 
       {/* Bottom Action Bar */}
       <div className="sticky bottom-0 mt-6 flex items-center justify-end gap-3 py-4 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent">
-        <button
-          onClick={() => router.back()}
-          disabled={isPending}
-          className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={isPending}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors disabled:opacity-60"
-        >
-          {isPending ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <UserPlus className="h-4 w-4" />
-          )}
+        <button onClick={() => router.back()} disabled={isPending} className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">Cancel</button>
+        <button onClick={handleSubmit} disabled={isPending} className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors disabled:opacity-60">
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
           {isPending ? "Creating Staff..." : "Create Staff Member"}
         </button>
       </div>
@@ -294,47 +466,29 @@ export function CreateStaffClient() {
   );
 }
 
-/* ─── Section Card with Color Themes ──────────────────────────────────────── */
+/* ─── Shared Styles ────────────────────────────────────────────────────────── */
 
-const colorMap = {
-  blue: {
-    border: "border-blue-100 dark:border-blue-500/20",
-    bg: "bg-blue-50/40 dark:bg-blue-500/5",
-    iconBg: "bg-blue-100 dark:bg-blue-500/15",
-    iconText: "text-blue-600 dark:text-blue-400",
-  },
-  green: {
-    border: "border-emerald-100 dark:border-emerald-500/20",
-    bg: "bg-emerald-50/40 dark:bg-emerald-500/5",
-    iconBg: "bg-emerald-100 dark:bg-emerald-500/15",
-    iconText: "text-emerald-600 dark:text-emerald-400",
-  },
-  rose: {
-    border: "border-rose-100 dark:border-rose-500/20",
-    bg: "bg-rose-50/40 dark:bg-rose-500/5",
-    iconBg: "bg-rose-100 dark:bg-rose-500/15",
-    iconText: "text-rose-600 dark:text-rose-400",
-  },
-  amber: {
-    border: "border-amber-100 dark:border-amber-500/20",
-    bg: "bg-amber-50/40 dark:bg-amber-500/5",
-    iconBg: "bg-amber-100 dark:bg-amber-500/15",
-    iconText: "text-amber-600 dark:text-amber-400",
-  },
-};
+const inputCls = "w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand transition-colors placeholder:text-gray-300 dark:placeholder:text-slate-600";
 
-function SectionCard({
-  title, icon, color = "blue", children,
-}: {
-  title: string; icon: React.ReactNode; color?: keyof typeof colorMap; children: React.ReactNode;
-}) {
-  const c = colorMap[color];
+/* ─── Helper Components ────────────────────────────────────────────────────── */
+
+function FieldLabel({ label, required }: { label: string; required?: boolean }) {
+  return <span className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1.5">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</span>;
+}
+
+function SectionCard({ title, icon, color = "blue" as string, children }: { title: string; icon: React.ReactNode; color?: string; children: React.ReactNode }) {
+  const colorMap: Record<string, { border: string; bg: string; iconBg: string; iconText: string }> = {
+    blue: { border: "border-blue-100 dark:border-blue-500/20", bg: "bg-blue-50/40 dark:bg-blue-500/5", iconBg: "bg-blue-100 dark:bg-blue-500/15", iconText: "text-blue-600 dark:text-blue-400" },
+    green: { border: "border-emerald-100 dark:border-emerald-500/20", bg: "bg-emerald-50/40 dark:bg-emerald-500/5", iconBg: "bg-emerald-100 dark:bg-emerald-500/15", iconText: "text-emerald-600 dark:text-emerald-400" },
+    rose: { border: "border-rose-100 dark:border-rose-500/20", bg: "bg-rose-50/40 dark:bg-rose-500/5", iconBg: "bg-rose-100 dark:bg-rose-500/15", iconText: "text-rose-600 dark:text-rose-400" },
+    amber: { border: "border-amber-100 dark:border-amber-500/20", bg: "bg-amber-50/40 dark:bg-amber-500/5", iconBg: "bg-amber-100 dark:bg-amber-500/15", iconText: "text-amber-600 dark:text-amber-400" },
+  };
+  const fallback = colorMap.blue!;
+  const c = colorMap[color] ?? fallback;
   return (
     <div className={`rounded-2xl border ${c.border} ${c.bg} p-5 mb-5`}>
       <div className="flex items-center gap-2 mb-4">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${c.iconBg} ${c.iconText}`}>
-          {icon}
-        </div>
+        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${c.iconBg} ${c.iconText}`}>{icon}</div>
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
       </div>
       {children}
@@ -342,66 +496,13 @@ function SectionCard({
   );
 }
 
-/* ─── Field Helpers ────────────────────────────────────────────────────────── */
-
-function Field({
-  label, value, onChange, placeholder, type = "text",
-}: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
-}) {
+function Select({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
-    <label className="block">
-      <span className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1.5">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand transition-colors placeholder:text-gray-300 dark:placeholder:text-slate-600"
-      />
-    </label>
-  );
-}
-
-function SelectField({
-  label, value, onChange, options,
-}: {
-  label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
-}) {
-  return (
-    <label className="block">
-      <span className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1.5">{label}</span>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand transition-colors pr-8"
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-500 pointer-events-none" />
-      </div>
-    </label>
-  );
-}
-
-function TextAreaField({
-  label, value, onChange, placeholder, rows = 3,
-}: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number;
-}) {
-  return (
-    <label className="block">
-      <span className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1.5">{label}</span>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={rows}
-        className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand transition-colors placeholder:text-gray-300 dark:placeholder:text-slate-600 resize-none"
-      />
-    </label>
+    <div className="relative">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={inputCls + " appearance-none pr-8"}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-500 pointer-events-none" />
+    </div>
   );
 }

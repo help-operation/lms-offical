@@ -233,6 +233,16 @@ export const users = pgTable('users', {
   bankAccountNumber: varchar('bank_account_number', { length: 50 }),
   presentAddress: text('present_address'),
   permanentAddress: text('permanent_address'),
+  // ── Extended staff fields (0071) ──────────────────────────────────────────
+  nidType: varchar('nid_type', { length: 20 }), // nid, passport
+  emergencyContactRelationship: varchar('emergency_contact_relationship', { length: 50 }),
+  bankingType: varchar('banking_type', { length: 20 }), // mobile_banking, bank_account
+  bankingProvider: varchar('banking_provider', { length: 50 }), // bKash, Nagad, etc.
+  division: varchar('division', { length: 100 }),
+  district: varchar('district', { length: 100 }),
+  thana: varchar('thana', { length: 100 }),
+  unionName: varchar('union_name', { length: 100 }),
+  postCode: varchar('post_code', { length: 10 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

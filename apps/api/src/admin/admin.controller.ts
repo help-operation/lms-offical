@@ -79,8 +79,11 @@ export class AdminController {
       department?: string; designation?: string;
       dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
       emergencyContactName?: string; emergencyContactPhone?: string;
+      emergencyContactRelationship?: string;
       salary?: number; bankName?: string; bankAccountNumber?: string;
       presentAddress?: string; permanentAddress?: string;
+      nidType?: string; bankingType?: string; bankingProvider?: string;
+      division?: string; district?: string; thana?: string; unionName?: string; postCode?: string;
     },
     @CurrentUser() actor: RequestUser,
   ) {

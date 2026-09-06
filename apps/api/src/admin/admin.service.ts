@@ -387,8 +387,11 @@ export class AdminService {
     department?: string; designation?: string;
     dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
     emergencyContactName?: string; emergencyContactPhone?: string;
+    emergencyContactRelationship?: string;
     salary?: number; bankName?: string; bankAccountNumber?: string;
     presentAddress?: string; permanentAddress?: string;
+    nidType?: string; bankingType?: string; bankingProvider?: string;
+    division?: string; district?: string; thana?: string; unionName?: string; postCode?: string;
   }) {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Email or phone is required');
@@ -435,11 +438,20 @@ export class AdminService {
         nationalId:   dto.nationalId || null,
         emergencyContactName:  dto.emergencyContactName || null,
         emergencyContactPhone: dto.emergencyContactPhone || null,
+        emergencyContactRelationship: dto.emergencyContactRelationship || null,
         salary:       dto.salary != null ? String(dto.salary) : null,
         bankName:     dto.bankName || null,
         bankAccountNumber: dto.bankAccountNumber || null,
         presentAddress:  dto.presentAddress || null,
         permanentAddress: dto.permanentAddress || null,
+        nidType:      dto.nidType || null,
+        bankingType:  dto.bankingType || null,
+        bankingProvider: dto.bankingProvider || null,
+        division:     dto.division || null,
+        district:     dto.district || null,
+        thana:        dto.thana || null,
+        unionName:    dto.unionName || null,
+        postCode:     dto.postCode || null,
       })
       .returning({
         id:        users.id,
