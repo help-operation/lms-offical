@@ -596,15 +596,15 @@ export function UserDetailClient({ user: initial }: Props) {
       </div>
 
       {/* ── Print-Only Layout ──────────────────────────────────────────────────── */}
-      <div className="print-only hidden">
+      <div className="print-only hidden" style={{ overflow: "hidden", maxWidth: "100%", width: "100%", background: "white" }}>
         {/* Header */}
-        <div style={{ borderBottom: "2px solid #111", paddingBottom: "12px", marginBottom: "16px" }}>
+        <div style={{ borderBottom: "2px solid #111", paddingBottom: "10px", marginBottom: "14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <h1 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>USER PROFILE</h1>
-              <p style={{ fontSize: "11px", color: "#666", margin: "2px 0 0" }}>leerney.com — Learning Management System</p>
+              <h1 style={{ fontSize: "17px", fontWeight: 700, margin: 0 }}>USER PROFILE</h1>
+              <p style={{ fontSize: "10px", color: "#888", margin: "2px 0 0" }}>leerney.com — Learning Management System</p>
             </div>
-            <div style={{ textAlign: "right", fontSize: "10px", color: "#666" }}>
+            <div style={{ textAlign: "right", fontSize: "9px", color: "#888" }}>
               <p style={{ margin: 0 }}>Printed: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
               <p style={{ margin: 0 }}>User ID: #{user.id}</p>
             </div>
@@ -612,18 +612,18 @@ export function UserDetailClient({ user: initial }: Props) {
         </div>
 
         {/* Profile Summary */}
-        <div style={{ display: "flex", gap: "16px", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #ddd" }}>
+        <div style={{ display: "flex", gap: "14px", marginBottom: "14px", paddingBottom: "10px", borderBottom: "1px solid #ddd" }}>
           {user.avatar ? (
-            <img src={user.avatar} alt={user.firstName} style={{ width: "60px", height: "60px", borderRadius: "8px", objectFit: "cover" }} />
+            <img src={user.avatar} alt={user.firstName} style={{ width: "50px", height: "50px", borderRadius: "6px", objectFit: "cover", flexShrink: 0 }} />
           ) : (
-            <div style={{ width: "60px", height: "60px", borderRadius: "8px", background: "#a64dff", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", fontWeight: 700, flexShrink: 0 }}>
+            <div style={{ width: "50px", height: "50px", borderRadius: "6px", background: "#a64dff", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 700, flexShrink: 0 }}>
               {user.firstName?.[0]?.toUpperCase() ?? "U"}
             </div>
           )}
-          <div>
-            <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>{user.firstName} {user.lastName}</h2>
-            <p style={{ fontSize: "11px", color: "#666", margin: "2px 0" }}>Role: {roleLabelMap[user.role] ?? user.role} &nbsp;|&nbsp; Status: {user.status} &nbsp;|&nbsp; ID: {user.employeeId || `#${user.id}`}</p>
-            <p style={{ fontSize: "11px", color: "#444", margin: "2px 0" }}>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ fontSize: "14px", fontWeight: 700, margin: 0 }}>{user.firstName} {user.lastName}</h2>
+            <p style={{ fontSize: "10px", color: "#666", margin: "2px 0" }}>Role: {roleLabelMap[user.role] ?? user.role} &nbsp;|&nbsp; Status: {user.status} &nbsp;|&nbsp; ID: {user.employeeId || `#${user.id}`}</p>
+            <p style={{ fontSize: "10px", color: "#444", margin: "2px 0" }}>
               {user.email && <span>Email: {user.email}</span>}
               {user.email && user.phone && <span> &nbsp;|&nbsp; </span>}
               {user.phone && <span>Phone: {user.phone}</span>}
@@ -633,25 +633,33 @@ export function UserDetailClient({ user: initial }: Props) {
 
         {/* Section helper */}
         {(() => {
+          const fmtDate = (v?: string | null) => {
+            if (!v) return null;
+            try {
+              const d = new Date(v);
+              if (isNaN(d.getTime())) return v;
+              return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+            } catch { return v; }
+          };
           const PrintSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-            <div style={{ marginBottom: "14px", pageBreakInside: "avoid" }}>
-              <h3 style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#444", borderBottom: "1px solid #ccc", paddingBottom: "4px", marginBottom: "8px" }}>{title}</h3>
+            <div style={{ marginBottom: "12px", pageBreakInside: "avoid" }}>
+              <h3 style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#222", borderBottom: "1.5px solid #222", paddingBottom: "3px", marginBottom: "6px" }}>{title}</h3>
               {children}
             </div>
           );
           const PrintRow = ({ label, value }: { label: string; value?: string | number | null }) => (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: "1px dotted #eee", fontSize: "11px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", borderBottom: "1px dotted #ddd", fontSize: "10px" }}>
               <span style={{ color: "#666" }}>{label}</span>
               <span style={{ fontWeight: 500, textAlign: "right" }}>{value || "—"}</span>
             </div>
           );
           const PrintGrid = ({ children }: { children: React.ReactNode }) => (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>{children}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>{children}</div>
           );
 
           return (
             <>
-              {/* Account & Security */}
+              {/* Account */}
               <PrintSection title="Account Information">
                 <PrintGrid>
                   <PrintRow label="Full Name" value={`${user.firstName} ${user.lastName}`} />
@@ -663,15 +671,15 @@ export function UserDetailClient({ user: initial }: Props) {
                   <PrintRow label="Department" value={user.department} />
                   <PrintRow label="Designation" value={user.designation} />
                   <PrintRow label="Employment Type" value={user.employmentType?.replace("_", " ")} />
-                  <PrintRow label="Joining Date" value={user.joiningDate} />
+                  <PrintRow label="Joining Date" value={fmtDate(user.joiningDate)} />
                 </PrintGrid>
               </PrintSection>
 
-              {/* Personal Info */}
+              {/* Personal */}
               <PrintSection title="Personal Information">
                 <PrintGrid>
                   <PrintRow label="Gender" value={user.gender} />
-                  <PrintRow label="Date of Birth" value={user.dateOfBirth} />
+                  <PrintRow label="Date of Birth" value={fmtDate(user.dateOfBirth)} />
                   <PrintRow label="NID Type" value={user.nidType} />
                   <PrintRow label="NID Number" value={user.nationalId} />
                   <PrintRow label="Father's Name" value={user.fatherName} />
@@ -683,7 +691,7 @@ export function UserDetailClient({ user: initial }: Props) {
                 </PrintGrid>
               </PrintSection>
 
-              {/* Emergency Contact */}
+              {/* Emergency */}
               <PrintSection title="Emergency Contact">
                 <PrintGrid>
                   <PrintRow label="Contact Name" value={user.emergencyContactName} />
@@ -694,9 +702,9 @@ export function UserDetailClient({ user: initial }: Props) {
 
               {/* Addresses */}
               <PrintSection title="Addresses">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
                   <div>
-                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Permanent Address</p>
+                    <p style={{ fontSize: "10px", fontWeight: 600, color: "#333", margin: "0 0 3px" }}>Permanent Address</p>
                     <PrintRow label="Country" value={user.country} />
                     <PrintRow label="Division" value={user.division} />
                     <PrintRow label="District" value={user.district} />
@@ -706,9 +714,9 @@ export function UserDetailClient({ user: initial }: Props) {
                     {user.permanentAddress && <PrintRow label="Full Address" value={user.permanentAddress} />}
                   </div>
                   <div>
-                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Present Address</p>
+                    <p style={{ fontSize: "10px", fontWeight: 600, color: "#333", margin: "0 0 3px" }}>Present Address</p>
                     {user.sameAsPermanent ? (
-                      <p style={{ fontSize: "11px", color: "#666", fontStyle: "italic" }}>Same as permanent address</p>
+                      <p style={{ fontSize: "10px", color: "#666", fontStyle: "italic" }}>Same as permanent address</p>
                     ) : (
                       <>
                         <PrintRow label="Country" value={user.presentCountry} />
@@ -726,28 +734,28 @@ export function UserDetailClient({ user: initial }: Props) {
 
               {/* Payroll */}
               <PrintSection title="Salary & Payroll">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
                   <div>
-                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Earnings</p>
+                    <p style={{ fontSize: "10px", fontWeight: 600, color: "#333", margin: "0 0 3px" }}>Earnings</p>
                     <PrintRow label="Basic Salary" value={user.salary ? "\u09F3" + Number(user.salary).toLocaleString() : null} />
                     <PrintRow label="House Rent" value={user.houseRent ? "\u09F3" + Number(user.houseRent).toLocaleString() : null} />
                     <PrintRow label="Medical" value={user.medicalAllowance ? "\u09F3" + Number(user.medicalAllowance).toLocaleString() : null} />
                     <PrintRow label="Transport" value={user.transportAllowance ? "\u09F3" + Number(user.transportAllowance).toLocaleString() : null} />
                     <PrintRow label="Other Allowances" value={user.otherAllowance ? "\u09F3" + Number(user.otherAllowance).toLocaleString() : null} />
-                    <div style={{ borderTop: "1px solid #999", marginTop: "4px", paddingTop: "4px" }}>
+                    <div style={{ borderTop: "1px solid #999", marginTop: "3px", paddingTop: "3px" }}>
                       <PrintRow label="Gross Salary" value={user.grossSalary ? "\u09F3" + Number(user.grossSalary).toLocaleString() : null} />
                     </div>
                   </div>
                   <div>
-                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Deductions</p>
+                    <p style={{ fontSize: "10px", fontWeight: 600, color: "#333", margin: "0 0 3px" }}>Deductions</p>
                     <PrintRow label="Tax" value={user.taxDeduction ? "\u09F3" + Number(user.taxDeduction).toLocaleString() : null} />
                     <PrintRow label="Provident Fund" value={user.providentFund ? "\u09F3" + Number(user.providentFund).toLocaleString() : null} />
                     <PrintRow label="Other Deductions" value={user.otherDeduction ? "\u09F3" + Number(user.otherDeduction).toLocaleString() : null} />
-                    <div style={{ borderTop: "1px solid #999", marginTop: "4px", paddingTop: "4px" }}>
+                    <div style={{ borderTop: "1px solid #999", marginTop: "3px", paddingTop: "3px" }}>
                       <PrintRow label="Net Salary" value={user.netSalary ? "\u09F3" + Number(user.netSalary).toLocaleString() : null} />
                     </div>
-                    <div style={{ marginTop: "8px" }}>
-                      <p style={{ fontSize: "11px", fontWeight: 600, color: "#333", margin: "0 0 4px" }}>Bonus</p>
+                    <div style={{ marginTop: "6px" }}>
+                      <p style={{ fontSize: "10px", fontWeight: 600, color: "#333", margin: "0 0 3px" }}>Bonus</p>
                       <PrintRow label="Type" value={user.bonusType} />
                       <PrintRow label="Amount" value={user.bonusAmount ? "\u09F3" + Number(user.bonusAmount).toLocaleString() : null} />
                       <PrintRow label="Frequency" value={user.bonusFrequency} />
@@ -769,24 +777,24 @@ export function UserDetailClient({ user: initial }: Props) {
               {/* Education */}
               {user.education && user.education.length > 0 && (
                 <PrintSection title="Education">
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", tableLayout: "fixed" }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #ccc" }}>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Degree</th>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Institution</th>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Subject</th>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Year</th>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Result</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Degree</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Institution</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Subject</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Year</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Result</th>
                       </tr>
                     </thead>
                     <tbody>
                       {user.education.map((edu, i) => (
                         <tr key={edu.id ?? i} style={{ borderBottom: "1px solid #eee" }}>
-                          <td style={{ padding: "4px 8px" }}>{edu.degree || "—"}</td>
-                          <td style={{ padding: "4px 8px" }}>{edu.institution || "—"}</td>
-                          <td style={{ padding: "4px 8px" }}>{edu.subject || "—"}</td>
-                          <td style={{ padding: "4px 8px" }}>{edu.passingYear || "—"}</td>
-                          <td style={{ padding: "4px 8px" }}>{edu.result || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{edu.degree || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{edu.institution || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{edu.subject || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{edu.passingYear || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{edu.result || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -798,14 +806,14 @@ export function UserDetailClient({ user: initial }: Props) {
               {user.experience && user.experience.length > 0 && (
                 <PrintSection title="Work Experience">
                   {user.experience.map((exp, i) => (
-                    <div key={exp.id ?? i} style={{ marginBottom: "8px", paddingBottom: "8px", borderBottom: i < user.experience!.length - 1 ? "1px solid #eee" : "none" }}>
-                      <p style={{ fontSize: "11px", fontWeight: 600, margin: 0 }}>{exp.company || "Unknown"} — {exp.designation || "—"}</p>
-                      <p style={{ fontSize: "10px", color: "#666", margin: "2px 0" }}>
+                    <div key={exp.id ?? i} style={{ marginBottom: "6px", paddingBottom: "6px", borderBottom: i < user.experience!.length - 1 ? "1px solid #eee" : "none" }}>
+                      <p style={{ fontSize: "10px", fontWeight: 600, margin: 0 }}>{exp.company || "Unknown"} — {exp.designation || "—"}</p>
+                      <p style={{ fontSize: "9px", color: "#666", margin: "1px 0" }}>
                         {exp.department && <span>{exp.department} | </span>}
-                        {exp.startDate || "—"} to {exp.currentlyWorking ? "Present" : exp.endDate || "—"}
+                        {fmtDate(exp.startDate) || "—"} to {exp.currentlyWorking ? "Present" : fmtDate(exp.endDate) || "—"}
                         {exp.currentlyWorking && <span style={{ fontWeight: 600 }}> (Currently Working)</span>}
                       </p>
-                      {exp.responsibilities && <p style={{ fontSize: "10px", color: "#444", margin: "2px 0" }}>{exp.responsibilities}</p>}
+                      {exp.responsibilities && <p style={{ fontSize: "9px", color: "#444", margin: "1px 0" }}>{exp.responsibilities}</p>}
                     </div>
                   ))}
                 </PrintSection>
@@ -814,7 +822,7 @@ export function UserDetailClient({ user: initial }: Props) {
               {/* Skills */}
               {user.skills && user.skills.length > 0 && (
                 <PrintSection title="Skills">
-                  <p style={{ fontSize: "11px" }}>
+                  <p style={{ fontSize: "10px" }}>
                     {user.skills.map((s, i) => (
                       <span key={s.id ?? i}>{s.skillName}{s.level ? ` (${s.level})` : ""}{i < user.skills!.length - 1 ? ", " : ""}</span>
                     ))}
@@ -825,24 +833,24 @@ export function UserDetailClient({ user: initial }: Props) {
               {/* Documents */}
               {user.documents && user.documents.length > 0 && (
                 <PrintSection title="Documents">
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", tableLayout: "fixed" }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #ccc" }}>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Type</th>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Name</th>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Upload Date</th>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Expiry</th>
-                        <th style={{ textAlign: "left", padding: "4px 8px", fontWeight: 600 }}>Status</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Type</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Name</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Upload Date</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Expiry</th>
+                        <th style={{ textAlign: "left", padding: "3px 6px", fontWeight: 600 }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {user.documents.map((doc, i) => (
                         <tr key={doc.id ?? i} style={{ borderBottom: "1px solid #eee" }}>
-                          <td style={{ padding: "4px 8px" }}>{doc.documentType || "—"}</td>
-                          <td style={{ padding: "4px 8px" }}>{doc.documentName || "—"}</td>
-                          <td style={{ padding: "4px 8px" }}>{doc.uploadDate || "—"}</td>
-                          <td style={{ padding: "4px 8px" }}>{doc.expiryDate || "—"}</td>
-                          <td style={{ padding: "4px 8px" }}>{doc.status || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{doc.documentType || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{doc.documentName || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{fmtDate(doc.uploadDate) || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{fmtDate(doc.expiryDate) || "—"}</td>
+                          <td style={{ padding: "3px 6px" }}>{doc.status || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -851,7 +859,7 @@ export function UserDetailClient({ user: initial }: Props) {
               )}
 
               {/* Footer */}
-              <div style={{ borderTop: "1px solid #ccc", paddingTop: "8px", marginTop: "16px", display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#999" }}>
+              <div style={{ borderTop: "1px solid #ccc", paddingTop: "6px", marginTop: "12px", display: "flex", justifyContent: "space-between", fontSize: "8px", color: "#aaa" }}>
                 <span>leerney.com — Learning Management System</span>
                 <span>Generated on {new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" })}</span>
               </div>

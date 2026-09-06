@@ -186,6 +186,7 @@
     font-size: 11px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    overflow-x: hidden !important;
   }
 
   /* Hide everything except print layout */
@@ -200,12 +201,28 @@
   /* Show print-only section */
   .print-only {
     display: block !important;
+    overflow: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
-  /* Remove shadows and rounded corners for print */
+  /* Remove shadows, rounded corners, and backgrounds for print */
   * {
     box-shadow: none !important;
     border-radius: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+
+  /* Re-enable white background for body and print container only */
+  body, .print-only, .print-only > div {
+    background: white !important;
+  }
+
+  /* Prevent table overflow */
+  table {
+    width: 100% !important;
+    table-layout: fixed !important;
   }
 
   /* Page margins */
