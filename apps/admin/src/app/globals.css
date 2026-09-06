@@ -180,13 +180,16 @@
 
 /* ── Print Styles ────────────────────────────────────────────────────────────── */
 @media print {
-  body {
+  html, body {
+    overflow: hidden !important;
+    height: auto !important;
     background: white !important;
     color: #111 !important;
     font-size: 11px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    overflow-x: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* Hide everything except print layout */
@@ -204,6 +207,7 @@
     overflow: hidden !important;
     max-width: 100% !important;
     width: 100% !important;
+    height: auto !important;
   }
 
   /* Remove shadows, rounded corners, and backgrounds for print */
@@ -212,6 +216,7 @@
     border-radius: 0 !important;
     background: transparent !important;
     background-color: transparent !important;
+    overflow: hidden !important;
   }
 
   /* Re-enable white background for body and print container only */
@@ -223,6 +228,12 @@
   table {
     width: 100% !important;
     table-layout: fixed !important;
+    overflow: hidden !important;
+  }
+
+  th, td {
+    overflow: hidden !important;
+    word-wrap: break-word !important;
   }
 
   /* Page margins */

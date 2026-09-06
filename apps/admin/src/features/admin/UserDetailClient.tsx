@@ -596,7 +596,7 @@ export function UserDetailClient({ user: initial }: Props) {
       </div>
 
       {/* ── Print-Only Layout ──────────────────────────────────────────────────── */}
-      <div className="print-only hidden" style={{ overflow: "hidden", maxWidth: "100%", width: "100%", background: "white" }}>
+      <div className="print-only hidden" style={{ overflow: "hidden", maxWidth: "100%", width: "100%", height: "auto", background: "white", margin: 0, padding: 0 }}>
         {/* Header */}
         <div style={{ borderBottom: "2px solid #111", paddingBottom: "10px", marginBottom: "14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
