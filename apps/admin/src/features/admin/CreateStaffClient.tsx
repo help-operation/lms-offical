@@ -3,11 +3,11 @@
 import { useState, useTransition, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  UserPlus, ArrowLeft, Save, Camera, X, ChevronDown,
-  Briefcase, ShieldCheck, MapPin, CreditCard, Heart, User,
+  UserPlus, ArrowLeft, Camera, X, ChevronDown,
+  Briefcase, MapPin, CreditCard, Heart, User,
   CalendarDays, AlertCircle, Loader2, Plus, Trash2,
   FileText, GraduationCap, BriefcaseBusiness, Sparkles,
-  BadgeCheck, Award, Building2, CheckCircle2,
+  Award, Building2, CheckCircle2,
 } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
 import { createUserAction } from "./actions/admin.actions";
@@ -531,8 +531,6 @@ export function CreateStaffClient() {
       else { toast.error(res.message ?? "Failed to create staff"); }
     });
   }
-
-  function fieldErr(key: string): string | undefined { return errors[key]; }
 
   function FieldError({ k }: { k: string }) {
     const msg = errors[k];
@@ -1313,6 +1311,7 @@ function SectionCard({ title, icon, color = "blue" as string, children }: { titl
     cyan: { border: "border-cyan-100 dark:border-cyan-500/20", bg: "bg-cyan-50/40 dark:bg-cyan-500/5", iconBg: "bg-cyan-100 dark:bg-cyan-500/15", iconText: "text-cyan-600 dark:text-cyan-400" },
     pink: { border: "border-pink-100 dark:border-pink-500/20", bg: "bg-pink-50/40 dark:bg-pink-500/5", iconBg: "bg-pink-100 dark:bg-pink-500/15", iconText: "text-pink-600 dark:text-pink-400" },
     slate: { border: "border-slate-200 dark:border-slate-600/20", bg: "bg-slate-50/40 dark:bg-slate-500/5", iconBg: "bg-slate-200 dark:bg-slate-500/15", iconText: "text-slate-600 dark:text-slate-400" },
+    red: { border: "border-red-100 dark:border-red-500/20", bg: "bg-red-50/40 dark:bg-red-500/5", iconBg: "bg-red-100 dark:bg-red-500/15", iconText: "text-red-600 dark:text-red-400" },
   };
   const fallback = colorMap.blue!;
   const c = colorMap[color] ?? fallback;

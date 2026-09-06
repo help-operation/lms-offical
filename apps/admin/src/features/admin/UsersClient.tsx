@@ -274,7 +274,7 @@ export function UsersClient({ initialData, initialStats }: Props) {
             <Eye className="h-3.5 w-3.5" />
           </Link>
           <Link
-            href={viewHref(user)}
+            href={`${viewHref(user)}/edit`}
             title="Edit"
             className="h-7 w-7 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 transition-colors"
           >

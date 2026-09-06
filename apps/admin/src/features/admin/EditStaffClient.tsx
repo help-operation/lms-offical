@@ -7,7 +7,7 @@ import {
   Briefcase, MapPin, CreditCard, Heart, User,
   CalendarDays, AlertCircle, Loader2, Plus, Trash2,
   FileText, GraduationCap, BriefcaseBusiness, Sparkles,
-  Award, Building2, KeyRound, RefreshCw,
+  Award, Building2, KeyRound, RefreshCw, CheckCircle2,
 } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
 import { updateUserAction, resetUserPasswordAction } from "./actions/admin.actions";
@@ -15,7 +15,7 @@ import { bangladeshLocations, countries, type Division } from "@/shared/data/loc
 import { bangladeshBanks, mobileBankingProviders, type Bank } from "@/shared/data/banks";
 import { PasswordInput } from "@/shared/components/PasswordInput";
 import { ImageCropModal } from "@/shared/components/ImageCropModal";
-import type { AdminUser, UserEducation, UserExperience, UserSkill, UserDocument } from "./api";
+import type { AdminUser } from "./api";
 
 /* ─── Constants ────────────────────────────────────────────────────────────── */
 
@@ -626,8 +626,6 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
     });
   }
 
-  function fieldErr(key: string): string | undefined { return errors[key]; }
-
   function FieldError({ k }: { k: string }) {
     const msg = errors[k];
     return msg ? <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{msg}</p> : null;
@@ -654,26 +652,33 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 1: Profile Photo & Basic Info (blue)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Profile Photo & Basic Info" icon={<Camera className="h-4 w-4" />} color="blue">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="flex flex-col items-center gap-3">
-            <div className="relative group">
-              <div className="h-28 w-28 rounded-full bg-white dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden">
-                {avatarUrl ? <img src={avatarUrl} alt="Preview" className="h-full w-full object-cover" /> : <User className="h-10 w-10 text-gray-300 dark:text-slate-600" />}
+            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <div className="h-28 w-28 rounded-full bg-white dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden transition-all group-hover:border-brand-400 dark:group-hover:border-brand group-hover:shadow-lg group-hover:shadow-brand-500/10">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <Camera className="h-8 w-8 text-gray-300 dark:text-slate-600 group-hover:text-brand-400 dark:group-hover:text-brand transition-colors" />
+                    <span className="text-[9px] text-gray-400 dark:text-slate-500 group-hover:text-brand-500 transition-colors">Click to upload</span>
+                  </div>
+                )}
               </div>
               {avatarUrl && (
-                <button onClick={() => { setPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={(e) => { e.stopPropagation(); setPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
                   <X className="h-3 w-3" />
                 </button>
               )}
+              <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-brand-600 dark:bg-brand text-white flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="h-3.5 w-3.5" />
+              </div>
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs font-medium text-brand-600 dark:text-brand hover:text-brand-700 transition-colors">
-              {avatarUrl ? "Change Photo" : "Upload Photo"}
-            </button>
-            <p className="text-[10px] text-gray-400 dark:text-slate-500">JPG, PNG. Max 2 MB.</p>
+            <p className="text-[10px] text-gray-400 dark:text-slate-500">JPG, PNG or WebP. Max 2 MB.</p>
           </div>
 
-          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <FieldLabel label="First Name" required />
               <input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} placeholder="Enter first name" className={inputCls} />
@@ -718,7 +723,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 2: Personal Info (purple)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Personal Info" icon={<User className="h-4 w-4" />} color="purple">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <FieldLabel label="Father's Name" />
             <input value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)} placeholder="Enter father's name" className={inputCls} />
@@ -760,26 +765,36 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 3: Employment Details (green)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Employment Details" icon={<Briefcase className="h-4 w-4" />} color="green">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5">
-            <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Employee ID</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-brand-500" />
+            <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Employee ID</span>
             <p className="text-sm font-mono font-bold text-brand-600 dark:text-brand">{user.employeeId ?? "N/A"}</p>
           </div>
           <div>
             <FieldLabel label="Role" required />
-            <div className="flex flex-wrap gap-1.5 mb-2">
+            <div className="flex flex-wrap gap-1.5 mb-1.5 min-h-[28px]">
               {roles.map((r) => {
                 const roleObj = STAFF_ROLES.find((sr) => sr.value === r);
+                const roleColors: Record<string, string> = {
+                  INSTRUCTOR: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+                  SUPER_ADMIN: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
+                  EDITOR: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
+                  MARKETING_OFFICER: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400",
+                  ACCOUNTANT: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400",
+                };
                 return (
-                  <span key={r} className="inline-flex items-center gap-1 rounded-lg bg-brand-100 dark:bg-brand/20 text-brand-700 dark:text-brand text-xs px-2 py-1 font-medium">
+                  <span key={r} className={`inline-flex items-center gap-1 rounded-lg text-xs px-2.5 py-1 font-medium transition-all ${roleColors[r] ?? "bg-brand-100 text-brand-700 dark:bg-brand/20 dark:text-brand"}`}>
+                    <CheckCircle2 className="h-3 w-3" />
                     {roleObj?.label ?? r}
-                    <button type="button" onClick={() => removeRole(r)} className="hover:text-red-500 transition-colors">
+                    <button type="button" onClick={() => removeRole(r)} className="ml-0.5 hover:text-red-500 transition-colors">
                       <X className="h-3 w-3" />
                     </button>
                   </span>
                 );
               })}
             </div>
+            {roles.length === 0 && <p className="text-[11px] text-gray-400 dark:text-slate-500 mb-1">No role selected</p>}
             <Select
               value=""
               onChange={(v) => { if (v && !roles.includes(v)) toggleRole(v); }}
@@ -810,7 +825,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 4: Emergency Contact (rose)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Emergency Contact" icon={<Heart className="h-4 w-4" />} color="rose">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <FieldLabel label="Relationship" />
             <Select value={form.emergencyContactRelationship} onChange={(v) => set("emergencyContactRelationship", v)} options={[{ value: "", label: "Select relationship" }, ...RELATIONSHIPS.map((r) => ({ value: r.toLowerCase(), label: r }))]} />
@@ -832,7 +847,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Payroll" icon={<CreditCard className="h-4 w-4" />} color="emerald">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <FieldLabel label="Basic Salary (BDT)" />
               <input type="number" value={form.basicSalary} onChange={(e) => set("basicSalary", e.target.value)} placeholder="0.00" className={inputCls} />
@@ -853,9 +868,10 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
               <FieldLabel label="Other Allowance (BDT)" />
               <input type="number" value={form.otherAllowance} onChange={(e) => set("otherAllowance", e.target.value)} placeholder="0.00" className={inputCls} />
             </div>
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3.5">
-              <span className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Gross Salary</span>
-              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">৳ {grossSalary.toLocaleString()}</p>
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-emerald-500" />
+              <span className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">Gross Salary</span>
+              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{"\u09F3"} {grossSalary.toLocaleString()}</p>
             </div>
             <div>
               <FieldLabel label="Overtime Rate (BDT/hr)" />
@@ -863,9 +879,9 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
             </div>
           </div>
 
-          <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-4">
-            <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-3">Deductions</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-3">
+            <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">Deductions</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel label="Tax / Deduction (BDT)" />
                 <input type="number" value={form.taxDeduction} onChange={(e) => set("taxDeduction", e.target.value)} placeholder="0.00" className={inputCls} />
@@ -881,14 +897,16 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
             </div>
           </div>
 
-          <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-4 flex flex-col sm:flex-row gap-4">
-            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5 flex-1">
-              <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Deductions</span>
-              <p className="text-sm font-bold text-red-600 dark:text-red-400">৳ {totalDeductions.toLocaleString()}</p>
+          <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-3 flex flex-col sm:flex-row gap-3">
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3 flex-1 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-red-400" />
+              <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Total Deductions</span>
+              <p className="text-sm font-bold text-red-600 dark:text-red-400">{"\u09F3"} {totalDeductions.toLocaleString()}</p>
             </div>
-            <div className="rounded-xl bg-brand-50 dark:bg-brand/10 border border-brand-200 dark:border-brand/20 p-3.5 flex-1">
-              <span className="block text-[10px] font-semibold text-brand-600 dark:text-brand uppercase tracking-wider mb-1">Net Salary</span>
-              <p className="text-sm font-bold text-brand-700 dark:text-brand">৳ {netSalary.toLocaleString()}</p>
+            <div className="rounded-xl bg-brand-50 dark:bg-brand/10 border border-brand-200 dark:border-brand/20 p-3 flex-1 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-brand-500" />
+              <span className="block text-[10px] font-semibold text-brand-600 dark:text-brand uppercase tracking-wider mb-0.5">Net Salary</span>
+              <p className="text-sm font-bold text-brand-700 dark:text-brand">{"\u09F3"} {netSalary.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -898,7 +916,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 6: Bonus (yellow)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Bonus" icon={<Award className="h-4 w-4" />} color="yellow">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <FieldLabel label="Bonus Type" />
             <Select value={form.bonusType} onChange={(v) => set("bonusType", v)} options={[{ value: "", label: "Select bonus type" }, ...BONUS_TYPES]} />
@@ -941,7 +959,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           </div>
 
           {form.bankingType === "mobile_banking" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <FieldLabel label="Provider" />
                 <Select value={form.bankingProvider} onChange={(v) => set("bankingProvider", v)} options={[{ value: "", label: "Select provider" }, ...mobileBankingProviders]} />
@@ -956,7 +974,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           )}
 
           {form.bankingType === "bank_account" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel label="Bank Name" />
                 <Select value={form.bankName} onChange={(v) => set("bankName", v)} options={[{ value: "", label: "Select bank" }, ...bangladeshBanks.map((b) => ({ value: b.name, label: b.name }))]} />
@@ -989,7 +1007,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 8: Permanent Address (amber)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Permanent Address" icon={<MapPin className="h-4 w-4" />} color="amber">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <FieldLabel label="Country" />
             <Select value={form.permCountry} onChange={(v) => set("permCountry", v)} options={countries.map((c) => ({ value: c, label: c }))} />
@@ -1032,13 +1050,18 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Present Address" icon={<MapPin className="h-4 w-4" />} color="sky">
         <div className="space-y-4">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" checked={form.sameAsPresent} onChange={(e) => toggleSameAsPresent(e.target.checked)} className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500" />
-            <span className="text-sm text-gray-600 dark:text-slate-300">Same as Permanent Address</span>
+          <label className={`flex items-center gap-2.5 cursor-pointer select-none rounded-xl px-3 py-2.5 transition-all ${form.sameAsPresent ? "bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20" : "border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50"}`}>
+            <div className="relative flex items-center">
+              <input type="checkbox" checked={form.sameAsPresent} onChange={(e) => toggleSameAsPresent(e.target.checked)} className="peer sr-only" />
+              <div className={`h-4 w-4 rounded border-2 transition-all flex items-center justify-center ${form.sameAsPresent ? "bg-sky-500 border-sky-500" : "border-gray-300 dark:border-slate-600"}`}>
+                {form.sameAsPresent && <CheckCircle2 className="h-3 w-3 text-white" />}
+              </div>
+            </div>
+            <span className="text-xs font-medium text-gray-700 dark:text-slate-300">Same as Permanent Address</span>
           </label>
 
           {!form.sameAsPresent && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel label="Country" />
                 <Select value={form.presCountry} onChange={(v) => set("presCountry", v)} options={countries.map((c) => ({ value: c, label: c }))} />
@@ -1082,11 +1105,18 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 10: Education (indigo)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Education" icon={<GraduationCap className="h-4 w-4" />} color="indigo">
-        <div className="space-y-4">
+        <div className="space-y-3">
+          {educations.length === 0 && (
+            <div className="text-center py-6 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5">
+              <GraduationCap className="h-8 w-8 text-indigo-300 dark:text-indigo-500/40 mx-auto mb-2" />
+              <p className="text-xs text-indigo-500 dark:text-indigo-400">No education records yet</p>
+              <p className="text-[10px] text-indigo-400 dark:text-indigo-500/60 mt-0.5">Click the button below to add education details</p>
+            </div>
+          )}
           {educations.map((edu, idx) => (
-            <div key={edu.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Education #{idx + 1}</span>
+            <div key={edu.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-3 relative border-l-4 border-l-indigo-400 dark:border-l-indigo-500/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Education #{idx + 1}</span>
                 <button type="button" onClick={() => removeEducation(edu.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -1125,11 +1155,18 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 11: Experience (cyan)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Experience" icon={<BriefcaseBusiness className="h-4 w-4" />} color="cyan">
-        <div className="space-y-4">
+        <div className="space-y-3">
+          {experiences.length === 0 && (
+            <div className="text-center py-6 rounded-xl border border-dashed border-cyan-200 dark:border-cyan-500/20 bg-cyan-50/30 dark:bg-cyan-500/5">
+              <BriefcaseBusiness className="h-8 w-8 text-cyan-300 dark:text-cyan-500/40 mx-auto mb-2" />
+              <p className="text-xs text-cyan-500 dark:text-cyan-400">No work experience yet</p>
+              <p className="text-[10px] text-cyan-400 dark:text-cyan-500/60 mt-0.5">Add professional experience to build a complete profile</p>
+            </div>
+          )}
           {experiences.map((exp, idx) => (
-            <div key={exp.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Experience #{idx + 1}</span>
+            <div key={exp.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-3 relative border-l-4 border-l-cyan-400 dark:border-l-cyan-500/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">Experience #{idx + 1}</span>
                 <button type="button" onClick={() => removeExperience(exp.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -1207,7 +1244,13 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
               ))}
             </div>
           )}
-          {skills.length === 0 && <p className="text-xs text-gray-400 dark:text-slate-500">No skills added yet</p>}
+          {skills.length === 0 && (
+            <div className="text-center py-6 rounded-xl border border-dashed border-pink-200 dark:border-pink-500/20 bg-pink-50/30 dark:bg-pink-500/5">
+              <Sparkles className="h-8 w-8 text-pink-300 dark:text-pink-500/40 mx-auto mb-2" />
+              <p className="text-xs text-pink-500 dark:text-pink-400">No skills added yet</p>
+              <p className="text-[10px] text-pink-400 dark:text-pink-500/60 mt-0.5">Add skills to showcase expertise</p>
+            </div>
+          )}
         </div>
       </SectionCard>
 
@@ -1215,11 +1258,18 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 13: Documents (slate)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Documents" icon={<FileText className="h-4 w-4" />} color="slate">
-        <div className="space-y-4">
+        <div className="space-y-3">
+          {staffDocuments.length === 0 && (
+            <div className="text-center py-6 rounded-xl border border-dashed border-slate-200 dark:border-slate-600/30 bg-slate-50/30 dark:bg-slate-500/5">
+              <FileText className="h-8 w-8 text-slate-300 dark:text-slate-500/40 mx-auto mb-2" />
+              <p className="text-xs text-slate-500 dark:text-slate-400">No documents uploaded</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500/60 mt-0.5">Upload NID, certificates, or other important documents</p>
+            </div>
+          )}
           {staffDocuments.map((doc, idx) => (
-            <div key={doc.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Document #{idx + 1}</span>
+            <div key={doc.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-3 relative border-l-4 border-l-slate-400 dark:border-l-slate-500/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Document #{idx + 1}</span>
                 <button type="button" onClick={() => removeDocument(doc.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -1262,7 +1312,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
           SECTION 14: Reset Password (red)
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Reset Password" icon={<KeyRound className="h-4 w-4" />} color="red">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <div>
             <FieldLabel label="New Password" />
             <PasswordInput value={newPassword} onChange={setNewPassword} placeholder="Min. 6 characters" className={inputCls} />
@@ -1272,7 +1322,7 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
               type="button"
               onClick={handleResetPassword}
               disabled={isResettingPassword || !newPassword.trim()}
-              className="flex items-center gap-1.5 rounded-xl bg-red-600 dark:bg-red-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl bg-red-600 dark:bg-red-500 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 dark:hover:bg-red-600 transition-all disabled:opacity-50 shadow-sm hover:shadow-md hover:shadow-red-500/20"
             >
               {isResettingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               {isResettingPassword ? "Resetting..." : "Reset Password"}
@@ -1284,14 +1334,16 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
       {/* ═════════════════════════════════════════════════════════════════════════
           BOTTOM ACTION BAR
           ═════════════════════════════════════════════════════════════════════════ */}
-      <div className="sticky bottom-0 mt-6 flex items-center justify-end gap-3 py-4 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent">
-        <button onClick={() => router.back()} disabled={isPending} className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
-          Cancel
-        </button>
-        <button onClick={handleSubmit} disabled={isPending} className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors disabled:opacity-60">
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {isPending ? "Saving Changes..." : "Save Changes"}
-        </button>
+      <div className="sticky bottom-0 mt-4 py-3 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent">
+        <div className="flex items-center justify-end gap-3">
+          <button onClick={() => router.back()} disabled={isPending} className="rounded-xl px-5 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
+            Cancel
+          </button>
+          <button onClick={handleSubmit} disabled={isPending} className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-all disabled:opacity-60 shadow-sm hover:shadow-md hover:shadow-brand-500/20">
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isPending ? "Saving Changes..." : "Save Changes"}
+          </button>
+        </div>
       </div>
 
       {/* Image Crop Modal */}
@@ -1309,12 +1361,12 @@ export function EditStaffClient({ user }: { user: AdminUser }) {
 
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 
-const inputCls = "w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand transition-colors placeholder:text-gray-300 dark:placeholder:text-slate-600";
+const inputCls = "w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 outline-none focus:border-brand-400 dark:focus:border-brand transition-colors placeholder:text-gray-300 dark:placeholder:text-slate-600";
 
 /* ─── Helper Components ────────────────────────────────────────────────────── */
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
-  return <span className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1.5">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</span>;
+  return <span className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</span>;
 }
 
 function SectionCard({ title, icon, color = "blue" as string, children }: { title: string; icon: React.ReactNode; color?: string; children: React.ReactNode }) {
@@ -1337,9 +1389,9 @@ function SectionCard({ title, icon, color = "blue" as string, children }: { titl
   const fallback = colorMap.blue!;
   const c = colorMap[color] ?? fallback;
   return (
-    <div className={`rounded-2xl border ${c.border} ${c.bg} p-5 mb-5`}>
-      <div className="flex items-center gap-2 mb-4">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${c.iconBg} ${c.iconText}`}>{icon}</div>
+    <div className={`rounded-2xl border ${c.border} ${c.bg} p-4 mb-4`}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${c.iconBg} ${c.iconText}`}>{icon}</div>
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
       </div>
       {children}
