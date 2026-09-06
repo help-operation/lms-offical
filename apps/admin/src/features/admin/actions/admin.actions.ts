@@ -36,18 +36,7 @@ export async function fetchAllUsersForExportAction(params: TableQueryParams) {
   }
 }
 
-export async function createUserAction(data: {
-  firstName: string; lastName: string; email?: string; phone?: string; password: string;
-  role?: string; gender?: string; country?: string; city?: string;
-  department?: string; designation?: string;
-  dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
-  emergencyContactName?: string; emergencyContactPhone?: string;
-  emergencyContactRelationship?: string;
-  salary?: number; bankName?: string; bankAccountNumber?: string;
-  presentAddress?: string; permanentAddress?: string;
-  nidType?: string; bankingType?: string; bankingProvider?: string;
-  division?: string; district?: string; thana?: string; unionName?: string; postCode?: string;
-}) {
+export async function createUserAction(data: Record<string, any>) {
   try {
     const res = await adminApi.createUser(data);
     revalidatePath("/admin/users");
@@ -90,7 +79,7 @@ export async function changeRoleAction(id: number, role: string) {
 
 export async function updateUserAction(
   id: number,
-  data: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null },
+  data: Record<string, any>,
 ) {
   try {
     const res = await adminApi.updateUser(id, data);

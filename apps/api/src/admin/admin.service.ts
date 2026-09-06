@@ -33,6 +33,10 @@ import {
   shopOrderItems,
   studentProfiles,
   userCourseInterests,
+  userEducation,
+  userExperience,
+  userSkills,
+  userDocuments,
   users,
 } from 'src/db/schema';
 import {
@@ -314,11 +318,45 @@ export class AdminService {
       profilePicture:      users.profilePicture,
       emergencyContactName:  users.emergencyContactName,
       emergencyContactPhone: users.emergencyContactPhone,
+      emergencyContactRelationship: users.emergencyContactRelationship,
       salary:              users.salary,
       bankName:            users.bankName,
       bankAccountNumber:   users.bankAccountNumber,
       presentAddress:      users.presentAddress,
       permanentAddress:    users.permanentAddress,
+      nidType:             users.nidType,
+      bankingType:         users.bankingType,
+      bankingProvider:     users.bankingProvider,
+      division:            users.division,
+      district:            users.district,
+      thana:               users.thana,
+      unionName:           users.unionName,
+      postCode:            users.postCode,
+      fatherName:          users.fatherName,
+      motherName:          users.motherName,
+      presentDivision:     users.presentDivision,
+      presentDistrict:     users.presentDistrict,
+      presentThana:        users.presentThana,
+      presentUnion:        users.presentUnion,
+      presentPostCode:     users.presentPostCode,
+      presentCountry:      users.presentCountry,
+      sameAsPermanent:     users.sameAsPermanent,
+      houseRent:           users.houseRent,
+      medicalAllowance:    users.medicalAllowance,
+      transportAllowance:  users.transportAllowance,
+      otherAllowance:      users.otherAllowance,
+      grossSalary:         users.grossSalary,
+      overtimeRate:        users.overtimeRate,
+      taxDeduction:        users.taxDeduction,
+      providentFund:       users.providentFund,
+      otherDeduction:      users.otherDeduction,
+      netSalary:           users.netSalary,
+      bonusType:           users.bonusType,
+      bonusCalculationType: users.bonusCalculationType,
+      bonusAmount:         users.bonusAmount,
+      bonusFrequency:      users.bonusFrequency,
+      bonusEligibility:    users.bonusEligibility,
+      bonusNotes:          users.bonusNotes,
       createdAt:           users.createdAt,
       updatedAt:           users.updatedAt,
       lastLoginAt:         users.lastLoginAt,
@@ -374,10 +412,22 @@ export class AdminService {
       permissionSlugs = perms.map((p) => p.slug);
     }
 
+    // 3) Fetch child tables
+    const [education, experience, skills, documents] = await Promise.all([
+      this.db.select().from(userEducation).where(eq(userEducation.userId, id)).orderBy(userEducation.order),
+      this.db.select().from(userExperience).where(eq(userExperience.userId, id)).orderBy(userExperience.order),
+      this.db.select().from(userSkills).where(eq(userSkills.userId, id)).orderBy(userSkills.order),
+      this.db.select().from(userDocuments).where(eq(userDocuments.userId, id)),
+    ]);
+
     return {
       ...mappedUser,
       roleInfo: roleRow ?? null,
       permissions: permissionSlugs,
+      education,
+      experience,
+      skills,
+      documents,
     };
   }
 
@@ -392,6 +442,20 @@ export class AdminService {
     presentAddress?: string; permanentAddress?: string;
     nidType?: string; bankingType?: string; bankingProvider?: string;
     division?: string; district?: string; thana?: string; unionName?: string; postCode?: string;
+    fatherName?: string; motherName?: string;
+    presentDivision?: string; presentDistrict?: string; presentThana?: string;
+    presentUnion?: string; presentPostCode?: string; presentCountry?: string;
+    sameAsPermanent?: boolean;
+    houseRent?: number; medicalAllowance?: number; transportAllowance?: number; otherAllowance?: number;
+    grossSalary?: number; overtimeRate?: number; taxDeduction?: number;
+    providentFund?: number; otherDeduction?: number; netSalary?: number;
+    bonusType?: string; bonusCalculationType?: string; bonusAmount?: number;
+    bonusFrequency?: string; bonusEligibility?: string; bonusNotes?: string;
+    profilePicture?: string;
+    education?: { degree?: string; institution?: string; subject?: string; passingYear?: number; result?: string; order?: number }[];
+    experience?: { company?: string; designation?: string; department?: string; employmentType?: string; startDate?: string; endDate?: string; currentlyWorking?: boolean; responsibilities?: string; referenceNotes?: string; order?: number }[];
+    skills?: { skillName: string; level?: string; order?: number }[];
+    documents?: { documentType?: string; documentName?: string; fileUrl?: string; expiryDate?: string; notes?: string; status?: string }[];
   }) {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Email or phone is required');
@@ -452,6 +516,32 @@ export class AdminService {
         thana:        dto.thana || null,
         unionName:    dto.unionName || null,
         postCode:     dto.postCode || null,
+        fatherName:   dto.fatherName || null,
+        motherName:   dto.motherName || null,
+        presentDivision: dto.presentDivision || null,
+        presentDistrict: dto.presentDistrict || null,
+        presentThana:    dto.presentThana || null,
+        presentUnion:    dto.presentUnion || null,
+        presentPostCode: dto.presentPostCode || null,
+        presentCountry:  dto.presentCountry || null,
+        sameAsPermanent: dto.sameAsPermanent ?? false,
+        profilePicture:  dto.profilePicture || null,
+        houseRent:         dto.houseRent != null ? String(dto.houseRent) : null,
+        medicalAllowance:  dto.medicalAllowance != null ? String(dto.medicalAllowance) : null,
+        transportAllowance: dto.transportAllowance != null ? String(dto.transportAllowance) : null,
+        otherAllowance:    dto.otherAllowance != null ? String(dto.otherAllowance) : null,
+        grossSalary:       dto.grossSalary != null ? String(dto.grossSalary) : null,
+        overtimeRate:      dto.overtimeRate != null ? String(dto.overtimeRate) : null,
+        taxDeduction:      dto.taxDeduction != null ? String(dto.taxDeduction) : null,
+        providentFund:     dto.providentFund != null ? String(dto.providentFund) : null,
+        otherDeduction:    dto.otherDeduction != null ? String(dto.otherDeduction) : null,
+        netSalary:         dto.netSalary != null ? String(dto.netSalary) : null,
+        bonusType:           dto.bonusType || null,
+        bonusCalculationType: dto.bonusCalculationType || null,
+        bonusAmount:         dto.bonusAmount != null ? String(dto.bonusAmount) : null,
+        bonusFrequency:      dto.bonusFrequency || null,
+        bonusEligibility:    dto.bonusEligibility || null,
+        bonusNotes:          dto.bonusNotes || null,
       })
       .returning({
         id:        users.id,
@@ -466,15 +556,98 @@ export class AdminService {
         createdAt: users.createdAt,
       });
 
+    // Insert child tables
+    if (created && dto.education?.length) {
+      await this.db.insert(userEducation).values(
+        dto.education.map((e, i) => ({
+          userId: created.id,
+          degree: e.degree || null,
+          institution: e.institution || null,
+          subject: e.subject || null,
+          passingYear: e.passingYear || null,
+          result: e.result || null,
+          order: e.order ?? i,
+        })),
+      );
+    }
+    if (created && dto.experience?.length) {
+      await this.db.insert(userExperience).values(
+        dto.experience.map((e, i) => ({
+          userId: created.id,
+          company: e.company || null,
+          designation: e.designation || null,
+          department: e.department || null,
+          employmentType: e.employmentType || null,
+          startDate: e.startDate ? new Date(e.startDate) : null,
+          endDate: e.endDate ? new Date(e.endDate) : null,
+          currentlyWorking: e.currentlyWorking ?? false,
+          responsibilities: e.responsibilities || null,
+          referenceNotes: e.referenceNotes || null,
+          order: e.order ?? i,
+        })),
+      );
+    }
+    if (created && dto.skills?.length) {
+      await this.db.insert(userSkills).values(
+        dto.skills.map((s, i) => ({
+          userId: created.id,
+          skillName: s.skillName,
+          level: s.level || 'intermediate',
+          order: s.order ?? i,
+        })),
+      );
+    }
+    if (created && dto.documents?.length) {
+      await this.db.insert(userDocuments).values(
+        dto.documents.map((d) => ({
+          userId: created.id,
+          documentType: d.documentType || null,
+          documentName: d.documentName || null,
+          fileUrl: d.fileUrl || null,
+          expiryDate: d.expiryDate ? new Date(d.expiryDate) : null,
+          notes: d.notes || null,
+          status: d.status || 'active',
+        })),
+      );
+    }
+
     return created;
   }
 
   async updateUser(
     id: number,
-    dto: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null },
+    dto: {
+      firstName?: string; lastName?: string; email?: string | null; phone?: string | null;
+      role?: string; gender?: string; country?: string; city?: string;
+      department?: string; designation?: string;
+      dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
+      emergencyContactName?: string; emergencyContactPhone?: string;
+      emergencyContactRelationship?: string;
+      salary?: number; bankName?: string; bankAccountNumber?: string;
+      presentAddress?: string; permanentAddress?: string;
+      nidType?: string; bankingType?: string; bankingProvider?: string;
+      division?: string; district?: string; thana?: string; unionName?: string; postCode?: string;
+      fatherName?: string; motherName?: string;
+      presentDivision?: string; presentDistrict?: string; presentThana?: string;
+      presentUnion?: string; presentPostCode?: string; presentCountry?: string;
+      sameAsPermanent?: boolean;
+      houseRent?: number; medicalAllowance?: number; transportAllowance?: number; otherAllowance?: number;
+      grossSalary?: number; overtimeRate?: number; taxDeduction?: number;
+      providentFund?: number; otherDeduction?: number; netSalary?: number;
+      bonusType?: string; bonusCalculationType?: string; bonusAmount?: number;
+      bonusFrequency?: string; bonusEligibility?: string; bonusNotes?: string;
+      profilePicture?: string;
+      education?: { id?: number; degree?: string; institution?: string; subject?: string; passingYear?: number; result?: string; order?: number }[];
+      experience?: { id?: number; company?: string; designation?: string; department?: string; employmentType?: string; startDate?: string; endDate?: string; currentlyWorking?: boolean; responsibilities?: string; referenceNotes?: string; order?: number }[];
+      skills?: { id?: number; skillName: string; level?: string; order?: number }[];
+      documents?: { id?: number; documentType?: string; documentName?: string; fileUrl?: string; expiryDate?: string; notes?: string; status?: string }[];
+    },
   ) {
     const [exists] = await this.db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1);
     if (!exists) throw new NotFoundException('User not found');
+
+    const numOrNull = (v: unknown) => v != null ? String(v) : null;
+    const dateOrNull = (v: unknown) => v ? new Date(v as string) : null;
 
     const [updated] = await this.db
       .update(users)
@@ -483,6 +656,58 @@ export class AdminService {
         ...(dto.lastName  !== undefined && { lastName:  dto.lastName  }),
         ...(dto.email     !== undefined && { email:     dto.email     }),
         ...(dto.phone     !== undefined && { phone:     dto.phone     }),
+        ...(dto.role      !== undefined && { role:      dto.role as any }),
+        ...(dto.gender    !== undefined && { gender:    dto.gender as any }),
+        ...(dto.country   !== undefined && { country:   dto.country }),
+        ...(dto.city      !== undefined && { city:      dto.city }),
+        ...(dto.department   !== undefined && { department:   dto.department }),
+        ...(dto.designation  !== undefined && { designation:  dto.designation }),
+        ...(dto.joiningDate  !== undefined && { joiningDate:  dateOrNull(dto.joiningDate) }),
+        ...(dto.employmentType !== undefined && { employmentType: dto.employmentType }),
+        ...(dto.dateOfBirth  !== undefined && { dateOfBirth:  dateOrNull(dto.dateOfBirth) }),
+        ...(dto.nationalId   !== undefined && { nationalId:   dto.nationalId }),
+        ...(dto.emergencyContactName  !== undefined && { emergencyContactName:  dto.emergencyContactName }),
+        ...(dto.emergencyContactPhone !== undefined && { emergencyContactPhone: dto.emergencyContactPhone }),
+        ...(dto.emergencyContactRelationship !== undefined && { emergencyContactRelationship: dto.emergencyContactRelationship }),
+        ...(dto.salary       !== undefined && { salary:       numOrNull(dto.salary) }),
+        ...(dto.bankName     !== undefined && { bankName:     dto.bankName }),
+        ...(dto.bankAccountNumber !== undefined && { bankAccountNumber: dto.bankAccountNumber }),
+        ...(dto.presentAddress  !== undefined && { presentAddress:  dto.presentAddress }),
+        ...(dto.permanentAddress !== undefined && { permanentAddress: dto.permanentAddress }),
+        ...(dto.nidType      !== undefined && { nidType:      dto.nidType }),
+        ...(dto.bankingType  !== undefined && { bankingType:  dto.bankingType }),
+        ...(dto.bankingProvider !== undefined && { bankingProvider: dto.bankingProvider }),
+        ...(dto.division     !== undefined && { division:     dto.division }),
+        ...(dto.district     !== undefined && { district:     dto.district }),
+        ...(dto.thana        !== undefined && { thana:        dto.thana }),
+        ...(dto.unionName    !== undefined && { unionName:    dto.unionName }),
+        ...(dto.postCode     !== undefined && { postCode:     dto.postCode }),
+        ...(dto.fatherName   !== undefined && { fatherName:   dto.fatherName }),
+        ...(dto.motherName   !== undefined && { motherName:   dto.motherName }),
+        ...(dto.presentDivision !== undefined && { presentDivision: dto.presentDivision }),
+        ...(dto.presentDistrict !== undefined && { presentDistrict: dto.presentDistrict }),
+        ...(dto.presentThana    !== undefined && { presentThana:    dto.presentThana }),
+        ...(dto.presentUnion    !== undefined && { presentUnion:    dto.presentUnion }),
+        ...(dto.presentPostCode !== undefined && { presentPostCode: dto.presentPostCode }),
+        ...(dto.presentCountry  !== undefined && { presentCountry:  dto.presentCountry }),
+        ...(dto.sameAsPermanent !== undefined && { sameAsPermanent: dto.sameAsPermanent }),
+        ...(dto.profilePicture  !== undefined && { profilePicture:  dto.profilePicture }),
+        ...(dto.houseRent         !== undefined && { houseRent:         numOrNull(dto.houseRent) }),
+        ...(dto.medicalAllowance  !== undefined && { medicalAllowance:  numOrNull(dto.medicalAllowance) }),
+        ...(dto.transportAllowance !== undefined && { transportAllowance: numOrNull(dto.transportAllowance) }),
+        ...(dto.otherAllowance    !== undefined && { otherAllowance:    numOrNull(dto.otherAllowance) }),
+        ...(dto.grossSalary       !== undefined && { grossSalary:       numOrNull(dto.grossSalary) }),
+        ...(dto.overtimeRate      !== undefined && { overtimeRate:      numOrNull(dto.overtimeRate) }),
+        ...(dto.taxDeduction      !== undefined && { taxDeduction:      numOrNull(dto.taxDeduction) }),
+        ...(dto.providentFund     !== undefined && { providentFund:     numOrNull(dto.providentFund) }),
+        ...(dto.otherDeduction    !== undefined && { otherDeduction:    numOrNull(dto.otherDeduction) }),
+        ...(dto.netSalary         !== undefined && { netSalary:         numOrNull(dto.netSalary) }),
+        ...(dto.bonusType           !== undefined && { bonusType:           dto.bonusType }),
+        ...(dto.bonusCalculationType !== undefined && { bonusCalculationType: dto.bonusCalculationType }),
+        ...(dto.bonusAmount         !== undefined && { bonusAmount:         numOrNull(dto.bonusAmount) }),
+        ...(dto.bonusFrequency      !== undefined && { bonusFrequency:      dto.bonusFrequency }),
+        ...(dto.bonusEligibility    !== undefined && { bonusEligibility:    dto.bonusEligibility }),
+        ...(dto.bonusNotes          !== undefined && { bonusNotes:          dto.bonusNotes }),
       })
       .where(eq(users.id, id))
       .returning({
@@ -496,6 +721,74 @@ export class AdminService {
         avatar:    users.avatar,
         createdAt: users.createdAt,
       });
+
+    // Sync child tables if provided
+    if (dto.education) {
+      await this.db.delete(userEducation).where(eq(userEducation.userId, id));
+      if (dto.education.length) {
+        await this.db.insert(userEducation).values(
+          dto.education.map((e, i) => ({
+            userId: id,
+            degree: e.degree || null,
+            institution: e.institution || null,
+            subject: e.subject || null,
+            passingYear: e.passingYear || null,
+            result: e.result || null,
+            order: e.order ?? i,
+          })),
+        );
+      }
+    }
+    if (dto.experience) {
+      await this.db.delete(userExperience).where(eq(userExperience.userId, id));
+      if (dto.experience.length) {
+        await this.db.insert(userExperience).values(
+          dto.experience.map((e, i) => ({
+            userId: id,
+            company: e.company || null,
+            designation: e.designation || null,
+            department: e.department || null,
+            employmentType: e.employmentType || null,
+            startDate: e.startDate ? new Date(e.startDate) : null,
+            endDate: e.endDate ? new Date(e.endDate) : null,
+            currentlyWorking: e.currentlyWorking ?? false,
+            responsibilities: e.responsibilities || null,
+            referenceNotes: e.referenceNotes || null,
+            order: e.order ?? i,
+          })),
+        );
+      }
+    }
+    if (dto.skills) {
+      await this.db.delete(userSkills).where(eq(userSkills.userId, id));
+      if (dto.skills.length) {
+        await this.db.insert(userSkills).values(
+          dto.skills.map((s, i) => ({
+            userId: id,
+            skillName: s.skillName,
+            level: s.level || 'intermediate',
+            order: s.order ?? i,
+          })),
+        );
+      }
+    }
+    if (dto.documents) {
+      await this.db.delete(userDocuments).where(eq(userDocuments.userId, id));
+      if (dto.documents.length) {
+        await this.db.insert(userDocuments).values(
+          dto.documents.map((d) => ({
+            userId: id,
+            documentType: d.documentType || null,
+            documentName: d.documentName || null,
+            fileUrl: d.fileUrl || null,
+            expiryDate: d.expiryDate ? new Date(d.expiryDate) : null,
+            notes: d.notes || null,
+            status: d.status || 'active',
+          })),
+        );
+      }
+    }
+
     return updated;
   }
 

@@ -73,21 +73,10 @@ export class AdminController {
   @RequirePermissions('update_users')
   @Message('User created')
   async createUser(
-    @Body() body: {
-      firstName: string; lastName: string; email?: string; phone?: string; password: string;
-      role?: string; gender?: string; country?: string; city?: string;
-      department?: string; designation?: string;
-      dateOfBirth?: string; nationalId?: string; joiningDate?: string; employmentType?: string;
-      emergencyContactName?: string; emergencyContactPhone?: string;
-      emergencyContactRelationship?: string;
-      salary?: number; bankName?: string; bankAccountNumber?: string;
-      presentAddress?: string; permanentAddress?: string;
-      nidType?: string; bankingType?: string; bankingProvider?: string;
-      division?: string; district?: string; thana?: string; unionName?: string; postCode?: string;
-    },
+    @Body() body: Record<string, any>,
     @CurrentUser() actor: RequestUser,
   ) {
-    const result = await this.adminService.createUser(body);
+    const result = await this.adminService.createUser(body as any);
     void this.activityLogs.log({ adminUserId: actor.userId, action: 'user_created', entity: 'user', entityId: (result as any)?.id, meta: { email: body.email } });
     return result;
   }
@@ -134,10 +123,10 @@ export class AdminController {
   @Message('User updated')
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null },
+    @Body() body: Record<string, any>,
     @CurrentUser() actor: RequestUser,
   ) {
-    const result = await this.adminService.updateUser(id, body);
+    const result = await this.adminService.updateUser(id, body as any);
     void this.activityLogs.log({ adminUserId: actor.userId, action: 'user_updated', entity: 'user', entityId: id });
     return result;
   }

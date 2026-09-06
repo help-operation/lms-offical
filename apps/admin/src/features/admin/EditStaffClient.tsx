@@ -3,18 +3,19 @@
 import { useState, useTransition, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  UserPlus, ArrowLeft, Save, Camera, X, ChevronDown,
-  Briefcase, ShieldCheck, MapPin, CreditCard, Heart, User,
+  ArrowLeft, Save, Camera, X, ChevronDown,
+  Briefcase, MapPin, CreditCard, Heart, User,
   CalendarDays, AlertCircle, Loader2, Plus, Trash2,
   FileText, GraduationCap, BriefcaseBusiness, Sparkles,
-  BadgeCheck, Award, Building2,
+  Award, Building2, KeyRound, RefreshCw,
 } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
-import { createUserAction } from "./actions/admin.actions";
+import { updateUserAction, resetUserPasswordAction } from "./actions/admin.actions";
 import { bangladeshLocations, countries, type Division } from "@/shared/data/locations";
 import { bangladeshBanks, mobileBankingProviders, type Bank } from "@/shared/data/banks";
 import { PasswordInput } from "@/shared/components/PasswordInput";
 import { ImageCropModal } from "@/shared/components/ImageCropModal";
+import type { AdminUser, UserEducation, UserExperience, UserSkill, UserDocument } from "./api";
 
 /* ─── Constants ────────────────────────────────────────────────────────────── */
 
@@ -97,7 +98,29 @@ const DOC_STATUS_OPTIONS = [
   { value: "inactive", label: "Inactive" },
 ];
 
-/* ─── Age Calculation ──────────────────────────────────────────────────────── */
+/* ─── Helpers ──────────────────────────────────────────────────────────────── */
+
+function toDateString(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0] ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function numToStr(val: string | null | undefined): string {
+  if (!val) return "";
+  return String(val);
+}
+
+function parseRoleString(role: string | null | undefined): string[] {
+  if (!role) return ["INSTRUCTOR"];
+  if (role.includes(",")) return role.split(",").map((r) => r.trim()).filter(Boolean);
+  return [role];
+}
 
 function calculateAge(dob: string): { years: number; months: number; days: number } | null {
   if (!dob) return null;
@@ -118,8 +141,6 @@ function calculateAge(dob: string): { years: number; months: number; days: numbe
   }
   return { years, months, days };
 }
-
-/* ─── Bangladesh Phone Validation ──────────────────────────────────────────── */
 
 function isValidBdPhone(phone: string): boolean {
   return /^01[3-9]\d{8}$/.test(phone);
@@ -164,55 +185,129 @@ interface StaffDocument {
   status: string;
 }
 
-interface AddressFields {
-  country: string;
-  division: string;
-  district: string;
-  thana: string;
-  unionName: string;
-  postCode: string;
-  addressDetails: string;
-}
-
 /* ─── Component ────────────────────────────────────────────────────────────── */
 
-export function CreateStaffClient() {
+export function EditStaffClient({ user }: { user: AdminUser }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isResettingPassword, startPasswordReset] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [newPassword, setNewPassword] = useState("");
 
   const [form, setForm] = useState({
-    firstName: "", lastName: "", email: "", phone: "", password: "", gender: "",
-    dateOfBirth: "",
-    fatherName: "", motherName: "",
-    nidType: "nid", nationalId: "",
+    firstName: user.firstName ?? "",
+    lastName: user.lastName ?? "",
+    email: user.email ?? "",
+    phone: user.phone ?? "",
+    gender: user.gender ?? "",
+    dateOfBirth: toDateString(user.dateOfBirth),
 
-    role: "INSTRUCTOR", department: "", designation: "", employmentType: "full_time", joiningDate: "",
+    fatherName: user.fatherName ?? "",
+    motherName: user.motherName ?? "",
+    nidType: user.nidType ?? "nid",
+    nationalId: user.nationalId ?? "",
 
-    emergencyContactRelationship: "", emergencyContactName: "", emergencyContactPhone: "",
+    department: user.department ?? "",
+    designation: user.designation ?? "",
+    employmentType: user.employmentType ?? "full_time",
+    joiningDate: toDateString(user.joiningDate),
 
-    basicSalary: "", houseRent: "", medicalAllowance: "", transportAllowance: "", otherAllowance: "",
-    overtimeRate: "", taxDeduction: "", providentFund: "", otherDeduction: "",
+    emergencyContactRelationship: user.emergencyContactRelationship ?? "",
+    emergencyContactName: user.emergencyContactName ?? "",
+    emergencyContactPhone: user.emergencyContactPhone ?? "",
 
-    bonusType: "", bonusCalcType: "fixed", bonusAmount: "", bonusFrequency: "",
-    bonusEligibility: "eligible", bonusNotes: "",
+    basicSalary: numToStr(user.salary),
+    houseRent: numToStr(user.houseRent),
+    medicalAllowance: numToStr(user.medicalAllowance),
+    transportAllowance: numToStr(user.transportAllowance),
+    otherAllowance: numToStr(user.otherAllowance),
+    overtimeRate: numToStr(user.overtimeRate),
+    taxDeduction: numToStr(user.taxDeduction),
+    providentFund: numToStr(user.providentFund),
+    otherDeduction: numToStr(user.otherDeduction),
 
-    bankingType: "", bankingProvider: "", bankName: "", bankBranch: "", bankAccountNumber: "",
+    bonusType: user.bonusType ?? "",
+    bonusCalcType: user.bonusCalculationType ?? "fixed",
+    bonusAmount: numToStr(user.bonusAmount),
+    bonusFrequency: user.bonusFrequency ?? "",
+    bonusEligibility: user.bonusEligibility ?? "eligible",
+    bonusNotes: user.bonusNotes ?? "",
 
-    permCountry: "Bangladesh", permDivision: "", permDistrict: "", permThana: "", permUnion: "", permPostCode: "", permAddress: "",
-    sameAsPresent: true,
-    presCountry: "Bangladesh", presDivision: "", presDistrict: "", presThana: "", presUnion: "", presPostCode: "", presAddress: "",
+    bankingType: user.bankingType ?? "",
+    bankingProvider: user.bankingProvider ?? "",
+    bankName: user.bankName ?? "",
+    bankBranch: "",
+    bankAccountNumber: user.bankAccountNumber ?? "",
+
+    permCountry: user.country ?? "Bangladesh",
+    permDivision: user.division ?? "",
+    permDistrict: user.district ?? "",
+    permThana: user.thana ?? "",
+    permUnion: user.unionName ?? "",
+    permPostCode: user.postCode ?? "",
+    permAddress: user.permanentAddress ?? "",
+
+    sameAsPresent: user.sameAsPermanent ?? true,
+    presCountry: user.presentCountry ?? "Bangladesh",
+    presDivision: user.presentDivision ?? "",
+    presDistrict: user.presentDistrict ?? "",
+    presThana: user.presentThana ?? "",
+    presUnion: user.presentUnion ?? "",
+    presPostCode: user.presentPostCode ?? "",
+    presAddress: user.presentAddress ?? "",
   });
 
-  const [roles, setRoles] = useState<string[]>(["INSTRUCTOR"]);
-  const [educations, setEducations] = useState<Education[]>([]);
-  const [experiences, setExperiences] = useState<Experience[]>([]);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [staffDocuments, setStaffDocuments] = useState<StaffDocument[]>([]);
+  const [roles, setRoles] = useState<string[]>(() => parseRoleString(user.role));
+
+  const [educations, setEducations] = useState<Education[]>(() =>
+    (user.education ?? []).map((e) => ({
+      id: String(e.id ?? crypto.randomUUID()),
+      degree: e.degree ?? "",
+      institution: e.institution ?? "",
+      subject: e.subject ?? "",
+      passingYear: e.passingYear != null ? String(e.passingYear) : "",
+      result: e.result ?? "",
+    }))
+  );
+
+  const [experiences, setExperiences] = useState<Experience[]>(() =>
+    (user.experience ?? []).map((e) => ({
+      id: String(e.id ?? crypto.randomUUID()),
+      company: e.company ?? "",
+      designation: e.designation ?? "",
+      department: e.department ?? "",
+      employmentType: e.employmentType ?? "full_time",
+      startDate: toDateString(e.startDate),
+      endDate: toDateString(e.endDate),
+      currentlyWorking: e.currentlyWorking ?? false,
+      responsibilities: e.responsibilities ?? "",
+    }))
+  );
+
+  const [skills, setSkills] = useState<Skill[]>(() =>
+    (user.skills ?? []).map((s) => ({
+      id: String(s.id ?? crypto.randomUUID()),
+      name: s.skillName ?? "",
+      level: s.level ?? "Beginner",
+    }))
+  );
+
+  const [staffDocuments, setStaffDocuments] = useState<StaffDocument[]>(() =>
+    (user.documents ?? []).map((d) => ({
+      id: String(d.id ?? crypto.randomUUID()),
+      documentType: d.documentType ?? "",
+      documentName: d.documentName ?? "",
+      fileUrl: d.fileUrl ?? "",
+      expiryDate: toDateString(d.expiryDate),
+      notes: d.notes ?? "",
+      status: d.status ?? "active",
+    }))
+  );
+
   const [newSkillName, setNewSkillName] = useState("");
   const [newSkillLevel, setNewSkillLevel] = useState("Beginner");
 
@@ -424,7 +519,6 @@ export function CreateStaffClient() {
     if (!form.lastName.trim()) e.lastName = "Last name is required";
     if (!form.email.trim() && !form.phone.trim()) e.email = "Email or phone is required";
     if (form.phone && !isValidBdPhone(form.phone)) e.phone = "Enter a valid BD mobile (01XXXXXXXXX)";
-    if (form.password.length < 6) e.password = "Min. 6 characters";
     if (form.nationalId) {
       const maxLen = form.nidType === "passport" ? PASSPORT_MAX_LENGTH : NID_MAX_LENGTH;
       if (form.nationalId.length > maxLen) e.nationalId = `Max ${maxLen} characters`;
@@ -446,12 +540,11 @@ export function CreateStaffClient() {
   function handleSubmit() {
     if (!validate()) { toast.error("Please fix the errors"); return; }
     startTransition(async () => {
-      const res = await createUserAction({
+      const res = await updateUserAction(user.id, {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim() || undefined,
         phone: form.phone.trim() || undefined,
-        password: form.password,
         role: roles.length === 1 ? roles[0] : roles,
         gender: form.gender || undefined,
         dateOfBirth: form.dateOfBirth || undefined,
@@ -466,7 +559,7 @@ export function CreateStaffClient() {
         emergencyContactRelationship: form.emergencyContactRelationship || undefined,
         emergencyContactName: form.emergencyContactName || undefined,
         emergencyContactPhone: form.emergencyContactPhone || undefined,
-        basicSalary: form.basicSalary ? Number(form.basicSalary) : undefined,
+        salary: form.basicSalary ? Number(form.basicSalary) : undefined,
         houseRent: form.houseRent ? Number(form.houseRent) : undefined,
         medicalAllowance: form.medicalAllowance ? Number(form.medicalAllowance) : undefined,
         transportAllowance: form.transportAllowance ? Number(form.transportAllowance) : undefined,
@@ -476,7 +569,7 @@ export function CreateStaffClient() {
         providentFund: form.providentFund ? Number(form.providentFund) : undefined,
         otherDeduction: form.otherDeduction ? Number(form.otherDeduction) : undefined,
         bonusType: form.bonusType || undefined,
-        bonusCalcType: form.bonusCalcType || undefined,
+        bonusCalculationType: form.bonusCalcType || undefined,
         bonusAmount: form.bonusAmount ? Number(form.bonusAmount) : undefined,
         bonusFrequency: form.bonusFrequency || undefined,
         bonusEligibility: form.bonusEligibility || undefined,
@@ -486,21 +579,21 @@ export function CreateStaffClient() {
         bankName: form.bankingType === "bank_account" ? form.bankName || undefined : undefined,
         bankBranch: form.bankingType === "bank_account" ? form.bankBranch || undefined : undefined,
         bankAccountNumber: form.bankAccountNumber || undefined,
-        permCountry: form.permCountry || undefined,
-        permDivision: form.permDivision || undefined,
-        permDistrict: form.permDistrict || undefined,
-        permThana: form.permThana || undefined,
-        permUnion: form.permUnion || undefined,
-        permPostCode: form.permPostCode || permAutoPostCode || undefined,
-        permAddress: form.permAddress || undefined,
-        presCountry: form.sameAsPresent ? form.permCountry : form.presCountry,
-        presDivision: form.sameAsPresent ? form.permDivision : form.presDivision,
-        presDistrict: form.sameAsPresent ? form.permDistrict : form.presDistrict,
-        presThana: form.sameAsPresent ? form.permThana : form.presThana,
-        presUnion: form.sameAsPresent ? form.permUnion : form.presUnion,
-        presPostCode: form.sameAsPresent ? (form.permPostCode || permAutoPostCode) : (form.presPostCode || presAutoPostCode),
-        presAddress: form.sameAsPresent ? form.permAddress : form.presAddress,
-        sameAsPresent: form.sameAsPresent,
+        country: form.permCountry || undefined,
+        division: form.permDivision || undefined,
+        district: form.permDistrict || undefined,
+        thana: form.permThana || undefined,
+        unionName: form.permUnion || undefined,
+        postCode: form.permPostCode || permAutoPostCode || undefined,
+        permanentAddress: form.permAddress || undefined,
+        presentCountry: form.sameAsPresent ? form.permCountry : form.presCountry,
+        presentDivision: form.sameAsPresent ? form.permDivision : form.presDivision,
+        presentDistrict: form.sameAsPresent ? form.permDistrict : form.presDistrict,
+        presentThana: form.sameAsPresent ? form.permThana : form.presThana,
+        presentUnion: form.sameAsPresent ? form.permUnion : form.presUnion,
+        presentPostCode: form.sameAsPresent ? (form.permPostCode || permAutoPostCode) : (form.presPostCode || presAutoPostCode),
+        presentAddress: form.sameAsPresent ? form.permAddress : form.presAddress,
+        sameAsPermanent: form.sameAsPresent,
         education: educations.length > 0 ? educations.map(({ id: _, ...rest }) => rest) : undefined,
         experience: experiences.length > 0 ? experiences.map(({ id: _, currentlyWorking, ...rest }) => ({
           ...rest,
@@ -510,8 +603,26 @@ export function CreateStaffClient() {
         skills: skills.length > 0 ? skills.map(({ id: _, ...rest }) => rest) : undefined,
         documents: staffDocuments.length > 0 ? staffDocuments.map(({ id: _, ...rest }) => rest) : undefined,
       });
-      if (res.success) { toast.success("Staff created successfully"); router.push("/admin/users"); }
-      else { toast.error(res.message ?? "Failed to create staff"); }
+      if (res.success) {
+        toast.success("Staff updated successfully");
+        router.push(`/admin/users/${user.id}`);
+      } else {
+        toast.error(res.message ?? "Failed to update staff");
+      }
+    });
+  }
+
+  function handleResetPassword() {
+    if (!newPassword.trim()) { toast.error("Enter a new password"); return; }
+    if (newPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    startPasswordReset(async () => {
+      const res = await resetUserPasswordAction(user.id, newPassword);
+      if (res.success) {
+        toast.success("Password reset successfully");
+        setNewPassword("");
+      } else {
+        toast.error(res.message ?? "Failed to reset password");
+      }
     });
   }
 
@@ -522,6 +633,8 @@ export function CreateStaffClient() {
     return msg ? <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{msg}</p> : null;
   }
 
+  const avatarUrl = previewUrl ?? user.profilePicture ?? user.avatar;
+
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
@@ -531,8 +644,8 @@ export function CreateStaffClient() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">Add New Staff</h1>
-            <p className="text-xs text-gray-500 dark:text-slate-400">Fill in the details to create a new staff account</p>
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">Edit Staff</h1>
+            <p className="text-xs text-gray-500 dark:text-slate-400">Update details for {user.firstName} {user.lastName}</p>
           </div>
         </div>
       </div>
@@ -545,9 +658,9 @@ export function CreateStaffClient() {
           <div className="flex flex-col items-center gap-3">
             <div className="relative group">
               <div className="h-28 w-28 rounded-full bg-white dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden">
-                {previewUrl ? <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" /> : <User className="h-10 w-10 text-gray-300 dark:text-slate-600" />}
+                {avatarUrl ? <img src={avatarUrl} alt="Preview" className="h-full w-full object-cover" /> : <User className="h-10 w-10 text-gray-300 dark:text-slate-600" />}
               </div>
-              {previewUrl && (
+              {avatarUrl && (
                 <button onClick={() => { setPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <X className="h-3 w-3" />
                 </button>
@@ -555,7 +668,7 @@ export function CreateStaffClient() {
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
             <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs font-medium text-brand-600 dark:text-brand hover:text-brand-700 transition-colors">
-              {previewUrl ? "Change Photo" : "Upload Photo"}
+              {avatarUrl ? "Change Photo" : "Upload Photo"}
             </button>
             <p className="text-[10px] text-gray-400 dark:text-slate-500">JPG, PNG. Max 2 MB.</p>
           </div>
@@ -584,11 +697,6 @@ export function CreateStaffClient() {
             <div>
               <FieldLabel label="Gender" />
               <Select value={form.gender} onChange={(v) => set("gender", v)} options={[{ value: "", label: "Select gender" }, ...GENDERS]} />
-            </div>
-            <div>
-              <FieldLabel label="Password" required />
-              <PasswordInput value={form.password} onChange={(v) => set("password", v)} placeholder="Min. 6 characters" className={inputCls} />
-              <FieldError k="password" />
             </div>
             <div className="sm:col-span-2">
               <FieldLabel label="Date of Birth" />
@@ -655,7 +763,7 @@ export function CreateStaffClient() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5">
             <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Employee ID</span>
-            <p className="text-sm font-mono font-bold text-brand-600 dark:text-brand">Auto-generated</p>
+            <p className="text-sm font-mono font-bold text-brand-600 dark:text-brand">{user.employeeId ?? "N/A"}</p>
           </div>
           <div>
             <FieldLabel label="Role" required />
@@ -1151,6 +1259,29 @@ export function CreateStaffClient() {
       </SectionCard>
 
       {/* ═════════════════════════════════════════════════════════════════════════
+          SECTION 14: Reset Password (red)
+          ═════════════════════════════════════════════════════════════════════════ */}
+      <SectionCard title="Reset Password" icon={<KeyRound className="h-4 w-4" />} color="red">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+          <div>
+            <FieldLabel label="New Password" />
+            <PasswordInput value={newPassword} onChange={setNewPassword} placeholder="Min. 6 characters" className={inputCls} />
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={isResettingPassword || !newPassword.trim()}
+              className="flex items-center gap-1.5 rounded-xl bg-red-600 dark:bg-red-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors disabled:opacity-50"
+            >
+              {isResettingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {isResettingPassword ? "Resetting..." : "Reset Password"}
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ═════════════════════════════════════════════════════════════════════════
           BOTTOM ACTION BAR
           ═════════════════════════════════════════════════════════════════════════ */}
       <div className="sticky bottom-0 mt-6 flex items-center justify-end gap-3 py-4 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent">
@@ -1158,8 +1289,8 @@ export function CreateStaffClient() {
           Cancel
         </button>
         <button onClick={handleSubmit} disabled={isPending} className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors disabled:opacity-60">
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-          {isPending ? "Creating Staff..." : "Create Staff Member"}
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {isPending ? "Saving Changes..." : "Save Changes"}
         </button>
       </div>
 
@@ -1201,6 +1332,7 @@ function SectionCard({ title, icon, color = "blue" as string, children }: { titl
     cyan: { border: "border-cyan-100 dark:border-cyan-500/20", bg: "bg-cyan-50/40 dark:bg-cyan-500/5", iconBg: "bg-cyan-100 dark:bg-cyan-500/15", iconText: "text-cyan-600 dark:text-cyan-400" },
     pink: { border: "border-pink-100 dark:border-pink-500/20", bg: "bg-pink-50/40 dark:bg-pink-500/5", iconBg: "bg-pink-100 dark:bg-pink-500/15", iconText: "text-pink-600 dark:text-pink-400" },
     slate: { border: "border-slate-200 dark:border-slate-600/20", bg: "bg-slate-50/40 dark:bg-slate-500/5", iconBg: "bg-slate-200 dark:bg-slate-500/15", iconText: "text-slate-600 dark:text-slate-400" },
+    red: { border: "border-red-100 dark:border-red-500/20", bg: "bg-red-50/40 dark:bg-red-500/5", iconBg: "bg-red-100 dark:bg-red-500/15", iconText: "text-red-600 dark:text-red-400" },
   };
   const fallback = colorMap.blue!;
   const c = colorMap[color] ?? fallback;
