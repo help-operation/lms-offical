@@ -138,6 +138,14 @@ export function UserDetailClient({ user: initial }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const [showToggle, setShowToggle] = useState(false);
 
+  function handlePrint() {
+    document.documentElement.classList.add("printing");
+    setTimeout(() => {
+      window.print();
+      document.documentElement.classList.remove("printing");
+    }, 100);
+  }
+
   function handleToggleStatus() {
     setShowToggle(false);
     startTransition(async () => {
@@ -186,7 +194,7 @@ export function UserDetailClient({ user: initial }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => window.print()} disabled={isPending}
+            <button onClick={handlePrint} disabled={isPending}
               className="no-print inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors">
               <Printer className="h-3.5 w-3.5" /> Print
             </button>
