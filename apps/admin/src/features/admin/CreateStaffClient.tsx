@@ -7,7 +7,7 @@ import {
   Briefcase, ShieldCheck, MapPin, CreditCard, Heart, User,
   CalendarDays, AlertCircle, Loader2, Plus, Trash2,
   FileText, GraduationCap, BriefcaseBusiness, Sparkles,
-  BadgeCheck, Award, Building2,
+  BadgeCheck, Award, Building2, CheckCircle2,
 } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
 import { createUserAction } from "./actions/admin.actions";
@@ -215,6 +215,23 @@ export function CreateStaffClient() {
   const [staffDocuments, setStaffDocuments] = useState<StaffDocument[]>([]);
   const [newSkillName, setNewSkillName] = useState("");
   const [newSkillLevel, setNewSkillLevel] = useState("Beginner");
+
+  /* ─── Completion Progress ─────────────────────────────────────────────────── */
+  const completionPct = useMemo(() => {
+    let filled = 0, total = 0;
+    // Required (weight 2 each)
+    const req: [string, number][] = [["firstName", 2], ["lastName", 2], ["password", 2]];
+    req.forEach(([k, w]) => { total += w; if ((form as any)[k]?.trim()) filled += w; });
+    // Email or phone (weight 2)
+    total += 2; if (form.email.trim() || form.phone.trim()) filled += 2;
+    // Roles (weight 1)
+    total += 1; if (roles.length > 0) filled += 1;
+    // Optional sections (weight 1 each)
+    const opt: string[] = ["gender", "dateOfBirth", "department", "designation", "emergencyContactName",
+      "basicSalary", "permDivision", "fatherName", "nationalId"];
+    opt.forEach((k) => { total += 1; if ((form as any)[k]) filled += 1; });
+    return Math.round((filled / total) * 100);
+  }, [form, roles]);
 
   const set = useCallback((field: string, value: string) => {
     setForm((prev) => {
@@ -525,15 +542,34 @@ export function CreateStaffClient() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">Add New Staff</h1>
-            <p className="text-xs text-gray-500 dark:text-slate-400">Fill in the details to create a new staff account</p>
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.back()} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white">Add New Staff</h1>
+              <p className="text-xs text-gray-500 dark:text-slate-400">Fill in the details to create a new staff account</p>
+            </div>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-500 dark:text-slate-400">{completionPct}% complete</span>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div className="h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500 ease-out"
+            style={{
+              width: `${completionPct}%`,
+              background: completionPct === 100
+                ? "linear-gradient(90deg, #22c55e, #10b981)"
+                : completionPct > 60
+                  ? "linear-gradient(90deg, #6366f1, #8b5cf6)"
+                  : "linear-gradient(90deg, #f97316, #f59e0b)",
+            }}
+          />
         </div>
       </div>
 
@@ -543,21 +579,29 @@ export function CreateStaffClient() {
       <SectionCard title="Profile Photo & Basic Info" icon={<Camera className="h-4 w-4" />} color="blue">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="flex flex-col items-center gap-3">
-            <div className="relative group">
-              <div className="h-28 w-28 rounded-full bg-white dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden">
-                {previewUrl ? <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" /> : <User className="h-10 w-10 text-gray-300 dark:text-slate-600" />}
+            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <div className="h-28 w-28 rounded-full bg-white dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden transition-all group-hover:border-brand-400 dark:group-hover:border-brand group-hover:shadow-lg group-hover:shadow-brand-500/10">
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <Camera className="h-8 w-8 text-gray-300 dark:text-slate-600 group-hover:text-brand-400 dark:group-hover:text-brand transition-colors" />
+                    <span className="text-[9px] text-gray-400 dark:text-slate-500 group-hover:text-brand-500 transition-colors">Click to upload</span>
+                  </div>
+                )}
               </div>
               {previewUrl && (
-                <button onClick={() => { setPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={(e) => { e.stopPropagation(); setPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
                   <X className="h-3 w-3" />
                 </button>
               )}
+              {/* Camera badge */}
+              <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-brand-600 dark:bg-brand text-white flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="h-3.5 w-3.5" />
+              </div>
             </div>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs font-medium text-brand-600 dark:text-brand hover:text-brand-700 transition-colors">
-              {previewUrl ? "Change Photo" : "Upload Photo"}
-            </button>
-            <p className="text-[10px] text-gray-400 dark:text-slate-500">JPG, PNG. Max 2 MB.</p>
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePictureChange} className="hidden" />
+            <p className="text-[10px] text-gray-400 dark:text-slate-500">JPG, PNG, WebP. Max 2 MB.</p>
           </div>
 
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -653,19 +697,28 @@ export function CreateStaffClient() {
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Employment Details" icon={<Briefcase className="h-4 w-4" />} color="green">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5">
+          <div className="rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-brand-500" />
             <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Employee ID</span>
             <p className="text-sm font-mono font-bold text-brand-600 dark:text-brand">Auto-generated</p>
           </div>
           <div>
             <FieldLabel label="Role" required />
-            <div className="flex flex-wrap gap-1.5 mb-2">
+            <div className="flex flex-wrap gap-1.5 mb-2 min-h-[32px]">
               {roles.map((r) => {
                 const roleObj = STAFF_ROLES.find((sr) => sr.value === r);
+                const roleColors: Record<string, string> = {
+                  INSTRUCTOR: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+                  SUPER_ADMIN: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
+                  EDITOR: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
+                  MARKETING_OFFICER: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400",
+                  ACCOUNTANT: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400",
+                };
                 return (
-                  <span key={r} className="inline-flex items-center gap-1 rounded-lg bg-brand-100 dark:bg-brand/20 text-brand-700 dark:text-brand text-xs px-2 py-1 font-medium">
+                  <span key={r} className={`inline-flex items-center gap-1 rounded-lg text-xs px-2.5 py-1 font-medium transition-all ${roleColors[r] ?? "bg-brand-100 text-brand-700 dark:bg-brand/20 dark:text-brand"}`}>
+                    <CheckCircle2 className="h-3 w-3" />
                     {roleObj?.label ?? r}
-                    <button type="button" onClick={() => removeRole(r)} className="hover:text-red-500 transition-colors">
+                    <button type="button" onClick={() => removeRole(r)} className="ml-0.5 hover:text-red-500 transition-colors">
                       <X className="h-3 w-3" />
                     </button>
                   </span>
@@ -675,7 +728,7 @@ export function CreateStaffClient() {
             <Select
               value=""
               onChange={(v) => { if (v && !roles.includes(v)) toggleRole(v); }}
-              options={[{ value: "", label: "Add role..." }, ...STAFF_ROLES.filter((r) => !roles.includes(r.value))]}
+              options={[{ value: "", label: "+ Add role..." }, ...STAFF_ROLES.filter((r) => !roles.includes(r.value))]}
             />
             <FieldError k="role" />
           </div>
@@ -745,9 +798,10 @@ export function CreateStaffClient() {
               <FieldLabel label="Other Allowance (BDT)" />
               <input type="number" value={form.otherAllowance} onChange={(e) => set("otherAllowance", e.target.value)} placeholder="0.00" className={inputCls} />
             </div>
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3.5">
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3.5 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-emerald-500" />
               <span className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Gross Salary</span>
-              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">৳ {grossSalary.toLocaleString()}</p>
+              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{"\u09F3"} {grossSalary.toLocaleString()}</p>
             </div>
             <div>
               <FieldLabel label="Overtime Rate (BDT/hr)" />
@@ -773,14 +827,16 @@ export function CreateStaffClient() {
             </div>
           </div>
 
-          <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-4 flex flex-col sm:flex-row gap-4">
-            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5 flex-1">
+          <div className="border-t border-emerald-100 dark:border-emerald-500/10 pt-4 flex flex-col sm:flex-row gap-3">
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-3.5 flex-1 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-red-400" />
               <span className="block text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Deductions</span>
-              <p className="text-sm font-bold text-red-600 dark:text-red-400">৳ {totalDeductions.toLocaleString()}</p>
+              <p className="text-sm font-bold text-red-600 dark:text-red-400">{"\u09F3"} {totalDeductions.toLocaleString()}</p>
             </div>
-            <div className="rounded-xl bg-brand-50 dark:bg-brand/10 border border-brand-200 dark:border-brand/20 p-3.5 flex-1">
+            <div className="rounded-xl bg-brand-50 dark:bg-brand/10 border border-brand-200 dark:border-brand/20 p-3.5 flex-1 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-brand-500" />
               <span className="block text-[10px] font-semibold text-brand-600 dark:text-brand uppercase tracking-wider mb-1">Net Salary</span>
-              <p className="text-sm font-bold text-brand-700 dark:text-brand">৳ {netSalary.toLocaleString()}</p>
+              <p className="text-sm font-bold text-brand-700 dark:text-brand">{"\u09F3"} {netSalary.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -823,12 +879,18 @@ export function CreateStaffClient() {
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Banking" icon={<Building2 className="h-4 w-4" />} color="teal">
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <button type="button" onClick={() => set("bankingType", "mobile_banking")} className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${form.bankingType === "mobile_banking" ? "border-teal-400 dark:border-teal-500 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300" : "border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800"}`}>
-              Mobile Banking
+          <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl">
+            <button type="button" onClick={() => set("bankingType", "mobile_banking")} className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${form.bankingType === "mobile_banking" ? "bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-sm" : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"}`}>
+              <div className="flex items-center justify-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Mobile Banking
+              </div>
             </button>
-            <button type="button" onClick={() => set("bankingType", "bank_account")} className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${form.bankingType === "bank_account" ? "border-teal-400 dark:border-teal-500 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300" : "border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800"}`}>
-              Bank Account
+            <button type="button" onClick={() => set("bankingType", "bank_account")} className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${form.bankingType === "bank_account" ? "bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-sm" : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"}`}>
+              <div className="flex items-center justify-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Bank Account
+              </div>
             </button>
           </div>
 
@@ -924,9 +986,16 @@ export function CreateStaffClient() {
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Present Address" icon={<MapPin className="h-4 w-4" />} color="sky">
         <div className="space-y-4">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" checked={form.sameAsPresent} onChange={(e) => toggleSameAsPresent(e.target.checked)} className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500" />
-            <span className="text-sm text-gray-600 dark:text-slate-300">Same as Permanent Address</span>
+          <label className={`flex items-center gap-3 cursor-pointer select-none rounded-xl border px-4 py-3 transition-all ${form.sameAsPresent ? "border-sky-200 dark:border-sky-500/20 bg-sky-50/50 dark:bg-sky-500/5" : "border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50"}`}>
+            <input type="checkbox" checked={form.sameAsPresent} onChange={(e) => toggleSameAsPresent(e.target.checked)} className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 text-sky-600 focus:ring-sky-500" />
+            <div className="flex items-center gap-2">
+              {form.sameAsPresent ? (
+                <CheckCircle2 className="h-4 w-4 text-sky-500" />
+              ) : (
+                <MapPin className="h-4 w-4 text-gray-400 dark:text-slate-500" />
+              )}
+              <span className="text-sm text-gray-600 dark:text-slate-300">Same as Permanent Address</span>
+            </div>
           </label>
 
           {!form.sameAsPresent && (
@@ -975,10 +1044,17 @@ export function CreateStaffClient() {
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Education" icon={<GraduationCap className="h-4 w-4" />} color="indigo">
         <div className="space-y-4">
+          {educations.length === 0 && (
+            <div className="text-center py-6 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5">
+              <GraduationCap className="h-8 w-8 text-indigo-300 dark:text-indigo-500/40 mx-auto mb-2" />
+              <p className="text-xs text-indigo-500 dark:text-indigo-400">No education records yet</p>
+              <p className="text-[10px] text-indigo-400 dark:text-indigo-500/60 mt-0.5">Click the button below to add education details</p>
+            </div>
+          )}
           {educations.map((edu, idx) => (
-            <div key={edu.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative">
+            <div key={edu.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative border-l-4 border-l-indigo-400 dark:border-l-indigo-500/50">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Education #{idx + 1}</span>
+                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Education #{idx + 1}</span>
                 <button type="button" onClick={() => removeEducation(edu.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -1018,10 +1094,17 @@ export function CreateStaffClient() {
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Experience" icon={<BriefcaseBusiness className="h-4 w-4" />} color="cyan">
         <div className="space-y-4">
+          {experiences.length === 0 && (
+            <div className="text-center py-6 rounded-xl border border-dashed border-cyan-200 dark:border-cyan-500/20 bg-cyan-50/30 dark:bg-cyan-500/5">
+              <BriefcaseBusiness className="h-8 w-8 text-cyan-300 dark:text-cyan-500/40 mx-auto mb-2" />
+              <p className="text-xs text-cyan-500 dark:text-cyan-400">No work experience yet</p>
+              <p className="text-[10px] text-cyan-400 dark:text-cyan-500/60 mt-0.5">Add professional experience to build a complete profile</p>
+            </div>
+          )}
           {experiences.map((exp, idx) => (
-            <div key={exp.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative">
+            <div key={exp.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative border-l-4 border-l-cyan-400 dark:border-l-cyan-500/50">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Experience #{idx + 1}</span>
+                <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">Experience #{idx + 1}</span>
                 <button type="button" onClick={() => removeExperience(exp.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -1108,10 +1191,17 @@ export function CreateStaffClient() {
           ═════════════════════════════════════════════════════════════════════════ */}
       <SectionCard title="Documents" icon={<FileText className="h-4 w-4" />} color="slate">
         <div className="space-y-4">
+          {staffDocuments.length === 0 && (
+            <div className="text-center py-6 rounded-xl border border-dashed border-slate-200 dark:border-slate-600/30 bg-slate-50/30 dark:bg-slate-500/5">
+              <FileText className="h-8 w-8 text-slate-300 dark:text-slate-500/40 mx-auto mb-2" />
+              <p className="text-xs text-slate-500 dark:text-slate-400">No documents uploaded</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500/60 mt-0.5">Upload NID, certificates, or other important documents</p>
+            </div>
+          )}
           {staffDocuments.map((doc, idx) => (
-            <div key={doc.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative">
+            <div key={doc.id} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4 relative border-l-4 border-l-slate-400 dark:border-l-slate-500/50">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Document #{idx + 1}</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Document #{idx + 1}</span>
                 <button type="button" onClick={() => removeDocument(doc.id)} className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -1150,17 +1240,39 @@ export function CreateStaffClient() {
         </div>
       </SectionCard>
 
-      {/* ═════════════════════════════════════════════════════════════════════════
-          BOTTOM ACTION BAR
-          ═════════════════════════════════════════════════════════════════════════ */}
-      <div className="sticky bottom-0 mt-6 flex items-center justify-end gap-3 py-4 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent">
-        <button onClick={() => router.back()} disabled={isPending} className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
-          Cancel
-        </button>
-        <button onClick={handleSubmit} disabled={isPending} className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors disabled:opacity-60">
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-          {isPending ? "Creating Staff..." : "Create Staff Member"}
-        </button>
+      {/* Bottom Action Bar */}
+      <div className="sticky bottom-0 mt-6 py-4 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500">
+              <div className="flex items-center gap-1">
+                <div className={`h-1.5 w-1.5 rounded-full ${form.firstName && form.lastName ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"}`} />
+                <span>Basic</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className={`h-1.5 w-1.5 rounded-full ${roles.length > 0 ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"}`} />
+                <span>Role</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className={`h-1.5 w-1.5 rounded-full ${form.basicSalary ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"}`} />
+                <span>Payroll</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className={`h-1.5 w-1.5 rounded-full ${form.permDivision ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"}`} />
+                <span>Address</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.back()} disabled={isPending} className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
+              Cancel
+            </button>
+            <button onClick={handleSubmit} disabled={isPending} className="flex items-center gap-1.5 rounded-xl bg-brand-600 dark:bg-brand px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-700 dark:hover:bg-brand-hover transition-all disabled:opacity-60 shadow-sm hover:shadow-md hover:shadow-brand-500/20">
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              {isPending ? "Creating Staff..." : "Create Staff Member"}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Image Crop Modal */}
