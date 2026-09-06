@@ -13,13 +13,29 @@ const PAGE_TITLES: { match: (path: string) => boolean; title: string; descriptio
     description: "Everything you're enrolled in — live batches and self-paced courses.",
   },
   {
-    match: (p) => p.startsWith("/student/certificates"),
-    title: "My Certificates",
+    match: (p) => p.startsWith("/student/classes"),
+    title: "Classes & Schedule",
+    description: "View your upcoming live classes and schedule.",
   },
   {
-    match: (p) => p.startsWith("/student/notes"),
-    title: "My Notes",
-    description: "Everything you've jotted down across your lessons, in one place.",
+    match: (p) => p.startsWith("/student/progress"),
+    title: "My Progress",
+    description: "Track your learning progress across all enrolled courses.",
+  },
+  {
+    match: (p) => p.startsWith("/student/assignments"),
+    title: "Assignments",
+    description: "View and submit your course assignments.",
+  },
+  {
+    match: (p) => p.startsWith("/student/quizzes"),
+    title: "Quizzes & Exams",
+    description: "Take quizzes and track your exam results.",
+  },
+  {
+    match: (p) => p.startsWith("/student/certificates"),
+    title: "My Certificates",
+    description: "Your earned credentials and certificates.",
   },
   {
     match: (p) => p.startsWith("/student/payment-history"),
@@ -27,9 +43,24 @@ const PAGE_TITLES: { match: (path: string) => boolean; title: string; descriptio
     description: "A record of all your course payments and invoices.",
   },
   {
+    match: (p) => p.startsWith("/student/notifications"),
+    title: "Notifications",
+    description: "Stay updated with your latest notifications.",
+  },
+  {
+    match: (p) => p.startsWith("/student/messages"),
+    title: "Messages",
+    description: "Communicate with instructors and support.",
+  },
+  {
     match: (p) => p.startsWith("/student/support"),
     title: "Support",
     description: "Get help with your courses, account, or billing.",
+  },
+  {
+    match: (p) => p.startsWith("/dashboard/profile"),
+    title: "My Profile",
+    description: "Manage your personal information.",
   },
   {
     match: (p) => p.startsWith("/dashboard/settings"),

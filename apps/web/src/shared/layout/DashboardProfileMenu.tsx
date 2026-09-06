@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { LayoutDashboard, LogOut, Settings, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/avatar";
 import {
   DropdownMenu,
@@ -60,6 +60,11 @@ export function DashboardProfileMenu({
         <DropdownMenuItem asChild className="cursor-pointer">
           <Link href={dashboardHref}>
             <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/dashboard/profile">
+            <User className="mr-2 h-4 w-4" /> My Profile
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer">

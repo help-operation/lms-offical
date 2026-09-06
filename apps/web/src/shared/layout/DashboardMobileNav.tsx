@@ -11,23 +11,25 @@ import { SiteLogo } from "@/shared/components/SiteLogo";
 export interface DashboardNavItem {
   label: string;
   href: string;
-  /** Pre-rendered icon element (icons can't cross the server/client boundary as components). */
   icon: ReactNode;
+  badge?: number;
+}
+
+export interface DashboardNavSectionGroup {
+  title: string;
+  items: DashboardNavItem[];
 }
 
 /**
  * Mobile-only (`lg:hidden`) navigation for the dashboard. Renders a hamburger
  * trigger plus a portalled slide-out drawer that mirrors the desktop sidebar,
  * so phone/tablet users can reach every dashboard route and log out.
- *
- * The desktop layout is a server component, so the nav items arrive with their
- * icons already rendered to elements and the logout server action is passed in.
  */
 export function DashboardMobileNav({
   logoSrc,
   logoDarkSrc,
   logoAlt,
-  mainNav,
+  mainNavSections,
   settingsNav,
   footer,
   dashboardHref,
@@ -38,9 +40,8 @@ export function DashboardMobileNav({
   logoSrc: string;
   logoDarkSrc?: string;
   logoAlt: string;
-  mainNav: DashboardNavItem[];
+  mainNavSections: DashboardNavSectionGroup[];
   settingsNav: DashboardNavItem[];
-  /** Optional extra footer content (e.g. the guest contact card). */
   footer?: ReactNode;
   dashboardHref: string;
   user: {
@@ -58,13 +59,9 @@ export function DashboardMobileNav({
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
-  // Portals require the DOM, so only render the overlay after mount.
   useEffect(() => setMounted(true), []);
-
-  // Close the drawer whenever the route changes (link tap inside the drawer).
   useEffect(() => setOpen(false), [pathname]);
 
-  // Close on Escape and lock body scroll while the drawer is open.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -97,13 +94,17 @@ export function DashboardMobileNav({
           {item.icon}
         </span>
         <span className="truncate">{item.label}</span>
+        {item.badge !== undefined && item.badge > 0 && (
+          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-white">
+            {item.badge > 99 ? "99+" : item.badge}
+          </span>
+        )}
       </Link>
     );
   };
 
   return (
     <>
-      {/* Hamburger trigger */}
       <button
         type="button"
         className="lg:hidden -ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -114,12 +115,9 @@ export function DashboardMobileNav({
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Backdrop + drawer are portalled to <body> so they escape the header's
-          backdrop-blur containing block and cover the viewport. */}
       {mounted &&
         createPortal(
           <>
-            {/* Backdrop */}
             <div
               className={`lg:hidden fixed inset-0 z-[60] bg-black/40 transition-opacity duration-300 ${
                 open ? "opacity-100" : "pointer-events-none opacity-0"
@@ -128,7 +126,6 @@ export function DashboardMobileNav({
               aria-hidden="true"
             />
 
-            {/* Slide-out drawer */}
             <div
               className={`lg:hidden fixed inset-y-0 left-0 z-[70] flex w-[80%] max-w-xs flex-col bg-white shadow-xl transition-transform duration-300 ease-in-out dark:bg-slate-900 ${
                 open ? "translate-x-0" : "-translate-x-full"
@@ -137,7 +134,6 @@ export function DashboardMobileNav({
               aria-modal="true"
               aria-label="Dashboard navigation"
             >
-              {/* Header: logo + close */}
               <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-6 dark:border-slate-800">
                 <Link href="/" aria-label={logoAlt}>
                   <SiteLogo
@@ -159,20 +155,26 @@ export function DashboardMobileNav({
                 </button>
               </div>
 
-              {/* Nav */}
               <nav className="flex-1 overflow-y-auto px-3 py-4">
-                <p className="mb-2 px-3 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  Main menu
-                </p>
-                <div className="space-y-0.5">{mainNav.map(renderLink)}</div>
+                {mainNavSections.map((section) => (
+                  <div key={section.title} className="mb-1">
+                    <p className="mb-1 mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 first:mt-0 dark:text-slate-500">
+                      {section.title}
+                    </p>
+                    <div className="space-y-0.5">{section.items.map(renderLink)}</div>
+                  </div>
+                ))}
 
-                <p className="mb-2 mt-7 px-3 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  Settings
-                </p>
-                <div className="space-y-0.5">{settingsNav.map(renderLink)}</div>
+                {settingsNav.length > 0 && (
+                  <div className="mb-1">
+                    <p className="mb-1 mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                      SETTINGS
+                    </p>
+                    <div className="space-y-0.5">{settingsNav.map(renderLink)}</div>
+                  </div>
+                )}
               </nav>
 
-              {/* Footer: optional contact card + profile card */}
               <div className="border-t border-slate-100 p-3 dark:border-slate-800">
                 {footer}
 

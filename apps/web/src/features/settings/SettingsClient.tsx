@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Lock, Loader2, Mail, Phone, CheckCircle2, Camera } from "lucide-react";
+import { User, Lock, Loader2, Mail, Phone, CheckCircle2, Camera, Bell, Sun, Shield } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/avatar";
 import { Badge } from "@repo/ui/badge";
 import { toast } from "@repo/ui/sonner";
@@ -494,6 +494,142 @@ function ContactSection({
   );
 }
 
+// ─── Notification Preferences ────────────────────────────────────────────────
+
+function NotificationPreferencesSection({
+  emailNotifications,
+  onToggle,
+}: {
+  emailNotifications: boolean;
+  onToggle: (value: boolean) => void;
+}) {
+  const [pending, start] = useTransition();
+
+  function toggle() {
+    start(async () => {
+      try {
+        await settingsApiBrowser.updateNotifications(!emailNotifications);
+        onToggle(!emailNotifications);
+        toast.success("Notification preferences updated");
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : "Failed to update");
+      }
+    });
+  }
+
+  return (
+    <Section
+      icon={Bell}
+      title="Notification Preferences"
+      description="Choose how you want to be notified."
+    >
+      <div className="space-y-3">
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
+          <div>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Email Notifications</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Receive course updates, certificates, and payment confirmations via email.</p>
+          </div>
+          <button
+            type="button"
+            onClick={toggle}
+            disabled={pending}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+              emailNotifications ? "bg-brand-solid" : "bg-slate-300 dark:bg-slate-600"
+            } disabled:opacity-60`}
+            role="switch"
+            aria-checked={emailNotifications}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                emailNotifications ? "translate-x-5.5" : "translate-x-0.5"
+              } mt-0.5`}
+            />
+          </button>
+        </label>
+      </div>
+    </Section>
+  );
+}
+
+// ─── Theme Section ──────────────────────────────────────────────────────────
+
+function ThemeSection() {
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme") as "light" | "dark" | "system" | null;
+    if (stored) setTheme(stored);
+  }, []);
+
+  function changeTheme(t: "light" | "dark" | "system") {
+    setTheme(t);
+    localStorage.setItem("theme", t);
+    if (t === "system") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", prefersDark);
+    } else {
+      document.documentElement.classList.toggle("dark", t === "dark");
+    }
+  }
+
+  const options: { value: "light" | "dark" | "system"; label: string; icon: string }[] = [
+    { value: "light", label: "Light", icon: "\u2600" },
+    { value: "dark", label: "Dark", icon: "\u263E" },
+    { value: "system", label: "System", icon: "\u2699" },
+  ];
+
+  return (
+    <Section
+      icon={Sun}
+      title="Theme"
+      description="Choose your preferred color scheme."
+    >
+      <div className="flex gap-3">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => changeTheme(opt.value)}
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+              theme === opt.value
+                ? "border-brand bg-brand/10 text-brand dark:border-brand dark:bg-brand/20"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            }`}
+          >
+            <span>{opt.icon}</span> {opt.label}
+          </button>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+// ─── Privacy Section ────────────────────────────────────────────────────────
+
+function PrivacySection() {
+  return (
+    <Section
+      icon={Shield}
+      title="Privacy"
+      description="Control how your data is used."
+    >
+      <div className="space-y-3">
+        <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Profile Visibility</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Your profile information is only visible to you and administrators. Other students cannot view your profile.</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Data Protection</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Your password is encrypted and never exposed in API responses. Sensitive information like NID or bank details are masked.</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Account Security</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">After 5 failed login attempts, your account is temporarily locked for 15 minutes. You can change your password at any time.</p>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function SettingsClient({ initial }: { initial: AccountProfile }) {
@@ -503,6 +639,7 @@ export function SettingsClient({ initial }: { initial: AccountProfile }) {
   const [phone, setPhone] = useState(initial.phone);
   const [avatar, setAvatar] = useState(initial.avatar);
   const [gender, setGender] = useState(initial.gender);
+  const [emailNotifications, setEmailNotifications] = useState(initial.emailNotifications);
 
   return (
     <div className="space-y-6">
@@ -533,6 +670,12 @@ export function SettingsClient({ initial }: { initial: AccountProfile }) {
             setPhone(p.phone);
           }}
         />
+        <NotificationPreferencesSection
+          emailNotifications={emailNotifications}
+          onToggle={setEmailNotifications}
+        />
+        <ThemeSection />
+        <PrivacySection />
       </div>
     </div>
   );

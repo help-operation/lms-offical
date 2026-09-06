@@ -8,7 +8,11 @@ import { DashboardProfileMenu } from "@/shared/layout/DashboardProfileMenu";
 import { DashboardSidebar } from "@/shared/layout/DashboardSidebar";
 import { SidebarProvider } from "@/shared/layout/SidebarContext";
 import { SidebarToggleButton } from "@/shared/layout/SidebarToggleButton";
-import { guestNavItems, studentNavItems, settingsItems } from "@/shared/layout/dashboard-nav";
+import {
+  guestNavItems,
+  studentNavSections,
+  settingsItems,
+} from "@/shared/layout/dashboard-nav";
 import { ThemeToggle } from "@/features/theme/ThemeToggle";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -69,17 +73,13 @@ async function DashboardLayoutContent({
     `${user.data.firstName.slice(0, 1)}${user.data.lastName.slice(0, 1)}`.toUpperCase();
   const isStudent = user.data.role === "STUDENT";
   const dashboardHref = isStudent ? "/student/dashboard" : "/guest/dashboard";
-  const mainNavItems = isStudent ? studentNavItems : guestNavItems;
   const isGuest = !isStudent;
 
-  // Logo is managed from the admin panel (General Settings → logo).
   const site = await getPublicSiteSettings();
   const logoSrc = site.logo_url || "/Skillkoro-logo.png";
   const logoDarkSrc = site.logo_url_dark || undefined;
   const logoAlt = site.site_name || "Skillkoro";
 
-  // Contact details are managed from the admin panel
-  // (General Settings → phone, Social Settings → WhatsApp URL).
   const [contactSettings, socialLinks] = isGuest
     ? await Promise.all([getPublicContactSettings(), getPublicSocialLinks()])
     : [null, null];
@@ -88,9 +88,15 @@ async function DashboardLayoutContent({
   const whatsappUrl = socialLinks?.whatsapp?.trim() ?? "";
   const showContactCard = isGuest && (contactPhone || whatsappUrl);
 
-  // Pre-render icons to elements: the mobile drawer is a client component and
-  // icon components can't cross the server/client boundary as functions.
-  const mainNavDrawerItems = mainNavItems.map((item) => {
+  // Pre-render icons for mobile drawer
+  const mainNavSections = studentNavSections.map((section) => ({
+    title: section.title,
+    items: section.items.map((item) => {
+      const Icon = item.icon;
+      return { label: item.label, href: item.href, icon: <Icon />, badge: item.badge };
+    }),
+  }));
+  const guestNavDrawerItems = guestNavItems.map((item) => {
     const Icon = item.icon;
     return { label: item.label, href: item.href, icon: <Icon /> };
   });
@@ -99,7 +105,6 @@ async function DashboardLayoutContent({
     return { label: item.label, href: item.href, icon: <Icon /> };
   });
 
-  // Shared "need help?" card — rendered in the desktop sidebar and the mobile drawer.
   const contactCard = showContactCard ? (
     <div className="rounded-xl border border-slate-100 bg-gradient-to-br from-brand-50 to-white p-4 dark:border-slate-800 dark:from-slate-800/60 dark:to-slate-900">
       <div className="flex items-center gap-2">
@@ -172,12 +177,12 @@ async function DashboardLayoutContent({
         />
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 flex h-20 items-center justify-between gap-4 border-b border-slate-200/60 bg-[#f7f8fa]/80 px-4 backdrop-blur dark:border-slate-800/60 dark:bg-slate-950/80 sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-slate-200/60 bg-[#f7f8fa]/80 px-4 backdrop-blur dark:border-slate-800/60 dark:bg-slate-950/80 sm:px-6 lg:px-8">
             <DashboardMobileNav
               logoSrc={logoSrc}
               logoDarkSrc={logoDarkSrc}
               logoAlt={logoAlt}
-              mainNav={mainNavDrawerItems}
+              mainNavSections={isStudent ? mainNavSections : [{ title: "MAIN MENU", items: guestNavDrawerItems }]}
               settingsNav={settingsDrawerItems}
               footer={contactCard}
               dashboardHref={dashboardHref}
@@ -195,9 +200,14 @@ async function DashboardLayoutContent({
 
             <SidebarToggleButton />
 
-            <div className="hidden h-11 w-full max-w-sm items-center gap-2 rounded-full bg-white px-4 text-slate-400 shadow-sm dark:bg-slate-900 dark:text-slate-500 sm:flex">
+            {/* Search bar */}
+            <div className="hidden h-10 w-full max-w-sm items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500 sm:flex">
               <Search className="h-4 w-4" />
-              <span className="text-sm">Search framework...</span>
+              <input
+                type="text"
+                placeholder="Search courses, lessons..."
+                className="flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-200"
+              />
             </div>
 
             <Link href="/" aria-label={logoAlt} className="lg:hidden">
@@ -207,13 +217,13 @@ async function DashboardLayoutContent({
                 alt={logoAlt}
                 width={140}
                 height={40}
-                className="h-9 w-auto object-contain"
+                className="h-8 w-auto object-contain"
                 priority
               />
             </Link>
 
             <div className="ml-auto flex items-center gap-2">
-              <ThemeToggle />
+              <ThemeToggle iconOnly />
               <NotificationsBell />
               <DashboardProfileMenu
                 user={{
@@ -230,18 +240,12 @@ async function DashboardLayoutContent({
             </div>
           </header>
 
-          <main className="min-h-[calc(100vh-5rem)] px-4 pb-4 pt-6 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 lg:pt-8">
+          <main className="min-h-[calc(100vh-4rem)] px-4 pb-4 pt-6 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 lg:pt-8">
             <div>
-              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <DashboardPageHeading isStudent={isStudent} />
-                <Button asChild variant="outline" className="h-10 rounded-full bg-white dark:bg-slate-900 dark:text-slate-100">
-                  <Link href={dashboardHref}>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    My workspace
-                  </Link>
-                </Button>
+              <DashboardPageHeading isStudent={isStudent} />
+              <div className="mt-4">
+                {children}
               </div>
-              {children}
             </div>
           </main>
         </div>
