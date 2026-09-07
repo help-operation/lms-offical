@@ -13,6 +13,7 @@ import {
   studentNavSections,
   settingsItems,
 } from "@/shared/layout/dashboard-nav";
+import { QuickAccessFooter } from "@/shared/layout/QuickAccessFooter";
 import { ThemeToggle } from "@/features/theme/ThemeToggle";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -88,21 +89,21 @@ async function DashboardLayoutContent({
   const whatsappUrl = socialLinks?.whatsapp?.trim() ?? "";
   const showContactCard = isGuest && (contactPhone || whatsappUrl);
 
-  // Pre-render icons for mobile drawer
+  // Pre-render icons for mobile drawer (with color info)
   const mainNavSections = studentNavSections.map((section) => ({
     title: section.title,
     items: section.items.map((item) => {
       const Icon = item.icon;
-      return { label: item.label, href: item.href, icon: <Icon />, badge: item.badge };
+      return { label: item.label, href: item.href, icon: <Icon />, badge: item.badge, color: item.color };
     }),
   }));
   const guestNavDrawerItems = guestNavItems.map((item) => {
     const Icon = item.icon;
-    return { label: item.label, href: item.href, icon: <Icon /> };
+    return { label: item.label, href: item.href, icon: <Icon />, color: item.color };
   });
   const settingsDrawerItems = settingsItems.map((item) => {
     const Icon = item.icon;
-    return { label: item.label, href: item.href, icon: <Icon /> };
+    return { label: item.label, href: item.href, icon: <Icon />, color: item.color };
   });
 
   const contactCard = showContactCard ? (
@@ -240,7 +241,7 @@ async function DashboardLayoutContent({
             </div>
           </header>
 
-          <main className="min-h-[calc(100vh-4rem)] px-4 pb-4 pt-6 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 lg:pt-8">
+          <main className="min-h-[calc(100vh-4rem)] px-4 pb-24 pt-6 sm:px-6 sm:pb-28 lg:px-8 lg:pb-8 lg:pt-8">
             <div>
               <DashboardPageHeading isStudent={isStudent} />
               <div className="mt-4">
@@ -250,6 +251,10 @@ async function DashboardLayoutContent({
           </main>
         </div>
       </div>
+
+      {/* Sticky quick-access footer — student only, mobile/tablet only */}
+      {isStudent && <QuickAccessFooter />}
+
       </SidebarProvider>
     </div>
   );
