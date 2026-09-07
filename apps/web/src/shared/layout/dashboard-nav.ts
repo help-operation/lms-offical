@@ -16,8 +16,11 @@ import {
   HelpCircle,
   User,
   LogOut,
+  PlayCircle,
   type LucideIcon,
 } from "lucide-react";
+
+export type NavItemColor = "blue" | "purple" | "orange" | "rose" | "amber" | "emerald" | "cyan" | "pink" | "slate" | "brand";
 
 export interface DashboardNavItemDef {
   label: string;
@@ -25,6 +28,7 @@ export interface DashboardNavItemDef {
   icon: LucideIcon;
   badge?: number;
   badgeColor?: string;
+  color: NavItemColor;
 }
 
 export interface DashboardNavSection {
@@ -33,48 +37,48 @@ export interface DashboardNavSection {
 }
 
 export const guestNavItems: DashboardNavItemDef[] = [
-  { label: "Dashboard", href: "/guest/dashboard", icon: LayoutDashboard },
-  { label: "Explore Courses", href: "/courses", icon: Compass },
+  { label: "Dashboard", href: "/guest/dashboard", icon: LayoutDashboard, color: "blue" },
+  { label: "Explore Courses", href: "/courses", icon: Compass, color: "orange" },
 ];
 
 export const studentNavSections: DashboardNavSection[] = [
   {
-    title: "Main / Learn",
+    title: "LEARN",
     items: [
-      { label: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
-      { label: "My Courses", href: "/student/courses", icon: BookOpen },
-      { label: "Explore Courses", href: "/courses", icon: Compass },
-      { label: "Classes / Schedule", href: "/student/classes", icon: Calendar },
-      { label: "My Progress", href: "/student/progress", icon: GraduationCap },
+      { label: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard, color: "blue" },
+      { label: "My Courses", href: "/student/courses", icon: BookOpen, color: "purple" },
+      { label: "Explore Courses", href: "/courses", icon: Compass, color: "orange" },
+      { label: "Classes / Schedule", href: "/student/classes", icon: Calendar, color: "rose" },
+      { label: "My Progress", href: "/student/progress", icon: GraduationCap, color: "emerald" },
     ],
   },
   {
-    title: "Activity",
+    title: "ACTIVITY",
     items: [
-      { label: "Assignments", href: "/student/assignments", icon: FileCheck },
-      { label: "Quizzes & Exams", href: "/student/quizzes", icon: Shield },
-      { label: "Certificates", href: "/student/certificates", icon: Award },
+      { label: "Assignments", href: "/student/assignments", icon: FileCheck, color: "amber" },
+      { label: "Quizzes & Exams", href: "/student/quizzes", icon: Shield, color: "cyan" },
+      { label: "Certificates", href: "/student/certificates", icon: Award, color: "pink" },
     ],
   },
   {
-    title: "Financial",
+    title: "FINANCIAL",
     items: [
-      { label: "Payment History", href: "/student/payment-history", icon: Receipt },
+      { label: "Payment History", href: "/student/payment-history", icon: Receipt, color: "emerald" },
     ],
   },
   {
-    title: "Communication",
+    title: "COMMUNICATION",
     items: [
-      { label: "Notifications", href: "/student/notifications", icon: Bell },
-      { label: "Messages", href: "/student/messages", icon: MessageSquare },
-      { label: "Support", href: "/student/support", icon: HelpCircle },
+      { label: "Notifications", href: "/student/notifications", icon: Bell, color: "amber" },
+      { label: "Messages", href: "/student/messages", icon: MessageSquare, color: "cyan" },
+      { label: "Support", href: "/student/support", icon: HelpCircle, color: "blue" },
     ],
   },
   {
-    title: "Account",
+    title: "ACCOUNT",
     items: [
-      { label: "My Profile", href: "/student/profile", icon: User },
-      { label: "Settings", href: "/dashboard/settings", icon: Settings },
+      { label: "My Profile", href: "/student/profile", icon: User, color: "purple" },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings, color: "slate" },
     ],
   },
 ];
@@ -85,5 +89,14 @@ export const studentNavItems: DashboardNavItemDef[] = studentNavSections.flatMap
 );
 
 export const settingsItems: DashboardNavItemDef[] = [
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings, color: "slate" },
+];
+
+/** Bottom quick-access items for mobile sticky footer. */
+export const quickAccessItems: DashboardNavItemDef[] = [
+  { label: "Home", href: "/student/dashboard", icon: LayoutDashboard, color: "blue" },
+  { label: "My Courses", href: "/student/courses", icon: BookOpen, color: "purple" },
+  { label: "Continue Learning", href: "/courses", icon: PlayCircle, color: "brand" },
+  { label: "Notifications", href: "/student/notifications", icon: Bell, color: "amber" },
+  { label: "Profile", href: "/student/profile", icon: User, color: "purple" },
 ];
