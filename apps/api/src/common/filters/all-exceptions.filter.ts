@@ -20,6 +20,8 @@ interface FieldError {
 const PG_UNIQUE_VIOLATION = '23505';
 const PG_FOREIGN_KEY_VIOLATION = '23503';
 const PG_NOT_NULL_VIOLATION = '23502';
+const PG_UNDEFINED_COLUMN = '42703';
+const PG_UNDEFINED_TABLE = '42P01';
 
 function isDatabaseError(err: unknown): err is Error & { code: string } {
   return (
@@ -27,6 +29,18 @@ function isDatabaseError(err: unknown): err is Error & { code: string } {
     'code' in err &&
     typeof (err as Record<string, unknown>).code === 'string'
   );
+}
+
+/** Walk the error.cause chain to find a nested database error (e.g. Drizzle wraps PG errors). */
+function findRootCause(err: unknown): (Error & { code: string }) | null {
+  let current: unknown = err;
+  const seen = new Set<unknown>();
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    if (isDatabaseError(current)) return current;
+    current = (current as Error).cause ?? null;
+  }
+  return null;
 }
 
 function normalizeDatabaseError(err: Error & { code: string }): {
@@ -40,6 +54,12 @@ function normalizeDatabaseError(err: Error & { code: string }): {
       return { statusCode: HttpStatus.BAD_REQUEST, message: 'Referenced resource does not exist' };
     case PG_NOT_NULL_VIOLATION:
       return { statusCode: HttpStatus.BAD_REQUEST, message: 'A required field is missing' };
+    case PG_UNDEFINED_COLUMN:
+    case PG_UNDEFINED_TABLE:
+      return {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Database schema mismatch — pending migration',
+      };
     default:
       return { statusCode: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Internal server error' };
   }
@@ -77,13 +97,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof body === 'object' && typeof (body as Record<string, unknown>).code === 'string') {
         code = (body as Record<string, unknown>).code as string;
       }
-    } else if (isDatabaseError(exception)) {
-      const normalized = normalizeDatabaseError(exception);
-      statusCode = normalized.statusCode;
-      message = normalized.message;
-      // Client-caused DB errors (4xx) are expected — debug-log without alerting.
-      if (statusCode < HttpStatus.INTERNAL_SERVER_ERROR) {
-        this.logger.debug(`DB error [${exception.code}]: ${exception.message}`);
+    } else {
+      // Check both the exception itself and its .cause chain for database errors
+      // (Drizzle wraps PG errors as .cause on DrizzleQueryError)
+      const dbError = findRootCause(exception);
+      if (dbError) {
+        const normalized = normalizeDatabaseError(dbError);
+        statusCode = normalized.statusCode;
+        message = normalized.message;
+        // Client-caused DB errors (4xx) are expected — debug-log without alerting.
+        if (statusCode < HttpStatus.INTERNAL_SERVER_ERROR) {
+          this.logger.debug(`DB error [${dbError.code}]: ${dbError.message}`);
+        }
       }
     }
 
