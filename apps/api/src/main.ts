@@ -6,7 +6,27 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require('cookie-parser');
 
+function validateEnv(): void {
+  const missing: string[] = [];
+  if (!process.env.DATABASE_URL) missing.push('DATABASE_URL');
+  if (missing.length > 0) {
+    console.error('');
+    console.error('═══════════════════════════════════════════════════════════════');
+    console.error('  MISSING REQUIRED ENVIRONMENT VARIABLES');
+    console.error('═══════════════════════════════════════════════════════════════');
+    console.error(`  Missing: ${missing.join(', ')}`);
+    console.error('');
+    console.error('  Copy apps/api/.env.example to apps/api/.env and fill in');
+    console.error('  the required values. See the README for setup instructions.');
+    console.error('═══════════════════════════════════════════════════════════════');
+    console.error('');
+    process.exit(1);
+  }
+}
+
 async function bootstrap() {
+  validateEnv();
+
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.use(cookieParser());
   // Behind a reverse proxy (e.g. nginx / cloud load balancer) so the rate

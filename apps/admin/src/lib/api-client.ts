@@ -120,6 +120,14 @@ export async function apiRequest<T>(
     if (err instanceof Error && err.name === "AbortError") {
       throw new ApiError(504, "The server took too long to respond. Please try again.");
     }
+    // Network errors (ECONNREFUSED, ENOTFOUND, etc.) — the backend is not
+    // reachable.  Surface a actionable message instead of a raw TypeError.
+    if (err instanceof TypeError) {
+      throw new ApiError(
+        503,
+        `Cannot reach the backend at ${BASE_URL}. Make sure the API server is running.`,
+      );
+    }
     throw err;
   } finally {
     clearTimeout(timeout);

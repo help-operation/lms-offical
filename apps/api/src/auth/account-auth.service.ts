@@ -191,12 +191,15 @@ export class AccountAuthService {
   }
 
   /** Google OAuth — find existing user by email or create a new guest */
-  async findOrCreateGoogleUser(profile: {
-    email: string;
-    firstName: string;
-    lastName: string;
-    avatar?: string | null;
-  }) {
+  async findOrCreateGoogleUser(
+    profile: {
+      email: string;
+      firstName: string;
+      lastName: string;
+      avatar?: string | null;
+    },
+    { awaitSideEffects = false } = {},
+  ) {
     const email = profile.email.toLowerCase();
     const [existing] = await this.db
       .select()
@@ -207,7 +210,7 @@ export class AccountAuthService {
     if (existing) {
       if (existing.status === 'suspended')
         throw new UnauthorizedException('Your account has been suspended');
-      return this.authService.login(existing, 'user');
+      return this.authService.login(existing, 'user', { awaitSideEffects });
     }
 
     const [user] = await this.db
@@ -222,6 +225,6 @@ export class AccountAuthService {
       })
       .returning();
 
-    return this.authService.login(user, 'user');
+    return this.authService.login(user, 'user', { awaitSideEffects });
   }
 }

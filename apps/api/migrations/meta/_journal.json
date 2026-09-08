@@ -484,6 +484,34 @@
       "when": 1788344459224,
       "tag": "0068_slippery_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1788344459225,
+      "tag": "0069_add_admin_roles_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1788344459226,
+      "tag": "0070_add_staff_profile_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1788344459227,
+      "tag": "0071_add_extended_staff_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1788344459228,
+      "tag": "0072_extended_staff_management",
+      "breakpoints": true
     }
   ]
 }
