@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Poppins, Hind_Siliguri } from "next/font/google";
 import { unstable_cache } from "next/cache";
 import { ToasterProvider } from "@/shared/providers/ToasterProvider";
+import { buildFontLinks } from "@/shared/utils/font-registry";
 import "./globals.css";
-
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-const poppins = Poppins({ variable: "--font-poppins", subsets: ["latin"], weight: ["400", "600", "700", "800"] });
-const hindSiliguri = Hind_Siliguri({ variable: "--font-hind-siliguri", subsets: ["bengali", "latin"], weight: ["400", "600", "700"] });
 
 const getSiteSettings = unstable_cache(
   async () => {
@@ -47,9 +42,19 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const fontCdnLinks = buildFontLinks("Poppins", "Hind Siliguri");
+
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${hindSiliguri.variable} antialiased`}>
+      <head>
+        {fontCdnLinks.map((href) => (
+          <link key={href} rel="stylesheet" href={href} />
+        ))}
+        {/* Geist fonts via CDN */}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap" />
+      </head>
+      <body className="antialiased">
         {children}
         <ToasterProvider />
       </body>

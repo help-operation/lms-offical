@@ -6,8 +6,7 @@ import { X, GraduationCap } from "lucide-react";
 import { AuthTabs, type AuthTab } from "./AuthTabs";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
-import { ExitConfirmDialog } from "./ExitConfirmDialog";
-import { useExitConfirm } from "./useExitConfirm";
+
 
 const GOOGLE_AUTH_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/auth/google`;
 
@@ -28,19 +27,16 @@ export function AuthShell({
   const [tab, setTab] = useState<AuthTab>(initialTab);
   const [defaultIdentifier, setDefaultIdentifier] = useState<string | undefined>(undefined);
 
-  const { showDialog, requestLeave, confirm, cancel } = useExitConfirm({
-    mode,
-    onLeave: () => {
-      if (mode === "modal") onClose?.();
-      else router.push("/");
-    },
-  });
+  function handleClose() {
+    if (mode === "modal") onClose?.();
+    else router.push("/");
+  }
 
   // Modal chrome: Escape-to-close + body-scroll lock.
   useEffect(() => {
     if (mode !== "modal") return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") requestLeave();
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handler);
     document.body.style.overflow = "hidden";
@@ -48,7 +44,7 @@ export function AuthShell({
       window.removeEventListener("keydown", handler);
       document.body.style.overflow = "";
     };
-  }, [mode, requestLeave]);
+  }, [mode]);
 
   function handleCreateAccount(identifier: string) {
     setDefaultIdentifier(identifier);
@@ -94,10 +90,10 @@ export function AuthShell({
     return (
       <>
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={requestLeave} />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
           <div className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl shadow-brand-200/50 animate-in fade-in zoom-in-95 duration-200 dark:bg-gray-800 dark:shadow-black/40 sm:p-10">
             <button
-              onClick={requestLeave}
+              onClick={handleClose}
               className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
             >
               <X className="h-4 w-4" />
@@ -111,7 +107,6 @@ export function AuthShell({
             {content}
           </div>
         </div>
-        {showDialog && <ExitConfirmDialog onConfirm={confirm} onCancel={cancel} />}
       </>
     );
   }
@@ -131,7 +126,6 @@ export function AuthShell({
           </div>
         </div>
       </div>
-      {showDialog && <ExitConfirmDialog onConfirm={confirm} onCancel={cancel} />}
     </main>
   );
 }
