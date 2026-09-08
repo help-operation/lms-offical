@@ -26,8 +26,14 @@ const DB_POOL_MAX = 30;
     {
       provide: DB_TOKEN,
       useFactory: () => {
+        const connectionString = process.env.DATABASE_URL;
+        if (!connectionString) {
+          throw new Error(
+            'DATABASE_URL is not set. Copy apps/api/.env.example to apps/api/.env and configure your database connection.',
+          );
+        }
         const pool = new Pool({
-          connectionString: process.env.DATABASE_URL!,
+          connectionString,
           connectionTimeoutMillis: DB_CONNECTION_TIMEOUT_MS,
           statement_timeout: DB_STATEMENT_TIMEOUT_MS,
           max: DB_POOL_MAX,

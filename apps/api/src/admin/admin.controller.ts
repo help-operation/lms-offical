@@ -522,6 +522,24 @@ export class AdminController {
     return this.adminService.getStudentsEnrollmentSummary(studentIds);
   }
 
+  // ─── Guest Management (must be before students/:id to avoid param capture) ──
+
+  @RequirePermissions('view_students')
+  @Get('students/guests/stats')
+  @Message('Guest stats fetched')
+  getGuestStats() {
+    return this.adminService.getGuestStats();
+  }
+
+  @RequirePermissions('view_students')
+  @Get('students/guests')
+  @Message('Guests fetched')
+  listGuests(@Query() query: TableQueryInput) {
+    return this.adminService.listGuests(query);
+  }
+
+  // ─── Student CRUD (after static sub-routes to avoid :id capturing them) ──
+
   @RequirePermissions('view_students')
   @Get('students/:id')
   @Message('Student fetched')
@@ -564,22 +582,6 @@ export class AdminController {
     const result = await this.adminService.deleteStudent(id);
     void this.activityLogs.log({ adminUserId: actor.userId, action: 'student_deleted', entity: 'student', entityId: id });
     return result;
-  }
-
-  // ─── Guest Management ────────────────────────────────────────────────────
-
-  @RequirePermissions('view_students')
-  @Get('students/guests/stats')
-  @Message('Guest stats fetched')
-  getGuestStats() {
-    return this.adminService.getGuestStats();
-  }
-
-  @RequirePermissions('view_students')
-  @Get('students/guests')
-  @Message('Guests fetched')
-  listGuests(@Query() query: TableQueryInput) {
-    return this.adminService.listGuests(query);
   }
 
   // ─── Course Interest Tracking ──────────────────────────────────────────────

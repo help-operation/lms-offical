@@ -184,23 +184,37 @@ export class AuthService {
     }
   }
 
-  async login(user: any, userType: 'user' | 'admin' = 'user') {
+  async login(
+    user: any,
+    userType: 'user' | 'admin' = 'user',
+    { awaitSideEffects = false } = {},
+  ) {
     const tokens = await this.generateTokens(
       { id: user.id, email: user.email, role: user.role },
       userType,
     );
-    if (userType === 'user') {
-      void this.db
-        .update(users)
-        .set({ lastLoginAt: new Date() })
-        .where(eq(users.id, user.id));
+
+    const sideEffects = async () => {
+      if (userType === 'user') {
+        await this.db
+          .update(users)
+          .set({ lastLoginAt: new Date() })
+          .where(eq(users.id, user.id));
+      }
+      await this.activityLogs.log({
+        ...(userType === 'admin' ? { adminUserId: user.id } : { userId: user.id }),
+        action: 'login',
+        entity: userType,
+        entityId: user.id,
+      });
+    };
+
+    if (awaitSideEffects) {
+      await sideEffects();
+    } else {
+      void sideEffects();
     }
-    void this.activityLogs.log({
-      ...(userType === 'admin' ? { adminUserId: user.id } : { userId: user.id }),
-      action: 'login',
-      entity: userType,
-      entityId: user.id,
-    });
+
     return tokens;
   }
 

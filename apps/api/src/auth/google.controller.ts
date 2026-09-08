@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Logger,
   Req,
   Res,
   UseGuards,
@@ -36,6 +37,7 @@ const REFRESH_TOKEN_COOKIE = {
 @Public()
 @Controller('api/auth')
 export class GoogleController {
+  private readonly logger = new Logger(GoogleController.name);
   constructor(private accountAuthService: AccountAuthService) {}
 
   @Get('google')
@@ -58,17 +60,24 @@ export class GoogleController {
       avatar: string | null;
     };
 
+    this.logger.log(`Google callback profile: email=${profile?.email}, firstName=${profile?.firstName}, lastName=${profile?.lastName}`);
+
     if (!profile?.email) {
+      this.logger.warn('Google callback: no email in profile, redirecting to login');
       return res.redirect(`${FRONTEND_URL}/login?error=google`);
     }
 
     try {
       const { access_token, refresh_token } =
-        await this.accountAuthService.findOrCreateGoogleUser(profile);
+        await this.accountAuthService.findOrCreateGoogleUser(profile, {
+          awaitSideEffects: true,
+        });
       res.cookie('access_token', access_token, ACCESS_TOKEN_COOKIE);
       res.cookie('refresh_token', refresh_token, REFRESH_TOKEN_COOKIE);
+      this.logger.log(`Google login successful for ${profile.email}, redirecting to dashboard`);
       return res.redirect(`${FRONTEND_URL}/student/dashboard`);
-    } catch {
+    } catch (err) {
+      this.logger.error(`Google OAuth callback failed for ${profile.email}: ${(err as Error).message}`, (err as Error).stack);
       return res.redirect(`${FRONTEND_URL}/login?error=google`);
     }
   }

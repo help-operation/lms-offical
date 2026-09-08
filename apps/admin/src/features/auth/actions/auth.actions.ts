@@ -17,7 +17,15 @@ export async function loginAction(data: EmailLoginInput): Promise<ActionResult<n
     if (err instanceof ApiError) {
       return { success: false, message: err.message, errors: err.errors };
     }
-    return { success: false, message: "Something went wrong. Please try again.", errors: null };
+    // Surface unexpected errors (network failures, JSON parse errors, etc.)
+    // so the developer isn't stuck with a generic message.
+    console.error("[loginAction] Unexpected error:", err);
+    const detail = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      message: `Something went wrong. ${detail}`,
+      errors: null,
+    };
   }
 }
 
