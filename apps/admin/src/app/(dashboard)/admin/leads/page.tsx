@@ -50,13 +50,7 @@ export default async function AdminLeadsPage({ searchParams }: Props) {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Leads</h1>
-        <p className="text-gray-500 dark:text-slate-400 mt-1">
-          Captured contacts — follow up, then create an account &amp; enroll.
-        </p>
-      </div>
+    <div>
       <LeadsListClient leads={leads} counts={counts} pagination={pagination} />
     </div>
   );

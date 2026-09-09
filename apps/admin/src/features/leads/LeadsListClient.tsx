@@ -215,20 +215,51 @@ export function LeadsListClient({ leads, counts, pagination }: Props) {
 
   return (
     <div className="space-y-5">
+      {/* Top row: Title + Columns/Export */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Leads</h1>
+          <p className="text-gray-500 dark:text-slate-400 mt-1 text-sm">
+            Captured contacts — follow up, then create an account &amp; enroll.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <ColumnsDropdown
+            cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
+            visible={visibleCols}
+            onChange={setVisibleCols}
+          />
+          <ExportDropdown
+            pageData={leads}
+            fields={exportFields}
+            filename={`leads-${new Date().toISOString().slice(0, 10)}`}
+            exportTitle="Leads Export"
+          />
+        </div>
+      </div>
+
       {/* KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {STATUSES.map((s) => (
-          <button key={s.key} onClick={() => navigate({ status: s.key === "all" ? undefined : s.key })}
-            className={`rounded-2xl p-4 text-left transition-colors ${activeStatus === s.key
-              ? "bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 ring-2 ring-indigo-100 dark:ring-indigo-500/20"
-              : "bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800"}`}>
-            <p className={`text-xs font-semibold ${s.text}`}>{s.label}</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{countFor(s.key)}</p>
-          </button>
-        ))}
-        <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 p-4 text-left">
-          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Paid — to fulfil</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.paid ?? 0}</p>
+        {STATUSES.map((s) => {
+          const isActive = activeStatus === s.key;
+          return (
+            <button key={s.key} onClick={() => navigate({ status: s.key === "all" ? undefined : s.key })}
+              style={{
+                backgroundColor: isActive ? "#eef2ff" : "#f9fafb",
+                borderColor: isActive ? "#c7d2fe" : "#e5e7eb",
+              }}
+              className="rounded-2xl p-4 text-left transition-all border hover:shadow-sm">
+              <p className={`text-xs font-semibold ${s.text}`}>{s.label}</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{countFor(s.key)}</p>
+            </button>
+          );
+        })}
+        <div
+          style={{ backgroundColor: "#ecfdf5", borderColor: "#d1fae5" }}
+          className="rounded-2xl border p-4 text-left"
+        >
+          <p className="text-xs font-semibold text-emerald-700">Paid — to fulfil</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{counts.paid ?? 0}</p>
         </div>
       </div>
 
@@ -244,21 +275,6 @@ export function LeadsListClient({ leads, counts, pagination }: Props) {
             </button>
           );
         })}
-      </div>
-
-      {/* Controls bar: Columns + Export */}
-      <div className="flex items-center justify-end gap-2">
-        <ColumnsDropdown
-          cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
-          visible={visibleCols}
-          onChange={setVisibleCols}
-        />
-        <ExportDropdown
-          pageData={leads}
-          fields={exportFields}
-          filename={`leads-${new Date().toISOString().slice(0, 10)}`}
-          exportTitle="Leads Export"
-        />
       </div>
 
       {/* Table */}
