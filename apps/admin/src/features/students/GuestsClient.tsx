@@ -138,7 +138,7 @@ export function GuestsClient({ initialData, initialStats }: Props) {
       render: (s: Student) => (
         <div className="flex items-center gap-1.5">
           <Link
-            href={`/admin/users/${s.id}`}
+            href={`/admin/students/${s.id}`}
             title="View"
             className="h-7 w-7 rounded-lg flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors"
           >

@@ -3019,7 +3019,7 @@ export class AdminService {
       })
       .from(users)
       .leftJoin(studentProfiles, eq(studentProfiles.userId, users.id))
-      .where(and(eq(users.id, id), eq(users.role, 'STUDENT')))
+      .where(and(eq(users.id, id), inArray(users.role, ['STUDENT', 'GUEST'])))
       .limit(1);
 
     if (!student) throw new NotFoundException('Student not found');
@@ -3167,7 +3167,7 @@ export class AdminService {
     const [existing] = await this.db
       .select({ id: users.id })
       .from(users)
-      .where(and(eq(users.id, id), eq(users.role, 'STUDENT')))
+      .where(and(eq(users.id, id), inArray(users.role, ['STUDENT', 'GUEST'])))
       .limit(1);
 
     if (!existing) throw new NotFoundException('Student not found');
@@ -3193,7 +3193,7 @@ export class AdminService {
     const [existing] = await this.db
       .select({ id: users.id, status: users.status })
       .from(users)
-      .where(and(eq(users.id, id), eq(users.role, 'STUDENT')))
+      .where(and(eq(users.id, id), inArray(users.role, ['STUDENT', 'GUEST'])))
       .limit(1);
 
     if (!existing) throw new NotFoundException('Student not found');
@@ -3213,7 +3213,7 @@ export class AdminService {
     const [existing] = await this.db
       .select({ id: users.id })
       .from(users)
-      .where(and(eq(users.id, id), eq(users.role, 'STUDENT')))
+      .where(and(eq(users.id, id), inArray(users.role, ['STUDENT', 'GUEST'])))
       .limit(1);
 
     if (!existing) throw new NotFoundException('Student not found');
