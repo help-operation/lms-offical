@@ -21,6 +21,9 @@ export interface Student {
   createdAt: string | null;
   bio: string | null;
   profession: string | null;
+  recordedCount?: number;
+  liveCount?: number;
+  freeCount?: number;
 }
 
 export interface StudentEnrollment {

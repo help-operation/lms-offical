@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, sql, ilike, or, and, inArray, notInArray, gte, lte, isNotNull, isNull, type SQL } from 'drizzle-orm';
+import { desc, eq, sql, ilike, or, and, inArray, notInArray, gte, lte, isNotNull, isNull, exists, type SQL } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
@@ -2957,6 +2957,27 @@ export class AdminService {
         status: users.status,
         paymentStatus: studentPaymentStatusFilter,
         gender: users.gender,
+        courseType: (value: string) => {
+          if (value === 'recorded') {
+            return exists(
+              this.db.select({ id: sql<number>`1` }).from(enrollments).where(eq(enrollments.userId, users.id))
+            ) as SQL;
+          }
+          if (value === 'live') {
+            return exists(
+              this.db.select({ id: sql<number>`1` }).from(liveEnrollments).where(eq(liveEnrollments.userId, users.id))
+            ) as SQL;
+          }
+          if (value === 'free') {
+            return exists(
+              this.db.select({ id: sql<number>`1` })
+                .from(enrollments)
+                .innerJoin(courses, eq(enrollments.courseId, courses.id))
+                .where(and(eq(enrollments.userId, users.id), eq(courses.price, '0.00')))
+            ) as SQL;
+          }
+          return undefined as unknown as SQL;
+        },
         lastLoginFrom: (value: string) => gte(users.lastLoginAt, new Date(value)) as SQL,
         lastLoginTo: (value: string) => {
           const endOfDay = new Date(value);
@@ -2975,6 +2996,19 @@ export class AdminService {
     const studentWhere = eq(users.role, 'STUDENT');
     const combinedWhere = q.where ? and(studentWhere, q.where) : studentWhere;
 
+    // enrollment count subqueries
+    const recordedCountExpr = sql<number>`(
+      SELECT COUNT(*)::int FROM ${enrollments} WHERE ${enrollments.userId} = ${users.id}
+    )`;
+    const liveCountExpr = sql<number>`(
+      SELECT COUNT(*)::int FROM ${liveEnrollments} WHERE ${liveEnrollments.userId} = ${users.id}
+    )`;
+    const freeCountExpr = sql<number>`(
+      SELECT COUNT(*)::int FROM ${enrollments}
+      INNER JOIN ${courses} ON ${enrollments.courseId} = ${courses.id}
+      WHERE ${enrollments.userId} = ${users.id} AND ${courses.price} = '0.00'
+    )`;
+
     const [rows, [countRow]] = await Promise.all([
       this.db
         .select({
@@ -2991,6 +3025,9 @@ export class AdminService {
           profession:    studentProfiles.profession,
           paymentStatus: studentPaymentStatusExpr,
           dueAmount:     studentDueAmountExpr,
+          recordedCount: recordedCountExpr,
+          liveCount:     liveCountExpr,
+          freeCount:     freeCountExpr,
         })
         .from(users)
         .leftJoin(studentProfiles, eq(studentProfiles.userId, users.id))

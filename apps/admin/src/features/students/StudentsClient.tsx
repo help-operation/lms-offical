@@ -7,7 +7,7 @@ import type { Student } from "./types";
 import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
 import {
-  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Trash2, Phone, Mail, Copy, Check, UserPlus, Filter,
+  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Phone, Mail, Copy, Check, UserPlus, Video, Radio, BookOpen,
 } from "lucide-react";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import { useLocalization } from "@/shared/context/LocalizationContext";
@@ -42,6 +42,14 @@ function getAllCols(formatDate: (value: Date | string | null | undefined) => str
       ],
     },
     {
+      key: "enrollments", header: "Enrollments", defaultVisible: true,
+      exportFields: [
+        { header: "Recorded", getValue: (s) => String(s.recordedCount ?? 0) },
+        { header: "Live", getValue: (s) => String(s.liveCount ?? 0) },
+        { header: "Free", getValue: (s) => String(s.freeCount ?? 0) },
+      ],
+    },
+    {
       key: "createdAt", header: "Joined", defaultVisible: true,
       exportFields: [{
         header: "Joined",
@@ -55,7 +63,7 @@ function getAllCols(formatDate: (value: Date | string | null | undefined) => str
   ];
 }
 
-const DEFAULT_VISIBLE = new Set(["firstName", "email", "createdAt", "status"]);
+const DEFAULT_VISIBLE = new Set(["firstName", "email", "enrollments", "createdAt", "status"]);
 
 const avatarColors = [
   "bg-blue-400", "bg-violet-400", "bg-emerald-400",
@@ -100,6 +108,40 @@ function CopyableField({ icon: Icon, value }: { icon: typeof Mail; value: string
   );
 }
 
+function EnrollmentsCell({ s }: { s: Student }) {
+  const recorded = s.recordedCount ?? 0;
+  const live = s.liveCount ?? 0;
+  const free = s.freeCount ?? 0;
+  const total = recorded + live + free;
+
+  if (total === 0) {
+    return <span className="text-xs text-gray-300 dark:text-slate-600">—</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm font-semibold text-gray-900 dark:text-white">{total}</span>
+      <div className="flex items-center gap-1.5">
+        {recorded > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-md">
+            <Video className="h-2.5 w-2.5" /> {recorded}
+          </span>
+        )}
+        {live > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+            <Radio className="h-2.5 w-2.5" /> {live}
+          </span>
+        )}
+        {free > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+            <BookOpen className="h-2.5 w-2.5" /> {free}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function StudentsClient({ initialData, initialStats }: Props) {
   const { formatDate } = useLocalization();
   const ALL_COLS = getAllCols(formatDate);
@@ -118,10 +160,7 @@ export function StudentsClient({ initialData, initialStats }: Props) {
   async function fetchStudents(params: TableQueryParams) {
     setIsLoading(true);
     try {
-      const merged = { ...params } as Record<string, string>;
-      if (lastLoginFrom) merged["lastLoginFrom"] = lastLoginFrom;
-      if (lastLoginTo) merged["lastLoginTo"] = lastLoginTo;
-      const res = await fetchStudentsAction(merged as TableQueryParams);
+      const res = await fetchStudentsAction(params);
       if (res.success && res.data) {
         setStudents(res.data.data);
         setPagination(res.data.pagination);
@@ -129,19 +168,6 @@ export function StudentsClient({ initialData, initialStats }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }
-
-  function handleLoginDateChange() {
-    const params: Record<string, string> = { page: "1", per_page: "20" };
-    if (lastLoginFrom) params["lastLoginFrom"] = lastLoginFrom;
-    if (lastLoginTo) params["lastLoginTo"] = lastLoginTo;
-    setIsLoading(true);
-    fetchStudentsAction(params as TableQueryParams).then((res) => {
-      if (res.success && res.data) {
-        setStudents(res.data.data);
-        setPagination(res.data.pagination);
-      }
-    }).finally(() => setIsLoading(false));
   }
 
   const exportFields = ALL_COLS
@@ -200,6 +226,15 @@ export function StudentsClient({ initialData, initialStats }: Props) {
           } as Column<Student>,
         ]
       : []),
+    ...(visibleCols.has("enrollments")
+      ? [
+          {
+            key: "enrollments" as const,
+            header: "Enrollments",
+            render: (s: Student) => <EnrollmentsCell s={s} />,
+          } as Column<Student>,
+        ]
+      : []),
     ...(visibleCols.has("createdAt")
       ? [
           {
@@ -249,8 +284,6 @@ export function StudentsClient({ initialData, initialStats }: Props) {
   ];
 
   const [showCreate, setShowCreate] = useState(false);
-  const [lastLoginFrom, setLastLoginFrom] = useState("");
-  const [lastLoginTo, setLastLoginTo] = useState("");
 
   return (
     <div className="space-y-5">
@@ -324,41 +357,6 @@ export function StudentsClient({ initialData, initialStats }: Props) {
       {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
         <div className="px-6 pt-5 pb-6">
-          {/* Custom Last Login date range */}
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-slate-400">
-              <Filter className="h-3.5 w-3.5" /> Last Login
-            </div>
-            <input
-              type="date"
-              value={lastLoginFrom}
-              onChange={(e) => setLastLoginFrom(e.target.value)}
-              className="h-8 px-2.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
-            />
-            <span className="text-xs text-gray-400 dark:text-slate-500">to</span>
-            <input
-              type="date"
-              value={lastLoginTo}
-              onChange={(e) => setLastLoginTo(e.target.value)}
-              className="h-8 px-2.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
-            />
-            <button
-              type="button"
-              onClick={handleLoginDateChange}
-              className="h-8 px-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors"
-            >
-              Apply
-            </button>
-            {(lastLoginFrom || lastLoginTo) && (
-              <button
-                type="button"
-                onClick={() => { setLastLoginFrom(""); setLastLoginTo(""); handleLoginDateChange(); }}
-                className="h-8 px-2.5 rounded-lg border border-gray-200 dark:border-slate-700 text-xs text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                Clear
-              </button>
-            )}
-          </div>
           <DataTable
             data={students}
             columns={visibleColumns}
@@ -386,6 +384,15 @@ export function StudentsClient({ initialData, initialStats }: Props) {
                   { label: "Paid", value: "paid" },
                   { label: "Partial", value: "partial" },
                   { label: "Unpaid", value: "unpaid" },
+                ],
+              },
+              {
+                key: "courseType",
+                label: "All Courses",
+                options: [
+                  { label: "Recorded", value: "recorded" },
+                  { label: "Live", value: "live" },
+                  { label: "Free", value: "free" },
                 ],
               },
               {
