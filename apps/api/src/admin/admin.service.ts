@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, sql, ilike, or, and, inArray, notInArray, gte, lte, isNotNull, type SQL } from 'drizzle-orm';
+import { desc, eq, sql, ilike, or, and, inArray, notInArray, gte, lte, isNotNull, isNull, type SQL } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
@@ -2956,12 +2956,17 @@ export class AdminService {
       filterable: {
         status: users.status,
         paymentStatus: studentPaymentStatusFilter,
+        gender: users.gender,
         lastLoginFrom: (value: string) => gte(users.lastLoginAt, new Date(value)) as SQL,
         lastLoginTo: (value: string) => {
           const endOfDay = new Date(value);
           endOfDay.setUTCHours(23, 59, 59, 999);
           return lte(users.lastLoginAt, endOfDay) as SQL;
         },
+        hasEmail: (value: string) =>
+          value === 'true' ? isNotNull(users.email) : isNull(users.email),
+        hasPhone: (value: string) =>
+          value === 'true' ? isNotNull(users.phone) : isNull(users.phone),
       },
       dateColumn:  users.createdAt,
       defaultSort: desc(users.createdAt),

@@ -7,7 +7,7 @@ import type { Student } from "./types";
 import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
 import {
-  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Trash2, Phone, Mail, Copy, Check, UserPlus,
+  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Trash2, Phone, Mail, Copy, Check, UserPlus, Filter,
 } from "lucide-react";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import { useLocalization } from "@/shared/context/LocalizationContext";
@@ -118,7 +118,10 @@ export function StudentsClient({ initialData, initialStats }: Props) {
   async function fetchStudents(params: TableQueryParams) {
     setIsLoading(true);
     try {
-      const res = await fetchStudentsAction(params);
+      const merged = { ...params } as Record<string, string>;
+      if (lastLoginFrom) merged["lastLoginFrom"] = lastLoginFrom;
+      if (lastLoginTo) merged["lastLoginTo"] = lastLoginTo;
+      const res = await fetchStudentsAction(merged as TableQueryParams);
       if (res.success && res.data) {
         setStudents(res.data.data);
         setPagination(res.data.pagination);
@@ -126,6 +129,19 @@ export function StudentsClient({ initialData, initialStats }: Props) {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleLoginDateChange() {
+    const params: Record<string, string> = { page: "1", per_page: "20" };
+    if (lastLoginFrom) params["lastLoginFrom"] = lastLoginFrom;
+    if (lastLoginTo) params["lastLoginTo"] = lastLoginTo;
+    setIsLoading(true);
+    fetchStudentsAction(params as TableQueryParams).then((res) => {
+      if (res.success && res.data) {
+        setStudents(res.data.data);
+        setPagination(res.data.pagination);
+      }
+    }).finally(() => setIsLoading(false));
   }
 
   const exportFields = ALL_COLS
@@ -233,6 +249,8 @@ export function StudentsClient({ initialData, initialStats }: Props) {
   ];
 
   const [showCreate, setShowCreate] = useState(false);
+  const [lastLoginFrom, setLastLoginFrom] = useState("");
+  const [lastLoginTo, setLastLoginTo] = useState("");
 
   return (
     <div className="space-y-5">
@@ -306,6 +324,41 @@ export function StudentsClient({ initialData, initialStats }: Props) {
       {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
         <div className="px-6 pt-5 pb-6">
+          {/* Custom Last Login date range */}
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-slate-400">
+              <Filter className="h-3.5 w-3.5" /> Last Login
+            </div>
+            <input
+              type="date"
+              value={lastLoginFrom}
+              onChange={(e) => setLastLoginFrom(e.target.value)}
+              className="h-8 px-2.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+            />
+            <span className="text-xs text-gray-400 dark:text-slate-500">to</span>
+            <input
+              type="date"
+              value={lastLoginTo}
+              onChange={(e) => setLastLoginTo(e.target.value)}
+              className="h-8 px-2.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+            />
+            <button
+              type="button"
+              onClick={handleLoginDateChange}
+              className="h-8 px-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors"
+            >
+              Apply
+            </button>
+            {(lastLoginFrom || lastLoginTo) && (
+              <button
+                type="button"
+                onClick={() => { setLastLoginFrom(""); setLastLoginTo(""); handleLoginDateChange(); }}
+                className="h-8 px-2.5 rounded-lg border border-gray-200 dark:border-slate-700 text-xs text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
           <DataTable
             data={students}
             columns={visibleColumns}
@@ -333,6 +386,31 @@ export function StudentsClient({ initialData, initialStats }: Props) {
                   { label: "Paid", value: "paid" },
                   { label: "Partial", value: "partial" },
                   { label: "Unpaid", value: "unpaid" },
+                ],
+              },
+              {
+                key: "gender",
+                label: "All Gender",
+                options: [
+                  { label: "Male", value: "male" },
+                  { label: "Female", value: "female" },
+                  { label: "Other", value: "other" },
+                ],
+              },
+              {
+                key: "hasEmail",
+                label: "All Email",
+                options: [
+                  { label: "Has Email", value: "true" },
+                  { label: "No Email", value: "false" },
+                ],
+              },
+              {
+                key: "hasPhone",
+                label: "All Phone",
+                options: [
+                  { label: "Has Phone", value: "true" },
+                  { label: "No Phone", value: "false" },
                 ],
               },
             ]}
