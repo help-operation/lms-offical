@@ -363,7 +363,12 @@ export class AdminService {
       failedLoginAttempts: users.failedLoginAttempts,
       lockedUntil:         users.lockedUntil,
     };
-    const [user] = await this.db.select(userCols).from(users).where(eq(users.id, id)).limit(1);
+    const adminRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
+    const [user] = await this.db
+      .select(userCols)
+      .from(users)
+      .where(and(eq(users.id, id), inArray(users.role, adminRoles as any)))
+      .limit(1);
 
     // 2) Fallback: check `admin_users` table (Super Admin, Instructors)
     let mappedUser = user;
