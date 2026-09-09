@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql, type SQL } from 'drizzle-orm';
 import type { DB } from 'src/db';
 import { DB_TOKEN } from 'src/db/db.module';
 import {
@@ -611,6 +611,7 @@ export class LeadsService {
   async listForAdmin(opts: {
     status?: string;
     source?: string;
+    paid?: string;
     search?: string;
     page?: number;
     limit?: number;
@@ -628,6 +629,33 @@ export class LeadsService {
       // Use explicit cast to avoid Neon HTTP prepared-statement cache rejecting
       // enum values added after the initial connection (e.g. 'failed_payment').
       conditions.push(sql`${leads.source} = ${opts.source}::lead_source`);
+    }
+    if (opts.paid && opts.paid !== 'all') {
+      const isPaid = opts.paid === 'yes';
+      if (isPaid) {
+        // Leads linked to a paid order OR a completed live enrollment
+        conditions.push(
+          or(
+            sql`EXISTS (SELECT 1 FROM orders WHERE orders.id = ${leads.orderId} AND orders.status = 'paid')`,
+            sql`EXISTS (SELECT 1 FROM live_enrollments WHERE live_enrollments.id = ${leads.liveEnrollmentId} AND live_enrollments.status = 'completed')`,
+          ) as SQL,
+        );
+      } else {
+        // Leads with no order, or linked to an unpaid order,
+        // AND no live enrollment or linked to an incomplete one
+        conditions.push(
+          and(
+            or(
+              sql`${leads.orderId} IS NULL`,
+              sql`NOT EXISTS (SELECT 1 FROM orders WHERE orders.id = ${leads.orderId} AND orders.status = 'paid')`,
+            ) as SQL,
+            or(
+              sql`${leads.liveEnrollmentId} IS NULL`,
+              sql`NOT EXISTS (SELECT 1 FROM live_enrollments WHERE live_enrollments.id = ${leads.liveEnrollmentId} AND live_enrollments.status = 'completed')`,
+            ) as SQL,
+          ) as SQL,
+        );
+      }
     }
     if (opts.search) {
       const q = `%${opts.search}%`;

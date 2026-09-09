@@ -7,6 +7,7 @@ interface Props {
   searchParams: Promise<{
     status?: string;
     source?: string;
+    paid?: string;
     search?: string;
     page?: string;
     date_from?: string;
@@ -23,6 +24,7 @@ export default async function AdminLeadsPage({ searchParams }: Props) {
       .list({
         status: sp.status,
         source: sp.source,
+        paid: sp.paid,
         search: sp.search,
         page,
         limit: 25,

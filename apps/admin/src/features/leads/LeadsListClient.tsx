@@ -122,7 +122,7 @@ export function LeadsListClient({ leads, counts, pagination }: Props) {
       if (v === undefined || v === "") next.delete(k);
       else next.set(k, v);
     }
-    if (updates.status !== undefined || updates.source !== undefined || updates.search !== undefined) {
+    if (updates.status !== undefined || updates.source !== undefined || updates.search !== undefined || updates.paid !== undefined) {
       next.delete("page");
     }
     startTransition(() => router.push(`/admin/leads?${next.toString()}`));
@@ -214,17 +214,19 @@ export function LeadsListClient({ leads, counts, pagination }: Props) {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {STATUSES.map((s) => (
           <button key={s.key} onClick={() => navigate({ status: s.key === "all" ? undefined : s.key })}
-            className={`rounded-2xl border p-4 text-left transition-colors ${activeStatus === s.key ? "border-indigo-300 dark:border-indigo-500/50 ring-2 ring-indigo-100 dark:ring-indigo-500/20" : "border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700"}`}>
+            className={`rounded-2xl p-4 text-left transition-colors ${activeStatus === s.key
+              ? "bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 ring-2 ring-indigo-100 dark:ring-indigo-500/20"
+              : "bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800"}`}>
             <p className={`text-xs font-semibold ${s.text}`}>{s.label}</p>
             <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{countFor(s.key)}</p>
           </button>
         ))}
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-800 p-4 text-left">
+        <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 p-4 text-left">
           <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Paid — to fulfil</p>
           <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.paid ?? 0}</p>
         </div>
@@ -244,29 +246,23 @@ export function LeadsListClient({ leads, counts, pagination }: Props) {
         })}
       </div>
 
-      {/* Header with controls */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-gray-900 dark:text-white">Leads</h1>
-        <div className="flex items-center gap-2">
-          <ColumnsDropdown
-            cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
-            visible={visibleCols}
-            onChange={setVisibleCols}
-          />
-          <ExportDropdown
-            pageData={leads}
-            fields={exportFields}
-            filename={`leads-${new Date().toISOString().slice(0, 10)}`}
-            exportTitle="Leads Export"
-          />
-        </div>
+      {/* Controls bar: Columns + Export */}
+      <div className="flex items-center justify-end gap-2">
+        <ColumnsDropdown
+          cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
+          visible={visibleCols}
+          onChange={setVisibleCols}
+        />
+        <ExportDropdown
+          pageData={leads}
+          fields={exportFields}
+          filename={`leads-${new Date().toISOString().slice(0, 10)}`}
+          exportTitle="Leads Export"
+        />
       </div>
 
       {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 dark:border-slate-800">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">All Leads</h2>
-        </div>
         <div className="px-6 pt-5 pb-6">
           <DataTable
             data={leads}
@@ -292,6 +288,10 @@ export function LeadsListClient({ leads, counts, pagination }: Props) {
               else next.delete("date_from");
               if (params.date_to)   next.set("date_to",   params.date_to as string);
               else next.delete("date_to");
+              if (params.status)    next.set("status",    params.status as string);
+              else if (sp.get("status")) next.set("status", sp.get("status")!);
+              if (params.paid)      next.set("paid",      params.paid as string);
+              else if (sp.get("paid")) next.set("paid", sp.get("paid")!);
               next.set("page", String(params.page));
               startTransition(() => router.push(`/admin/leads?${next.toString()}`));
             }}
@@ -302,6 +302,14 @@ export function LeadsListClient({ leads, counts, pagination }: Props) {
                 options: [
                   { label: "Pending",  value: "pending"  },
                   { label: "Complete", value: "complete"  },
+                ],
+              },
+              {
+                key: "paid",
+                label: "Payment",
+                options: [
+                  { label: "Paid",     value: "yes" },
+                  { label: "Unpaid",   value: "no"  },
                 ],
               },
             ]}
