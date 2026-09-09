@@ -7,7 +7,7 @@ import { DashboardPageHeading } from "@/shared/layout/DashboardPageHeading";
 import { DashboardProfileMenu } from "@/shared/layout/DashboardProfileMenu";
 import { DashboardSidebar } from "@/shared/layout/DashboardSidebar";
 import { SidebarProvider } from "@/shared/layout/SidebarContext";
-import { SidebarToggleButton } from "@/shared/layout/SidebarToggleButton";
+import { HeaderGreeting } from "@/shared/layout/HeaderGreeting";
 import {
   guestNavItems,
   studentNavSections,
@@ -178,30 +178,32 @@ async function DashboardLayoutContent({
         />
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-slate-200/60 bg-[#f7f8fa]/80 px-4 backdrop-blur dark:border-slate-800/60 dark:bg-slate-950/80 sm:px-6 lg:px-8">
-            <DashboardMobileNav
-              logoSrc={logoSrc}
-              logoDarkSrc={logoDarkSrc}
-              logoAlt={logoAlt}
-              mainNavSections={isStudent ? mainNavSections : [{ title: "MAIN MENU", items: guestNavDrawerItems }]}
-              settingsNav={settingsDrawerItems}
-              footer={contactCard}
-              dashboardHref={dashboardHref}
-              user={{
-                firstName: user.data.firstName,
-                lastName: user.data.lastName,
-                initials,
-                avatar: user.data.avatar,
-                email: user.data.email,
-                phone: user.data.phone,
-              }}
-              isStudent={isStudent}
-              onLogout={logout}
-            />
+          <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200/60 bg-[#f7f8fa]/80 px-4 backdrop-blur dark:border-slate-800/60 dark:bg-slate-950/80 sm:px-6 lg:px-8">
+            {/* Left: Mobile nav + greeting + spacer */}
+            <div className="flex flex-1 items-center gap-3">
+              <DashboardMobileNav
+                logoSrc={logoSrc}
+                logoDarkSrc={logoDarkSrc}
+                logoAlt={logoAlt}
+                mainNavSections={isStudent ? mainNavSections : [{ title: "MAIN MENU", items: guestNavDrawerItems }]}
+                settingsNav={settingsDrawerItems}
+                footer={contactCard}
+                dashboardHref={dashboardHref}
+                user={{
+                  firstName: user.data.firstName,
+                  lastName: user.data.lastName,
+                  initials,
+                  avatar: user.data.avatar,
+                  email: user.data.email,
+                  phone: user.data.phone,
+                }}
+                isStudent={isStudent}
+                onLogout={logout}
+              />
+              <HeaderGreeting />
+            </div>
 
-            <SidebarToggleButton />
-
-            {/* Search bar */}
+            {/* Center: Search bar */}
             <div className="hidden h-10 w-full max-w-sm items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500 sm:flex">
               <Search className="h-4 w-4" />
               <input
@@ -211,19 +213,19 @@ async function DashboardLayoutContent({
               />
             </div>
 
-            <Link href="/" aria-label={logoAlt} className="lg:hidden">
-              <SiteLogo
-                lightSrc={logoSrc}
-                darkSrc={logoDarkSrc}
-                alt={logoAlt}
-                width={140}
-                height={40}
-                className="h-8 w-auto object-contain"
-                priority
-              />
-            </Link>
-
-            <div className="ml-auto flex items-center gap-2">
+            {/* Right: Actions */}
+            <div className="flex flex-1 items-center justify-end gap-2">
+              <Link href="/" aria-label={logoAlt} className="lg:hidden">
+                <SiteLogo
+                  lightSrc={logoSrc}
+                  darkSrc={logoDarkSrc}
+                  alt={logoAlt}
+                  width={140}
+                  height={40}
+                  className="h-8 w-auto object-contain"
+                  priority
+                />
+              </Link>
               <ThemeToggle iconOnly />
               <NotificationsBell />
               <DashboardProfileMenu

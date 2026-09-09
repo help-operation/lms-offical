@@ -11,8 +11,19 @@ import {
   CreditCard,
   PlayCircle,
   TrendingUp,
-  AlertTriangle,
-  Radio,
+  Trophy,
+  Target,
+  Zap,
+  ArrowRight,
+  Bell,
+  FileText,
+  GraduationCap,
+  ClipboardCheck,
+  Video,
+  Users,
+  Timer,
+  CalendarDays,
+  Flame,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -22,18 +33,47 @@ import { certificatesApi } from "@/features/courses/api/certificates";
 import { enrollmentsApi } from "@/features/courses/api/enrollments";
 import { myPaymentsApi } from "@/features/payments/api";
 import { liveClassesApi } from "@/features/live-classes/api";
+import { notificationsServerApi } from "@/features/notifications/api/server";
 import { DuePaymentBanner } from "@/features/courses/DuePaymentBanner";
 import { progressOf } from "@/lib/utils";
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good Morning";
-  if (h < 17) return "Good Afternoon";
-  return "Good Evening";
-}
+import { LearningHeatmapCalendar } from "@/features/dashboard/LearningHeatmapCalendar";
+import { LearningActivityGraph } from "@/features/dashboard/LearningActivityGraph";
+import { MostActiveTime } from "@/features/dashboard/MostActiveTime";
+import { SessionTimer } from "@/features/dashboard/SessionTimer";
 
 function fmtBDT(v: number) {
   return "\u09F3" + v.toLocaleString("en-BD");
+}
+
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function fmtTime(d: string) {
+  return new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
+function timeAgo(d: string | null) {
+  if (!d) return "";
+  const diff = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return fmtDate(d);
+}
+
+function daysSince(dateStr: string | null): number {
+  if (!dateStr) return 0;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+}
+
+function fmtFullDate(d: string | null) {
+  if (!d) return "N/A";
+  return new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 export default async function StudentDashboardPage() {
@@ -42,17 +82,20 @@ export default async function StudentDashboardPage() {
   if (!user) redirect("/");
   if (user.data.role !== "STUDENT") redirect("/guest/dashboard");
 
-  const [enrollmentsRes, certificatesRes, paymentsRes, classesRes] = await Promise.all([
-    enrollmentsApi.myEnrollments().catch(() => null),
-    certificatesApi.mine().catch(() => null),
-    myPaymentsApi.list().catch(() => null),
-    liveClassesApi.upcoming().catch(() => null),
-  ]);
+  const [enrollmentsRes, certificatesRes, paymentsRes, classesRes, notificationsRes] =
+    await Promise.all([
+      enrollmentsApi.myEnrollments().catch(() => null),
+      certificatesApi.mine().catch(() => null),
+      myPaymentsApi.list().catch(() => null),
+      liveClassesApi.upcoming().catch(() => null),
+      notificationsServerApi.list().catch(() => null),
+    ]);
 
   const enrollments = enrollmentsRes?.data ?? [];
   const certificates = certificatesRes?.data ?? [];
   const payments = paymentsRes?.data ?? [];
   const classes = classesRes?.data ?? [];
+  const notifications = notificationsRes?.data ?? [];
 
   const withProgress = enrollments.map((e) => ({ ...e, progress: progressOf(e) }));
 
@@ -60,266 +103,368 @@ export default async function StudentDashboardPage() {
   const activeCourses = withProgress.filter((e) => e.progress > 0 && e.progress < 100).length;
   const completedCourses = withProgress.filter((e) => e.progress >= 100).length;
   const completedLessons = withProgress.reduce((sum, e) => sum + e.completedLessons, 0);
+  const totalLessons = withProgress.reduce((sum, e) => sum + e.totalLessons, 0);
   const avgProgress =
     totalCourses > 0
       ? Math.round(withProgress.reduce((sum, e) => sum + e.progress, 0) / totalCourses)
       : 0;
-  const notStarted = withProgress.filter((e) => e.progress === 0).length;
-  const inProgress = withProgress.filter((e) => e.progress > 0 && e.progress < 100).length;
 
-  // Payment summary
-  const totalPaid = enrollments.reduce((sum, e) => sum + Number(e.totalPaid ?? 0), 0);
-  const totalDue = enrollments.reduce((sum, e) => sum + Number(e.dueAmount ?? 0), 0);
+  const learningHours = Math.round(completedLessons * 12 / 60 * 10) / 10;
+  const joinDate = user.data.createdAt;
+  const daysActive = daysSince(joinDate);
 
-  // Upcoming classes (next 3)
   const upcomingClasses = classes
     .filter((c) => c.status === "scheduled")
     .slice(0, 3);
 
-  // Continue learning
   const continueLearning = [...withProgress]
     .filter((e) => e.progress < 100 && e.progress > 0)
     .sort((a, b) => b.progress - a.progress)
-    .slice(0, 3);
+    .slice(0, 2);
 
-  // Courses preview
-  const coursesPreview = [...withProgress].slice(0, 5);
-
-  // Recent payments (last 3)
   const recentPayments = payments.slice(0, 3);
+  const recentNotifications = notifications.slice(0, 5);
+  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
 
   return (
     <div className="space-y-5">
       <DuePaymentBanner enrollments={enrollments} />
 
-      {/* Greeting */}
-      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-              {getGreeting()}, {user.data.firstName}! {"\uD83D\uDC4B"}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {totalCourses === 0
-                ? "Ready to start your learning journey?"
-                : activeCourses > 0
-                  ? `You have ${activeCourses} course${activeCourses > 1 ? "s" : ""} in progress. Keep going!`
-                  : completedCourses > 0
-                    ? "All your courses are complete! Well done!"
-                    : "Ready to continue learning today?"}
-            </p>
-          </div>
-          {continueLearning[0] && (
-            <Button asChild className="rounded-full bg-brand text-white hover:bg-brand-hover">
-              <Link href={continueLearning[0].courseType === "live" ? `/${continueLearning[0].courseSlug}` : `/learn/${continueLearning[0].courseSlug}`}>
-                <PlayCircle className="mr-2 h-4 w-4" />
-                Resume Learning
-              </Link>
-            </Button>
-          )}
-        </div>
+      {/* Quick Actions — top right row */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <QuickAction href="/student/courses" icon={<BookOpen className="h-4 w-4" />} label="My Courses" color="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" />
+        <QuickAction href={continueLearning[0] ? (continueLearning[0].courseType === "live" ? `/${continueLearning[0].courseSlug}` : `/learn/${continueLearning[0].courseSlug}`) : "/courses"} icon={<PlayCircle className="h-4 w-4" />} label="Continue" color="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" />
+        <QuickAction href="/student/classes" icon={<Video className="h-4 w-4" />} label="Live Classes" color="bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" />
+        <QuickAction href="/student/assignments" icon={<ClipboardCheck className="h-4 w-4" />} label="Assignments" color="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" />
+        <QuickAction href="/student/progress" icon={<GraduationCap className="h-4 w-4" />} label="Progress" color="bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400" />
+        <QuickAction href="/student/certificates" icon={<Award className="h-4 w-4" />} label="Certificates" color="bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400" />
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <KPICard icon={<BookOpen className="h-5 w-5" />} label="Total Courses" value={String(totalCourses)} color="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" />
-        <KPICard icon={<Clock className="h-5 w-5" />} label="Active Courses" value={String(activeCourses)} color="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" />
-        <KPICard icon={<CheckCircle2 className="h-5 w-5" />} label="Completed" value={String(completedCourses)} color="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" />
-        <KPICard icon={<TrendingUp className="h-5 w-5" />} label="Avg. Progress" value={`${avgProgress}%`} color="bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400" />
-        <KPICard icon={<CheckCircle2 className="h-5 w-5" />} label="Lessons Done" value={String(completedLessons)} color="bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400" />
-        <KPICard icon={<Award className="h-5 w-5" />} label="Certificates" value={String(certificates.length)} color="bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" />
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <StatCard
+          icon={<BookOpen className="h-4 w-4" />}
+          label="Enrolled"
+          value={String(totalCourses)}
+          iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+          cardBg="bg-gradient-to-br from-blue-50/80 to-white dark:from-blue-500/10 dark:to-slate-900"
+          border="border-blue-100 dark:border-blue-500/20"
+        />
+        <StatCard
+          icon={<Timer className="h-4 w-4" />}
+          label="Session Time"
+          value={<SessionTimer />}
+          iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"
+          cardBg="bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-500/10 dark:to-slate-900"
+          border="border-emerald-100 dark:border-emerald-500/20"
+          live
+        />
+        <StatCard
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          label="Completed"
+          value={String(completedCourses)}
+          iconBg="bg-gradient-to-br from-violet-500 to-violet-600"
+          cardBg="bg-gradient-to-br from-violet-50/80 to-white dark:from-violet-500/10 dark:to-slate-900"
+          border="border-violet-100 dark:border-violet-500/20"
+        />
+        <StatCard
+          icon={<CalendarDays className="h-4 w-4" />}
+          label="Days Active"
+          value={String(daysActive)}
+          iconBg="bg-gradient-to-br from-amber-500 to-amber-600"
+          cardBg="bg-gradient-to-br from-amber-50/80 to-white dark:from-amber-500/10 dark:to-slate-900"
+          border="border-amber-100 dark:border-amber-500/20"
+        />
+        <StatCard
+          icon={<Flame className="h-4 w-4" />}
+          label="Progress"
+          value={`${avgProgress}%`}
+          iconBg="bg-gradient-to-br from-rose-500 to-rose-600"
+          cardBg="bg-gradient-to-br from-rose-50/80 to-white dark:from-rose-500/10 dark:to-slate-900"
+          border="border-rose-100 dark:border-rose-500/20"
+        />
+        <StatCard
+          icon={<GraduationCap className="h-4 w-4" />}
+          label="Total Lessons"
+          value={`${completedLessons}/${totalLessons}`}
+          iconBg="bg-gradient-to-br from-cyan-500 to-cyan-600"
+          cardBg="bg-gradient-to-br from-cyan-50/80 to-white dark:from-cyan-500/10 dark:to-slate-900"
+          border="border-cyan-100 dark:border-cyan-500/20"
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_420px]">
+      {/* Charts Row: Activity Graph + Most Active Time */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
+        <LearningActivityGraph enrollments={withProgress} />
+        <MostActiveTime enrollments={withProgress} />
+      </div>
+
+      {/* Heatmap Calendar */}
+      <LearningHeatmapCalendar enrollments={withProgress} />
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_380px]">
+        {/* Left Column */}
         <div className="min-w-0 space-y-5">
-          {/* Overall Progress */}
-          <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
-            <CardHeader>
-              <CardTitle className="text-lg">Overall Progress</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {totalCourses === 0 ? (
-                <EmptyState icon={<TrendingUp className="h-7 w-7" />} title="No progress yet" description="Enroll in a course to start tracking your progress." actionLabel="Explore Courses" actionHref="/courses" />
-              ) : (
-                <>
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">Average Completion</p>
-                      <p className="text-4xl font-light text-slate-950 dark:text-slate-100">{avgProgress}%</p>
-                    </div>
-                    <Badge className="bg-brand-50 text-brand hover:bg-brand-50">{completedCourses} done</Badge>
-                  </div>
-                  <Progress value={avgProgress} className="h-2.5" />
-                  <div className="grid grid-cols-3 gap-3">
-                    <RatePill label="Not started" value={String(notStarted)} color="bg-slate-500" />
-                    <RatePill label="In progress" value={String(inProgress)} color="bg-brand" />
-                    <RatePill label="Completed" value={String(completedCourses)} color="bg-emerald-500" />
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Continue Learning */}
           <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg">Continue Learning</CardTitle>
               {totalCourses > 0 && (
-                <Button variant="outline" size="sm" className="rounded-full" asChild>
-                  <Link href="/student/courses">View All</Link>
+                <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
+                  <Link href="/student/courses">
+                    View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
                 </Button>
               )}
             </CardHeader>
-            <CardContent className="space-y-3">
-              {continueLearning.length === 0 ? (
-                <EmptyState icon={<PlayCircle className="h-7 w-7" />} title={totalCourses === 0 ? "No courses yet" : "All caught up!"} description={totalCourses === 0 ? "You haven't enrolled in any courses yet." : "Every course is complete. Great job!"} actionLabel={totalCourses === 0 ? "Browse Courses" : "View Courses"} actionHref={totalCourses === 0 ? "/courses" : "/student/courses"} />
-              ) : (
-                continueLearning.map((item) => (
-                  <div key={`${item.courseType}-${item.id}`} className="rounded-xl bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/60">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.courseTitle}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {item.courseType === "live" ? "Live course" : `${item.completedLessons}/${item.totalLessons} lessons completed`}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="outline" className="shrink-0 rounded-full" asChild>
-                        <Link href={item.courseType === "live" ? `/${item.courseSlug}` : `/learn/${item.courseSlug}`}>
-                          <PlayCircle className="mr-2 h-4 w-4" /> {item.courseType === "live" ? "Open" : "Resume"}
-                        </Link>
-                      </Button>
-                    </div>
-                    {item.courseType !== "live" && (
-                      <div className="flex items-center gap-3">
-                        <Progress value={item.progress} className="h-2 flex-1" />
-                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{item.progress}%</span>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Sidebar */}
-        <aside className="space-y-5">
-          {/* Quick Summary */}
-          <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
-            <CardHeader>
-              <CardTitle className="text-lg">Summary</CardTitle>
-            </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <SummaryTile value={String(totalCourses)} label="Courses" color="bg-brand" />
-                <SummaryTile value={`${avgProgress}%`} label="Progress" color="bg-brand-500" />
-                <SummaryTile value={String(completedLessons)} label="Lessons" color="bg-brand-400" />
-                <SummaryTile value={String(certificates.length)} label="Awards" color="bg-brand-700" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Summary */}
-          <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg">Payments</CardTitle>
-              <Link href="/student/payment-history" className="text-xs font-medium text-brand hover:underline">View all</Link>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-emerald-50 p-3 text-center dark:bg-emerald-500/10">
-                  <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">{fmtBDT(totalPaid)}</p>
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-500">Paid</p>
+              {continueLearning.length === 0 ? (
+                <EmptyState
+                  icon={<PlayCircle className="h-7 w-7" />}
+                  title={totalCourses === 0 ? "No courses yet" : "All caught up!"}
+                  description={totalCourses === 0 ? "You haven't enrolled in any courses yet." : "Every course is complete. Great job!"}
+                  actionLabel={totalCourses === 0 ? "Explore Courses" : "View Courses"}
+                  actionHref={totalCourses === 0 ? "/courses" : "/student/courses"}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {continueLearning.map((item) => (
+                    <div key={`${item.courseType}-${item.id}`} className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.courseTitle}</p>
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                            {item.courseType === "live" ? "Live course" : `${item.completedLessons} of ${item.totalLessons} lessons completed`}
+                          </p>
+                        </div>
+                        <Button size="sm" className="shrink-0 rounded-full bg-brand text-white hover:bg-brand-hover" asChild>
+                          <Link href={item.courseType === "live" ? `/${item.courseSlug}` : `/learn/${item.courseSlug}`}>
+                            <PlayCircle className="mr-1.5 h-3.5 w-3.5" /> Continue
+                          </Link>
+                        </Button>
+                      </div>
+                      {item.courseType !== "live" && (
+                        <div className="flex items-center gap-3">
+                          <Progress value={item.progress} className="h-2 flex-1" />
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{item.progress}%</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <div className={`rounded-xl p-3 text-center ${totalDue > 0 ? "bg-amber-50 dark:bg-amber-500/10" : "bg-slate-50 dark:bg-slate-800"}`}>
-                  <p className={`text-lg font-semibold ${totalDue > 0 ? "text-amber-700 dark:text-amber-400" : "text-slate-500 dark:text-slate-400"}`}>{fmtBDT(totalDue)}</p>
-                  <p className={`text-[10px] ${totalDue > 0 ? "text-amber-600 dark:text-amber-500" : "text-slate-400 dark:text-slate-500"}`}>Due</p>
-                </div>
-              </div>
-              {totalDue > 0 && (
-                <Link href="/student/payment-history" className="flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20">
-                  <AlertTriangle className="h-3.5 w-3.5" /> You have pending payments
-                </Link>
               )}
             </CardContent>
           </Card>
 
-          {/* Upcoming Classes */}
-          {upcomingClasses.length > 0 && (
+          {/* Recent Payments */}
+          {recentPayments.length > 0 && (
             <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
               <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-lg">Upcoming Classes</CardTitle>
-                <Link href="/student/classes" className="text-xs font-medium text-brand hover:underline">View all</Link>
+                <CardTitle className="text-lg">Recent Payments</CardTitle>
+                <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
+                  <Link href="/student/payment-history">
+                    View History <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
               </CardHeader>
               <CardContent className="space-y-2">
-                {upcomingClasses.map((cls) => (
-                  <div key={cls.id} className="flex items-center gap-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
-                    <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-brand-50 text-brand dark:bg-brand-500/10">
-                      <span className="text-[9px] font-bold uppercase">{new Date(cls.scheduledAt).toLocaleDateString("en-US", { month: "short" })}</span>
-                      <span className="text-sm font-bold leading-none">{new Date(cls.scheduledAt).getDate()}</span>
+                {recentPayments.map((p) => (
+                  <div key={p.paymentId} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                      <CreditCard className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-slate-900 dark:text-slate-100">{cls.title}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        {new Date(cls.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                      <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {p.items?.[0]?.courseTitle ?? `Order #${p.orderId}`}
                       </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {p.paidAt ? fmtDate(p.paidAt) : "Pending"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{fmtBDT(Number(p.amount))}</p>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${
+                          p.status === "completed"
+                            ? "border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400"
+                            : p.status === "pending"
+                              ? "border-amber-200 text-amber-600 dark:border-amber-800 dark:text-amber-400"
+                              : "border-red-200 text-red-600 dark:border-red-800 dark:text-red-400"
+                        }`}
+                      >
+                        {p.status}
+                      </Badge>
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
           )}
+        </div>
 
-          {/* My Courses Preview */}
+        {/* Right Column */}
+        <aside className="space-y-5">
+          {/* Upcoming Classes */}
           <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
             <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg">My Courses</CardTitle>
-              {totalCourses > 0 && (
-                <Link href="/student/courses" className="text-xs font-medium text-brand hover:underline">View all</Link>
+              <CardTitle className="text-lg">Upcoming Classes</CardTitle>
+              {upcomingClasses.length > 0 && (
+                <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
+                  <Link href="/student/classes">
+                    View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
               )}
             </CardHeader>
-            <CardContent className="space-y-3">
-              {coursesPreview.length === 0 ? (
-                <EmptyState icon={<BookOpen className="h-7 w-7" />} title="No courses yet" description="You haven't enrolled in any courses." actionLabel="Explore Courses" actionHref="/courses" compact />
-              ) : (
-                coursesPreview.map((course, index) => (
-                  <div key={`${course.courseType}-${course.id}`} className="grid grid-cols-[36px_1fr_64px] items-center gap-3">
-                    <span className="text-sm font-semibold text-slate-400 dark:text-slate-500">{String(index + 1).padStart(2, "0")}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{course.courseTitle}</p>
-                      <Progress value={course.progress} className="mt-1.5 h-1.5" />
-                    </div>
-                    <span className="text-right text-sm font-medium text-slate-600 dark:text-slate-300">{course.progress}%</span>
+            <CardContent className="space-y-2">
+              {upcomingClasses.length === 0 ? (
+                <div className="py-4 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                    <Calendar className="h-5 w-5" />
                   </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No upcoming classes</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Check your schedule for future classes.</p>
+                  <Button variant="outline" size="sm" className="mt-3 rounded-full" asChild>
+                    <Link href="/student/classes">View Schedule</Link>
+                  </Button>
+                </div>
+              ) : (
+                upcomingClasses.map((cls) => {
+                  const d = new Date(cls.scheduledAt);
+                  const isToday = new Date().toDateString() === d.toDateString();
+                  return (
+                    <div key={cls.id} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+                      <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-brand-50 text-brand dark:bg-brand-500/10">
+                        <span className="text-[9px] font-bold uppercase leading-none">
+                          {isToday ? "TODAY" : d.toLocaleDateString("en-US", { month: "short" })}
+                        </span>
+                        <span className="text-sm font-bold leading-none">{d.getDate()}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">{cls.title}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                          {fmtTime(cls.scheduledAt)}
+                          {cls.instructorFirstName && ` \u00B7 ${cls.instructorFirstName}`}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Notifications */}
+          <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">Notifications</CardTitle>
+                {unreadNotifications > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-white">
+                    {unreadNotifications}
+                  </span>
+                )}
+              </div>
+              <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
+                <Link href="/student/notifications">
+                  View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {recentNotifications.length === 0 ? (
+                <div className="py-4 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                    <Bell className="h-5 w-5" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No new notifications</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">You&apos;re all caught up!</p>
+                </div>
+              ) : (
+                recentNotifications.map((n) => (
+                  <Link
+                    key={n.id}
+                    href={n.link ?? "/student/notifications"}
+                    className={`flex items-start gap-3 rounded-xl p-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${!n.isRead ? "bg-brand-50/50 dark:bg-brand-500/5" : ""}`}
+                  >
+                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      n.type === "class_scheduled"
+                        ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                        : n.type === "assignment"
+                          ? "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
+                          : n.type === "certificate"
+                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                            : n.type === "payment"
+                              ? "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
+                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                    }`}>
+                      <Bell className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-xs font-medium ${!n.isRead ? "text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-300"}`}>
+                        {n.title}
+                      </p>
+                      {n.body && (
+                        <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500 dark:text-slate-400">{n.body}</p>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(n.createdAt)}</span>
+                  </Link>
                 ))
               )}
             </CardContent>
           </Card>
 
-          {/* Certificates */}
+          {/* Achievements */}
           <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
             <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg">Certificates</CardTitle>
+              <CardTitle className="text-lg">Achievements</CardTitle>
               {certificates.length > 0 && (
-                <Link href="/student/certificates" className="text-xs font-medium text-brand hover:underline">View all</Link>
+                <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
+                  <Link href="/student/certificates">
+                    View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
               )}
             </CardHeader>
-            <CardContent className="space-y-3">
-              {certificates.length === 0 ? (
-                <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-4 dark:bg-slate-800">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand"><Award className="h-4 w-4" /></span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Complete a course to earn your first certificate.</p>
+            <CardContent>
+              {certificates.length === 0 && completedCourses === 0 ? (
+                <div className="py-4 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                    <Trophy className="h-5 w-5" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No achievements yet</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Complete a course to earn your first certificate.</p>
                 </div>
               ) : (
-                certificates.slice(0, 3).map((cert) => (
-                  <Link key={cert.id} href={`/certificate/${cert.certificateCode}`} className="flex items-center gap-3 rounded-lg bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand"><Award className="h-4 w-4" /></span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{cert.courseTitle}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString() : "Issued"}</p>
-                    </div>
-                  </Link>
-                ))
+                <div className="grid grid-cols-2 gap-2">
+                  <AchievementTile
+                    icon={<Award className="h-5 w-5" />}
+                    value={String(certificates.length)}
+                    label="Certificates"
+                    color="bg-brand-50 text-brand dark:bg-brand-500/10 dark:text-brand"
+                  />
+                  <AchievementTile
+                    icon={<Target className="h-5 w-5" />}
+                    value={String(completedCourses)}
+                    label="Courses Done"
+                    color="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                  />
+                  <AchievementTile
+                    icon={<Zap className="h-5 w-5" />}
+                    value={String(completedLessons)}
+                    label="Lessons Done"
+                    color="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
+                  />
+                  <AchievementTile
+                    icon={<TrendingUp className="h-5 w-5" />}
+                    value={`${avgProgress}%`}
+                    label="Avg Progress"
+                    color="bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
+                  />
+                </div>
               )}
             </CardContent>
           </Card>
@@ -329,39 +474,52 @@ export default async function StudentDashboardPage() {
   );
 }
 
-function KPICard({ icon, label, value, color }: { icon: ReactNode; label: string; value: string; color: string }) {
+/* ─── Helper Components ────────────────────────────────────────────────────── */
+
+function QuickAction({ href, icon, label, color }: { href: string; icon: ReactNode; label: string; color: string }) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>{icon}</div>
-      <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
-      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{label}</p>
+    <Link
+      href={href}
+      className="group inline-flex h-9 items-center gap-2 rounded-md border border-slate-100 bg-white px-3 text-sm font-medium shadow-sm transition-all hover:border-brand-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-500/30"
+    >
+      <span className={`flex h-6 w-6 items-center justify-center rounded-md ${color} transition-transform group-hover:scale-110`}>
+        {icon}
+      </span>
+      <span className="text-slate-600 dark:text-slate-400">{label}</span>
+    </Link>
+  );
+}
+
+function StatCard({ icon, label, value, iconBg, cardBg, border, live }: { icon: ReactNode; label: string; value: ReactNode; iconBg: string; cardBg: string; border: string; live?: boolean }) {
+  return (
+    <div className={`group rounded-xl ${cardBg} ${border} border p-3 shadow-sm transition-all duration-200 hover:shadow-md dark:hover:shadow-slate-800/50`}>
+      <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${iconBg}`}>
+        <span className="text-white">{icon}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{value}</p>
+        {live && <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" /></span>}
+      </div>
+      <p className="text-[11px] font-medium text-gray-500 dark:text-slate-400">{label}</p>
     </div>
   );
 }
 
-function RatePill({ label, value, color }: { label: string; value: string; color: string }) {
+function AchievementTile({ icon, value, label, color }: { icon: ReactNode; value: string; label: string; color: string }) {
   return (
-    <div className={`rounded-xl p-3 text-white ${color}`}>
-      <p className="text-[11px] opacity-90">{label}</p>
-      <p className="text-xl font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function SummaryTile({ value, label, color }: { value: string; label: string; color: string }) {
-  return (
-    <div className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800">
-      <p className="mb-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
-      <div className={`flex h-16 flex-col items-center justify-end rounded-lg p-3 text-white ${color}`}>
-        <p className="text-xs font-medium">{label}</p>
+    <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}>{icon}</div>
+      <div>
+        <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{value}</p>
+        <p className="text-[10px] text-slate-500 dark:text-slate-400">{label}</p>
       </div>
     </div>
   );
 }
 
-function EmptyState({ icon, title, description, actionLabel, actionHref, compact = false }: { icon: ReactNode; title: string; description: string; actionLabel: string; actionHref: string; compact?: boolean }) {
+function EmptyState({ icon, title, description, actionLabel, actionHref }: { icon: ReactNode; title: string; description: string; actionLabel: string; actionHref: string }) {
   return (
-    <div className={`text-center ${compact ? "py-4" : "py-6"}`}>
+    <div className="py-6 text-center">
       <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">{icon}</div>
       <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</p>
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</p>

@@ -120,6 +120,15 @@ export async function getRolesAction() {
   }
 }
 
+export async function getRoleByIdAction(id: number) {
+  try {
+    const res = await apiRequest<Role>(`/admin/roles/${id}`);
+    return { success: true as const, data: res.data! };
+  } catch (err: any) {
+    return { success: false as const, message: err?.message ?? "Failed to fetch role" };
+  }
+}
+
 export async function getPermissionsAction() {
   try {
     const res = await apiRequest<PermissionGroup[]>("/admin/permissions");

@@ -1,8 +1,6 @@
 import {
   getAdminUsersAction,
   getRolesAction,
-  getPermissionsAction,
-  getCourseOptionsAction,
 } from "@/features/roles/actions";
 import { authApi } from "@/features/auth/api";
 import { RolesClient } from "@/features/roles/RolesClient";
@@ -10,11 +8,9 @@ import { RolesClient } from "@/features/roles/RolesClient";
 export const metadata = { title: "Roles & Permissions" };
 
 export default async function RolesPage() {
-  const [usersRes, rolesRes, permsRes, courseOptionsRes, me] = await Promise.all([
+  const [usersRes, rolesRes, me] = await Promise.all([
     getAdminUsersAction({ page: 1 }),
     getRolesAction(),
-    getPermissionsAction(),
-    getCourseOptionsAction(),
     authApi.me().catch(() => null),
   ]);
 
@@ -27,18 +23,12 @@ export default async function RolesPage() {
       };
 
   const roles = rolesRes.success ? rolesRes.data : [];
-  const permissionGroups = permsRes.success ? permsRes.data : [];
-  const courseOptions = courseOptionsRes.success
-    ? courseOptionsRes.data
-    : { courses: [], liveCourses: [] };
   const permissions = me?.data.permissions ?? [];
 
   return (
     <RolesClient
       initial={initial}
       roles={roles}
-      permissionGroups={permissionGroups}
-      courseOptions={courseOptions}
       permissions={permissions}
     />
   );

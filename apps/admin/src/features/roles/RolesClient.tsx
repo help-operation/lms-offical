@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
+import Link from "next/link";
 import {
   MagnifyingGlass,
   UserPlus,
@@ -15,12 +16,13 @@ import {
   EyeSlash,
   Users,
   PencilSimple,
+  Plus,
+  GraduationCap,
+  ListChecks,
 } from "@phosphor-icons/react";
 import type {
   AdminUser,
   AdminUsersResponse,
-  CourseOptions,
-  PermissionGroup,
   Role,
 } from "./types";
 import { ROLE_META } from "./types";
@@ -33,7 +35,6 @@ import {
   toggleAdminStatusAction,
   deleteAdminUserAction,
 } from "./actions";
-import { RoleManagementClient } from "./RoleManagementClient";
 import { hasAnyPermission } from "@/features/auth/permissions";
 import { toast } from "@repo/ui/sonner";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
@@ -48,6 +49,31 @@ function defaultRoleId(roles: Role[]): number {
 
 function initials(u: AdminUser) {
   return `${u.firstName[0] ?? ""}${u.lastName[0] ?? ""}`.toUpperCase();
+}
+
+const ROLE_CARD_COLORS: Record<string, { border: string; bg: string; iconBg: string; iconText: string }> = {
+  "super-admin": {
+    border: "border-purple-200 dark:border-purple-500/20",
+    bg: "bg-purple-50/50 dark:bg-purple-500/5",
+    iconBg: "bg-purple-100 dark:bg-purple-500/15",
+    iconText: "text-purple-600 dark:text-purple-400",
+  },
+  instructor: {
+    border: "border-blue-200 dark:border-blue-500/20",
+    bg: "bg-blue-50/50 dark:bg-blue-500/5",
+    iconBg: "bg-blue-100 dark:bg-blue-500/15",
+    iconText: "text-blue-600 dark:text-blue-400",
+  },
+  default: {
+    border: "border-gray-200 dark:border-slate-700",
+    bg: "bg-gray-50/50 dark:bg-slate-800/50",
+    iconBg: "bg-gray-100 dark:bg-slate-700",
+    iconText: "text-gray-600 dark:text-slate-400",
+  },
+};
+
+function getRoleCardColor(slug: string) {
+  return ROLE_CARD_COLORS[slug] ?? ROLE_CARD_COLORS.default;
 }
 
 // ─── Create Modal ─────────────────────────────────────────────────────────────
@@ -473,14 +499,12 @@ function EditAdminModal({
 // ─── Main Client ──────────────────────────────────────────────────────────────
 
 interface Props {
-  initial:          AdminUsersResponse;
-  roles:            Role[];
-  permissionGroups: PermissionGroup[];
-  courseOptions:    CourseOptions;
-  permissions:      string[];
+  initial:   AdminUsersResponse;
+  roles:     Role[];
+  permissions: string[];
 }
 
-export function RolesClient({ initial, roles: initialRoles, permissionGroups, courseOptions, permissions }: Props) {
+export function RolesClient({ initial, roles: initialRoles, permissions }: Props) {
   const canManageAdmins = hasAnyPermission(permissions, [
     "create_admins",
     "update_admins",
@@ -491,9 +515,8 @@ export function RolesClient({ initial, roles: initialRoles, permissionGroups, co
     "update_roles",
     "delete_roles",
   ]);
-  // Roles live here (not in RoleManagementClient) so newly created/updated/
-  // deleted roles immediately flow into the Add-Admin & Change-Role dropdowns.
-  const [roles, setRoles]       = useState(initialRoles);
+
+  const [roles]                  = useState(initialRoles);
   const [data, setData]         = useState(initial);
   const [search, setSearch]     = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -504,6 +527,20 @@ export function RolesClient({ initial, roles: initialRoles, permissionGroups, co
   const [toggleTarget, setToggleTarget] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const { data: users, pagination, stats } = data;
+
+  const roleStats = useMemo(() => {
+    const map = new Map<number, { role: Role; count: number }>();
+    for (const r of roles) map.set(r.id, { role: r, count: 0 });
+    for (const u of users) {
+      if (u.roleId) {
+        const entry = map.get(u.roleId);
+        if (entry) entry.count++;
+      }
+    }
+    return [...map.values()];
+  }, [roles, users]);
 
   function reload(opts: { search?: string; role?: string; page?: number }) {
     startTransition(async () => {
@@ -520,7 +557,7 @@ export function RolesClient({ initial, roles: initialRoles, permissionGroups, co
     reload({ search: value, page: 1 });
   }
 
-  function handleRole(value: string) {
+  function handleRoleFilter(value: string) {
     setRoleFilter(value); setPage(1);
     reload({ role: value, page: 1 });
   }
@@ -559,8 +596,6 @@ export function RolesClient({ initial, roles: initialRoles, permissionGroups, co
   }
 
   function handleCreated() {
-    // The create endpoint returns a partial row (no roleName/avatar), so refetch
-    // the list to show the new user with correct data and accurate stats.
     setPage(1);
     reload({ page: 1 });
   }
@@ -579,129 +614,232 @@ export function RolesClient({ initial, roles: initialRoles, permissionGroups, co
     }));
   }
 
-  const { data: users, pagination, stats } = data;
-
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
+    <div className="space-y-6">
+      {/* ─── Top Row: Title + Button ────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Roles & Permissions</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Manage admin accounts and access levels</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            Roles & Permissions
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
+            Manage roles, permissions, and admin accounts
+          </p>
         </div>
-        {canManageAdmins && (
-          <button
-            onClick={() => setShowCreate(true)}
+        {canManageRoles && (
+          <Link
+            href="/admin/roles/new"
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 dark:bg-brand hover:bg-brand-700 dark:hover:bg-brand-hover text-white text-sm font-medium transition-colors"
           >
-            <UserPlus size={16} weight="bold" />
-            Add Admin
-          </button>
+            <Plus size={16} weight="bold" />
+            Create Role
+          </Link>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="flex gap-3 flex-wrap">
+      {/* ─── Stats Cards ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Total Admins",  value: stats.total,       color: "bg-brand-500" },
-          { label: "Super Admins",  value: stats.superAdmins, color: "bg-indigo-500" },
-          { label: "Instructors",   value: stats.instructors, color: "bg-blue-500"   },
-        ].map(s => (
-          <div key={s.label} className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 px-4 py-3 flex-1 min-w-0">
-            <div className={`h-9 w-9 rounded-xl ${s.color} flex items-center justify-center shrink-0`}>
-              <Users size={16} weight="fill" className="text-white" />
+          {
+            label: "Total Roles",
+            value: roles.length,
+            icon: <ListChecks size={18} weight="fill" />,
+            style: { background: "linear-gradient(135deg, #ede9fe, #f3e8ff)", color: "#7c3aed" },
+          },
+          {
+            label: "Total Admins",
+            value: stats.total,
+            icon: <Users size={18} weight="fill" />,
+            style: { background: "linear-gradient(135deg, #eef2ff, #e0e7ff)", color: "#4f46e5" },
+          },
+          {
+            label: "Super Admins",
+            value: stats.superAdmins,
+            icon: <ShieldStar size={18} weight="fill" />,
+            style: { background: "linear-gradient(135deg, #fce7f3, #fdf2f8)", color: "#db2777" },
+          },
+          {
+            label: "Instructors",
+            value: stats.instructors,
+            icon: <GraduationCap size={18} weight="fill" />,
+            style: { background: "linear-gradient(135deg, #ecfdf5, #d1fae5)", color: "#059669" },
+          },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5"
+          >
+            <div
+              className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+              style={s.style}
+            >
+              {s.icon}
             </div>
             <div>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">{s.value}</p>
-              <p className="text-xs text-gray-500 dark:text-slate-400">{s.label}</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">
+                {s.value}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                {s.label}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[220px]">
-          <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-          <input
-            type="search"
-            name="admin-search"
-            autoComplete="off"
-            data-1p-ignore
-            data-lpignore="true"
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 dark:bg-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 dark:focus:ring-brand/40"
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
-          />
-        </div>
-        <div className="relative">
-          <FunnelSimple size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
-          <select
-            className="pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 text-sm bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-300 dark:focus:ring-brand/40 appearance-none"
-            value={roleFilter}
-            onChange={e => handleRole(e.target.value)}
-          >
-            <option value="">All roles</option>
-            <option value="SUPER_ADMIN">Super Admin</option>
-            <option value="INSTRUCTOR">Instructor</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Users Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-        {isPending ? (
-          <div className="py-16 text-center text-sm text-gray-400 dark:text-slate-500">Loading…</div>
-        ) : users.length === 0 ? (
-          <div className="py-16 text-center">
-            <Users size={36} className="mx-auto mb-3 text-gray-200 dark:text-slate-700" />
-            <p className="text-gray-400 dark:text-slate-500 text-sm">No admin users found</p>
+      {/* ─── Role Cards ─────────────────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          Roles
+        </h2>
+        {roles.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-12 text-center">
+            <ShieldCheck size={36} className="mx-auto mb-3 text-gray-200 dark:text-slate-700" />
+            <p className="text-gray-400 dark:text-slate-500 text-sm mb-4">No roles created yet</p>
+            {canManageRoles && (
+              <Link
+                href="/admin/roles/new"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 dark:bg-brand text-white text-sm font-medium hover:bg-brand-700 dark:hover:bg-brand-hover transition-colors"
+              >
+                <Plus size={14} weight="bold" />
+                Create your first role
+              </Link>
+            )}
           </div>
         ) : (
-          users.map(u => (
-            <UserRow
-              key={u.id}
-              user={u}
-              onEdit={u => setEditUser(u)}
-              onToggle={u => setToggleTarget(u)}
-              onRoleChange={u => setChangeRoleUser(u)}
-              onDelete={u => setDeleteTarget(u)}
-            />
-          ))
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+            {roles.map((role) => {
+              const colors = getRoleCardColor(role.slug)!;
+              return (
+                <div
+                  key={role.id}
+                  className={`rounded-xl border ${colors.border} ${colors.bg} px-3 py-2.5`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className={`h-6 w-6 rounded-md flex items-center justify-center ${colors.iconBg} ${colors.iconText} shrink-0`}
+                      >
+                        <ShieldCheck size={12} weight="fill" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+                          {role.name}
+                        </h3>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-400 dark:text-slate-500">
+                          <span className="font-mono">{role.slug}</span>
+                          <span>·</span>
+                          <span>{role.permissionIds?.length ?? 0} perms</span>
+                          <span>·</span>
+                          <span>{roleStats.find((s) => s.role.id === role.id)?.count ?? 0} users</span>
+                        </div>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/admin/roles/${role.id}/edit`}
+                      className="h-6 w-6 rounded-md hover:bg-white dark:hover:bg-slate-800 flex items-center justify-center text-gray-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand transition-colors shrink-0"
+                    >
+                      <PencilSimple size={13} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Pagination */}
-      {pagination.last_page > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-slate-400">
-          <span>Showing {pagination.from}–{pagination.to} of {pagination.total}</span>
-          <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => { setPage(p => p - 1); reload({ page: page - 1 }); }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40">
-              <ArrowLeft size={13} /> Prev
+      {/* ─── Admin Users Section ────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+            Admin Users
+          </h2>
+          {canManageAdmins && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-brand-600 dark:text-brand hover:bg-brand-50 dark:hover:bg-brand/10 transition-colors"
+            >
+              <UserPlus size={14} weight="bold" />
+              Add Admin
             </button>
-            <span className="px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand/15 text-brand-700 dark:text-brand font-medium">{page} / {pagination.last_page}</span>
-            <button disabled={page >= pagination.last_page} onClick={() => { setPage(p => p + 1); reload({ page: page + 1 }); }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40">
-              Next <ArrowRight size={13} />
-            </button>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 mb-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <input
+              type="search"
+              name="admin-search"
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 dark:bg-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 dark:focus:ring-brand/40"
+              placeholder="Search by name or email…"
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <FunnelSimple size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+            <select
+              className="pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 text-sm bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-300 dark:focus:ring-brand/40 appearance-none"
+              value={roleFilter}
+              onChange={e => handleRoleFilter(e.target.value)}
+            >
+              <option value="">All roles</option>
+              {roles.map(r => (
+                <option key={r.id} value={r.slug.toUpperCase()}>{r.name}</option>
+              ))}
+            </select>
           </div>
         </div>
-      )}
 
-      {/* Roles & Permissions */}
-      <div className="pt-2">
-        <RoleManagementClient
-          roles={roles}
-          setRoles={setRoles}
-          permissionGroups={permissionGroups}
-          courseOptions={courseOptions}
-          canManage={canManageRoles}
-        />
+        {/* Users Table */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+          {isPending ? (
+            <div className="py-16 text-center text-sm text-gray-400 dark:text-slate-500">Loading…</div>
+          ) : users.length === 0 ? (
+            <div className="py-16 text-center">
+              <Users size={36} className="mx-auto mb-3 text-gray-200 dark:text-slate-700" />
+              <p className="text-gray-400 dark:text-slate-500 text-sm">No admin users found</p>
+            </div>
+          ) : (
+            users.map(u => (
+              <UserRow
+                key={u.id}
+                user={u}
+                onEdit={u => setEditUser(u)}
+                onToggle={u => setToggleTarget(u)}
+                onRoleChange={u => setChangeRoleUser(u)}
+                onDelete={u => setDeleteTarget(u)}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Pagination */}
+        {pagination.last_page > 1 && (
+          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-slate-400 mt-3">
+            <span>Showing {pagination.from}–{pagination.to} of {pagination.total}</span>
+            <div className="flex gap-2">
+              <button disabled={page <= 1} onClick={() => { setPage(p => p - 1); reload({ page: page - 1 }); }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40">
+                <ArrowLeft size={13} /> Prev
+              </button>
+              <span className="px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand/15 text-brand-700 dark:text-brand font-medium">{page} / {pagination.last_page}</span>
+              <button disabled={page >= pagination.last_page} onClick={() => { setPage(p => p + 1); reload({ page: page + 1 }); }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40">
+                Next <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Toggle admin status modal */}
+      {/* ─── Modals ──────────────────────────────────────────────────────────── */}
       <ConfirmModal
         open={!!toggleTarget}
         title={toggleTarget?.status === "active" ? "Suspend Admin" : "Activate Admin"}
@@ -717,7 +855,6 @@ export function RolesClient({ initial, roles: initialRoles, permissionGroups, co
         onClose={() => setToggleTarget(null)}
       />
 
-      {/* Delete admin modal */}
       <ConfirmModal
         open={!!deleteTarget}
         title="Delete Admin User"
@@ -729,7 +866,6 @@ export function RolesClient({ initial, roles: initialRoles, permissionGroups, co
         onClose={() => setDeleteTarget(null)}
       />
 
-      {/* Modals */}
       {showCreate && (
         <CreateModal
           roles={roles}

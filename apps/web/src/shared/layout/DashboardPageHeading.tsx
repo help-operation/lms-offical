@@ -1,10 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { TypingText } from "@/shared/layout/TypingText";
 
 const PAGE_TITLES: { match: (path: string) => boolean; title: string; description?: string }[] = [
   {
-    match: (p) => p === "/student/dashboard" || p === "/guest/dashboard",
+    match: (p) => p === "/student/dashboard",
+    title: "Student Dashboard",
+  },
+  {
+    match: (p) => p === "/guest/dashboard",
     title: "Dashboard",
   },
   {
@@ -72,15 +77,23 @@ const PAGE_TITLES: { match: (path: string) => boolean; title: string; descriptio
 export function DashboardPageHeading({ isStudent }: { isStudent: boolean }) {
   const pathname = usePathname();
   const page = PAGE_TITLES.find((p) => p.match(pathname));
+  const isDashboard = pathname === "/student/dashboard" || pathname === "/guest/dashboard";
 
   return (
     <div>
-      <p className="text-sm font-medium text-brand">
-        {isStudent ? "Student Portal" : "Guest Portal"}
-      </p>
+      {!isDashboard && (
+        <p className="text-sm font-medium text-brand">
+          {isStudent ? "Student Dashboard" : "Guest Dashboard"}
+        </p>
+      )}
       <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-100">
         {page?.title ?? "Dashboard"}
       </h1>
+      {isDashboard && isStudent && (
+        <p className="mt-1 h-5 text-sm">
+          <TypingText />
+        </p>
+      )}
       {page?.description && (
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{page.description}</p>
       )}
