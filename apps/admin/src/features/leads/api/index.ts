@@ -53,6 +53,7 @@ export const leadsAdminApi = {
   list: (params?: {
     status?: string;
     source?: string;
+    paid?: string;
     search?: string;
     page?: number;
     limit?: number;
@@ -62,6 +63,7 @@ export const leadsAdminApi = {
     const q = new URLSearchParams();
     if (params?.status)    q.set("status",    params.status);
     if (params?.source)    q.set("source",    params.source);
+    if (params?.paid)      q.set("paid",      params.paid);
     if (params?.search)    q.set("search",    params.search);
     if (params?.page)      q.set("page",      String(params.page));
     if (params?.limit)     q.set("limit",     String(params.limit));

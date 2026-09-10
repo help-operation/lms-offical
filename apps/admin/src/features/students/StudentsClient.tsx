@@ -7,7 +7,7 @@ import type { Student } from "./types";
 import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
 import {
-  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Trash2, Phone, Mail, Copy, Check, UserPlus,
+  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Phone, Mail, Copy, Check, UserPlus, Video, Radio, BookOpen,
 } from "lucide-react";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import { useLocalization } from "@/shared/context/LocalizationContext";
@@ -42,6 +42,14 @@ function getAllCols(formatDate: (value: Date | string | null | undefined) => str
       ],
     },
     {
+      key: "enrollments", header: "Enrollments", defaultVisible: true,
+      exportFields: [
+        { header: "Recorded", getValue: (s) => String(s.recordedCount ?? 0) },
+        { header: "Live", getValue: (s) => String(s.liveCount ?? 0) },
+        { header: "Free", getValue: (s) => String(s.freeCount ?? 0) },
+      ],
+    },
+    {
       key: "createdAt", header: "Joined", defaultVisible: true,
       exportFields: [{
         header: "Joined",
@@ -55,7 +63,7 @@ function getAllCols(formatDate: (value: Date | string | null | undefined) => str
   ];
 }
 
-const DEFAULT_VISIBLE = new Set(["firstName", "email", "createdAt", "status"]);
+const DEFAULT_VISIBLE = new Set(["firstName", "email", "enrollments", "createdAt", "status"]);
 
 const avatarColors = [
   "bg-blue-400", "bg-violet-400", "bg-emerald-400",
@@ -96,6 +104,40 @@ function CopyableField({ icon: Icon, value }: { icon: typeof Mail; value: string
       >
         {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
       </button>
+    </div>
+  );
+}
+
+function EnrollmentsCell({ s }: { s: Student }) {
+  const recorded = s.recordedCount ?? 0;
+  const live = s.liveCount ?? 0;
+  const free = s.freeCount ?? 0;
+  const total = recorded + live + free;
+
+  if (total === 0) {
+    return <span className="text-xs text-gray-300 dark:text-slate-600">—</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm font-semibold text-gray-900 dark:text-white">{total}</span>
+      <div className="flex items-center gap-1.5">
+        {recorded > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-md">
+            <Video className="h-2.5 w-2.5" /> {recorded}
+          </span>
+        )}
+        {live > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+            <Radio className="h-2.5 w-2.5" /> {live}
+          </span>
+        )}
+        {free > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+            <BookOpen className="h-2.5 w-2.5" /> {free}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -181,6 +223,15 @@ export function StudentsClient({ initialData, initialStats }: Props) {
                 {!s.email && !s.phone && <span className="text-xs text-gray-300 dark:text-slate-600">—</span>}
               </div>
             ),
+          } as Column<Student>,
+        ]
+      : []),
+    ...(visibleCols.has("enrollments")
+      ? [
+          {
+            key: "enrollments" as const,
+            header: "Enrollments",
+            render: (s: Student) => <EnrollmentsCell s={s} />,
           } as Column<Student>,
         ]
       : []),
@@ -333,6 +384,40 @@ export function StudentsClient({ initialData, initialStats }: Props) {
                   { label: "Paid", value: "paid" },
                   { label: "Partial", value: "partial" },
                   { label: "Unpaid", value: "unpaid" },
+                ],
+              },
+              {
+                key: "courseType",
+                label: "All Courses",
+                options: [
+                  { label: "Recorded", value: "recorded" },
+                  { label: "Live", value: "live" },
+                  { label: "Free", value: "free" },
+                ],
+              },
+              {
+                key: "gender",
+                label: "All Gender",
+                options: [
+                  { label: "Male", value: "male" },
+                  { label: "Female", value: "female" },
+                  { label: "Other", value: "other" },
+                ],
+              },
+              {
+                key: "hasEmail",
+                label: "All Email",
+                options: [
+                  { label: "Has Email", value: "true" },
+                  { label: "No Email", value: "false" },
+                ],
+              },
+              {
+                key: "hasPhone",
+                label: "All Phone",
+                options: [
+                  { label: "Has Phone", value: "true" },
+                  { label: "No Phone", value: "false" },
                 ],
               },
             ]}

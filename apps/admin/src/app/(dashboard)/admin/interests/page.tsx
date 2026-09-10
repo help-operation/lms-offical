@@ -40,13 +40,7 @@ export default async function AdminInterestsPage({ searchParams }: Props) {
   const liveCourses     = liveRes.success     ? liveRes.data     : [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Course Interests</h1>
-        <p className="mt-1 text-gray-500 dark:text-slate-400">
-          Logged-in users who visited a course page without buying. High visit count = hot lead.
-        </p>
-      </div>
+    <div>
       <InterestsClient
         initial={initial}
         recordedCourses={recordedCourses}

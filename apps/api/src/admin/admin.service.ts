@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, eq, sql, ilike, or, and, inArray, notInArray, gte, lte, isNotNull, type SQL } from 'drizzle-orm';
+import { desc, eq, sql, ilike, or, and, inArray, notInArray, gte, lte, isNotNull, isNull, exists, type SQL } from 'drizzle-orm';
 import { unionAll } from 'drizzle-orm/pg-core';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
@@ -363,7 +363,12 @@ export class AdminService {
       failedLoginAttempts: users.failedLoginAttempts,
       lockedUntil:         users.lockedUntil,
     };
-    const [user] = await this.db.select(userCols).from(users).where(eq(users.id, id)).limit(1);
+    const adminRoles = ['INSTRUCTOR', 'SUPER_ADMIN', 'EDITOR', 'MARKETING_OFFICER', 'ACCOUNTANT'] as const;
+    const [user] = await this.db
+      .select(userCols)
+      .from(users)
+      .where(and(eq(users.id, id), inArray(users.role, adminRoles as any)))
+      .limit(1);
 
     // 2) Fallback: check `admin_users` table (Super Admin, Instructors)
     let mappedUser = user;
@@ -2951,12 +2956,38 @@ export class AdminService {
       filterable: {
         status: users.status,
         paymentStatus: studentPaymentStatusFilter,
+        gender: users.gender,
+        courseType: (value: string) => {
+          if (value === 'recorded') {
+            return exists(
+              this.db.select({ id: sql<number>`1` }).from(enrollments).where(eq(enrollments.userId, users.id))
+            ) as SQL;
+          }
+          if (value === 'live') {
+            return exists(
+              this.db.select({ id: sql<number>`1` }).from(liveEnrollments).where(eq(liveEnrollments.userId, users.id))
+            ) as SQL;
+          }
+          if (value === 'free') {
+            return exists(
+              this.db.select({ id: sql<number>`1` })
+                .from(enrollments)
+                .innerJoin(courses, eq(enrollments.courseId, courses.id))
+                .where(and(eq(enrollments.userId, users.id), eq(courses.price, '0.00')))
+            ) as SQL;
+          }
+          return undefined as unknown as SQL;
+        },
         lastLoginFrom: (value: string) => gte(users.lastLoginAt, new Date(value)) as SQL,
         lastLoginTo: (value: string) => {
           const endOfDay = new Date(value);
           endOfDay.setUTCHours(23, 59, 59, 999);
           return lte(users.lastLoginAt, endOfDay) as SQL;
         },
+        hasEmail: (value: string) =>
+          value === 'true' ? isNotNull(users.email) : isNull(users.email),
+        hasPhone: (value: string) =>
+          value === 'true' ? isNotNull(users.phone) : isNull(users.phone),
       },
       dateColumn:  users.createdAt,
       defaultSort: desc(users.createdAt),
@@ -2964,6 +2995,19 @@ export class AdminService {
 
     const studentWhere = eq(users.role, 'STUDENT');
     const combinedWhere = q.where ? and(studentWhere, q.where) : studentWhere;
+
+    // enrollment count subqueries
+    const recordedCountExpr = sql<number>`(
+      SELECT COUNT(*)::int FROM ${enrollments} WHERE ${enrollments.userId} = ${users.id}
+    )`;
+    const liveCountExpr = sql<number>`(
+      SELECT COUNT(*)::int FROM ${liveEnrollments} WHERE ${liveEnrollments.userId} = ${users.id}
+    )`;
+    const freeCountExpr = sql<number>`(
+      SELECT COUNT(*)::int FROM ${enrollments}
+      INNER JOIN ${courses} ON ${enrollments.courseId} = ${courses.id}
+      WHERE ${enrollments.userId} = ${users.id} AND ${courses.price} = '0.00'
+    )`;
 
     const [rows, [countRow]] = await Promise.all([
       this.db
@@ -2981,6 +3025,9 @@ export class AdminService {
           profession:    studentProfiles.profession,
           paymentStatus: studentPaymentStatusExpr,
           dueAmount:     studentDueAmountExpr,
+          recordedCount: recordedCountExpr,
+          liveCount:     liveCountExpr,
+          freeCount:     freeCountExpr,
         })
         .from(users)
         .leftJoin(studentProfiles, eq(studentProfiles.userId, users.id))
@@ -3014,7 +3061,7 @@ export class AdminService {
       })
       .from(users)
       .leftJoin(studentProfiles, eq(studentProfiles.userId, users.id))
-      .where(and(eq(users.id, id), eq(users.role, 'STUDENT')))
+      .where(and(eq(users.id, id), inArray(users.role, ['STUDENT', 'GUEST'])))
       .limit(1);
 
     if (!student) throw new NotFoundException('Student not found');
@@ -3162,7 +3209,7 @@ export class AdminService {
     const [existing] = await this.db
       .select({ id: users.id })
       .from(users)
-      .where(and(eq(users.id, id), eq(users.role, 'STUDENT')))
+      .where(and(eq(users.id, id), inArray(users.role, ['STUDENT', 'GUEST'])))
       .limit(1);
 
     if (!existing) throw new NotFoundException('Student not found');
@@ -3188,7 +3235,7 @@ export class AdminService {
     const [existing] = await this.db
       .select({ id: users.id, status: users.status })
       .from(users)
-      .where(and(eq(users.id, id), eq(users.role, 'STUDENT')))
+      .where(and(eq(users.id, id), inArray(users.role, ['STUDENT', 'GUEST'])))
       .limit(1);
 
     if (!existing) throw new NotFoundException('Student not found');
@@ -3208,7 +3255,7 @@ export class AdminService {
     const [existing] = await this.db
       .select({ id: users.id })
       .from(users)
-      .where(and(eq(users.id, id), eq(users.role, 'STUDENT')))
+      .where(and(eq(users.id, id), inArray(users.role, ['STUDENT', 'GUEST'])))
       .limit(1);
 
     if (!existing) throw new NotFoundException('Student not found');

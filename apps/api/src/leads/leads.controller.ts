@@ -100,6 +100,7 @@ export class LeadsAdminController {
   list(
     @Query('status') status?: string,
     @Query('source') source?: string,
+    @Query('paid') paid?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -109,6 +110,7 @@ export class LeadsAdminController {
     return this.svc.listForAdmin({
       status,
       source,
+      paid,
       search,
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 25,

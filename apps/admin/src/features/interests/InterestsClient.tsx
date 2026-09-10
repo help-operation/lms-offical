@@ -149,6 +149,29 @@ export function InterestsClient({ initial, recordedCourses, liveCourses }: Props
 
   return (
     <div className="space-y-5">
+      {/* Top row: Title + Columns/Export */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Course Interests</h1>
+          <p className="mt-1 text-gray-500 dark:text-slate-400 text-sm">
+            Logged-in users who visited a course page without buying. High visit count = hot lead.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <ColumnsDropdown
+            cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
+            visible={visibleCols}
+            onChange={setVisibleCols}
+          />
+          <ExportDropdown
+            pageData={data}
+            fields={exportFields}
+            filename={`interests-${new Date().toISOString().slice(0, 10)}`}
+            exportTitle="Course Interests Export"
+          />
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Course filter */}
@@ -186,26 +209,8 @@ export function InterestsClient({ initial, recordedCourses, liveCourses }: Props
         </span>
       </div>
 
-      {/* Export / Columns controls */}
-      <div className="flex items-center justify-end gap-2">
-        <ColumnsDropdown
-          cols={ALL_COLS.map((c) => ({ key: c.key, header: c.header }))}
-          visible={visibleCols}
-          onChange={setVisibleCols}
-        />
-        <ExportDropdown
-          pageData={data}
-          fields={exportFields}
-          filename={`interests-${new Date().toISOString().slice(0, 10)}`}
-          exportTitle="Course Interests Export"
-        />
-      </div>
-
       {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 dark:border-slate-800">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Course Interests</h2>
-        </div>
         <div className="px-6 pt-5 pb-6">
           <DataTable
             data={data}
