@@ -14,6 +14,7 @@ import {
   AccountLoginDto,
   AccountSignupDto,
   AccountResetDto,
+  AccountVerifyEmailDto,
 } from './dto/account-auth.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 import { Message } from 'src/common/decorators/message.decorator';
@@ -97,5 +98,13 @@ export class AccountAuthController {
     res.cookie('access_token', access_token, ACCESS_TOKEN_COOKIE);
     res.cookie('refresh_token', refresh_token, REFRESH_TOKEN_COOKIE);
     return null;
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @Message('Email verified successfully')
+  async verifyEmail(@Body() dto: AccountVerifyEmailDto) {
+    return this.accountAuthService.verifyEmail(dto);
   }
 }

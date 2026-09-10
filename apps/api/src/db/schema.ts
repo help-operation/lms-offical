@@ -196,7 +196,13 @@ export const users = pgTable('users', {
   password: varchar('password', { length: 255 }),
   role: userRoleEnum('role').default('GUEST').notNull(),
   status: userStatusEnum('status').default('active').notNull(),
-  avatar: varchar('avatar', { length: 500 }),
+  avatar: text('avatar'),
+  // ── Contact verification ─────────────────────────────────────────────────
+  // Tracks whether the user has completed OTP verification for each contact
+  // method. New Google OAuth users start unverified; email/phone signup users
+  // are marked verified at signup (OTP already verified at creation time).
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  phoneVerified: boolean('phone_verified').default(false).notNull(),
   // Self-reported, nullable — historical rows show as "Not specified" on the dashboard.
   gender: genderEnum('gender'),
   // Billing/location fields — not collected anywhere yet (no checkout step asks for

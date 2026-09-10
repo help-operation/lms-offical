@@ -60,6 +60,8 @@ export class PhoneAuthService {
         // New users start as GUEST; upgraded to STUDENT on first enrollment.
         role: 'GUEST',
         status: 'active',
+        // OTP was verified at signup — mark phone as verified
+        phoneVerified: true,
       })
       .returning();
 

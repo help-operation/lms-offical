@@ -8,9 +8,10 @@ const identifier = z
 
 export const AccountSendOtpSchema = z.object({
   identifier,
-  // Distinguishes the two OTP flows that share this endpoint: 'signup' rejects
-  // existing accounts, 'reset' requires one. Defaults to 'signup' for back-compat.
-  purpose: z.enum(['signup', 'reset']).default('signup'),
+  // Distinguishes the three OTP flows: 'signup' rejects existing accounts,
+  // 'reset' requires one, 'verify' sends OTP to an existing account for
+  // contact verification (e.g. Google OAuth users verifying their email).
+  purpose: z.enum(['signup', 'reset', 'verify']).default('signup'),
 });
 export class AccountSendOtpDto extends createZodDto(AccountSendOtpSchema) {}
 
@@ -38,3 +39,9 @@ export const AccountResetSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 export class AccountResetDto extends createZodDto(AccountResetSchema) {}
+
+export const AccountVerifyEmailSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  code: z.string().length(4, 'OTP must be 4 digits'),
+});
+export class AccountVerifyEmailDto extends createZodDto(AccountVerifyEmailSchema) {}

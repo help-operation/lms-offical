@@ -82,6 +82,15 @@ export default async function StudentDashboardPage() {
   if (!user) redirect("/");
   if (user.data.role !== "STUDENT") redirect("/guest/dashboard");
 
+  // Verification enforcement: prevent unverified users from accessing dashboard
+  // Email/Google accounts: require emailVerified. Phone-only accounts: require phoneVerified.
+  if (user.data.email !== null && !user.data.emailVerified) {
+    redirect(`/verify-email?email=${encodeURIComponent(user.data.email)}`);
+  }
+  if (user.data.email === null && !user.data.phoneVerified) {
+    redirect("/");
+  }
+
   const [enrollmentsRes, certificatesRes, paymentsRes, classesRes, notificationsRes] =
     await Promise.all([
       enrollmentsApi.myEnrollments().catch(() => null),

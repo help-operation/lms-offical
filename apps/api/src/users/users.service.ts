@@ -173,7 +173,10 @@ export class UsersService {
   ): Promise<PublicUser | undefined> {
     await this.assertContactAvailable(id, type, value);
 
-    const patch = type === 'email' ? { email: value } : { phone: value };
+    // OTP was verified before calling this method — mark the contact as verified
+    const patch = type === 'email'
+      ? { email: value, emailVerified: true }
+      : { phone: value, phoneVerified: true };
     const result = await this.db
       .update(users)
       .set({ ...patch, updatedAt: new Date() })
