@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { Pool } from 'pg';
+import { runStartupMigrations } from './common/db/startup-migrations';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require('cookie-parser');
 
@@ -52,6 +54,15 @@ async function bootstrap() {
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new ResponseInterceptor(reflector));
+
+  // Run hand-written migrations (0069-0072) on startup.
+  // Idempotent SQL — safe to run every boot.
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    await runStartupMigrations(pool);
+  } finally {
+    await pool.end();
+  }
 
   await app.listen(process.env.PORT ?? 3000)
 }
