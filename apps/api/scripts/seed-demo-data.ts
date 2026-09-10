@@ -182,7 +182,7 @@ async function main() {
   for (let i = 0; i < 20; i++) {
     const fn = FIRST_NAMES[i];
     const ln = LAST_NAMES[i];
-    const email = `demo.student.${i + 1}@skillkoro.com`;
+    const email = `demo.student.${i + 1}@leerney.com`;
     const phone = genPhone(i);
     const status = Math.random() < 0.85 ? 'active' : (Math.random() < 0.5 ? 'suspended' : 'active');
     const createdAt = randomDate(12, 0);

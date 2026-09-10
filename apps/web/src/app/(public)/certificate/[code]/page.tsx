@@ -51,7 +51,7 @@ export default async function CertificatePage({
   const [cert, siteSettings] = await Promise.all([getCertificate(code), getPublicSiteSettings()]);
   if (!cert) notFound();
 
-  const siteName = siteSettings.site_name || "Skillkoro";
+  const siteName = siteSettings.site_name || "Leerney";
 
   const issuedDate = cert.issuedAt
     ? new Date(cert.issuedAt).toLocaleDateString("en-US", {
@@ -198,7 +198,7 @@ export default async function CertificatePage({
           <p className="text-xs text-gray-400 dark:text-gray-500">
             Verify this certificate at{" "}
             <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-              skillkoro.com/certificate/{cert.certificateCode}
+              leerney.com/certificate/{cert.certificateCode}
             </code>
           </p>
         </div>

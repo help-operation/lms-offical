@@ -211,7 +211,7 @@ export class SmsTemplatesService implements OnModuleInit {
   // passes, so admin edits apply everywhere without touching every call site.
   private async siteName(): Promise<string> {
     const { general_site_name } = await this.systemSettings.getByKeys(['general_site_name']);
-    return general_site_name || 'Skillkoro';
+    return general_site_name || 'Leerney';
   }
 
   async onModuleInit() {
@@ -354,11 +354,11 @@ export class SmsTemplatesService implements OnModuleInit {
     const siteName = await this.siteName();
     const SAMPLES: Record<string, string> = {
       code: '1234', minutes: '10', name: 'Rafiq', site_name: siteName,
-      course_title: 'Web Development Bootcamp', verify_url: 'https://skillkoro.com/verify/ABC123',
+      course_title: 'Web Development Bootcamp', verify_url: 'https://leerney.com/verify/ABC123',
       amount: '৳1,999', invoice: 'INV-1024', phone, password: 'Temp1234',
       batch_name: '4th Batch', title: 'Live Q&A', time: '8:00 PM',
       join_link: 'https://meet.example.com/abc', date: '15 Jun 2026',
-      checkout_url: 'https://skillkoro.com/checkout', subject: 'Payment issue',
+      checkout_url: 'https://leerney.com/checkout', subject: 'Payment issue',
       message: 'This is a test broadcast message.',
     };
 

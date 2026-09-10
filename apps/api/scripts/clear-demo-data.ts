@@ -23,7 +23,7 @@ import {
   livePayments,
 } from '../src/db/schema';
 
-const DEMO_EMAILS = Array.from({ length: 20 }, (_, i) => `demo.student.${i + 1}@skillkoro.com`);
+const DEMO_EMAILS = Array.from({ length: 20 }, (_, i) => `demo.student.${i + 1}@leerney.com`);
 
 const DEMO_COURSE_SLUGS = [
   'complete-web-dev',

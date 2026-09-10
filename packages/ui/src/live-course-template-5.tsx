@@ -93,7 +93,7 @@ const D = {
     "কলেজ/ভার্সিটি ছাত্রছাত্রী",
   ],
   projectsTitle: "যেসব রিয়েল লাইফ প্রজেক্ট করানো হবে",
-  projects: ["Documentary Video Edit", "Travel Vlog Video Edit", "SkillKoro Real Project", "Promotional Video Edit"],
+  projects: ["Documentary Video Edit", "Travel Vlog Video Edit", "Leerney Real Project", "Promotional Video Edit"],
   roadmapTitle: "🎬 NextGen Video Editor হবার রোডম্যাপ",
   roadmap: [
     { title: "ভিডিও এডিটিং ফান্ডামেন্টালস", description: "ভিডিও কীভাবে কাজ করে—timeline, cuts, resolution, FPS basics শিখুন।" },

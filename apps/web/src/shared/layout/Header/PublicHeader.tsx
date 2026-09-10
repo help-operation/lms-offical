@@ -37,9 +37,9 @@ const PublicHeader = async () => {
     getPublicContactSettings(),
     getPublicSiteSettings(),
   ]);
-  const logoSrc = site.logo_url || "/Skillkoro-logo.png";
+  const logoSrc = site.logo_url || "/Leerney-logo.png";
   const logoDarkSrc = site.logo_url_dark || undefined;
-  const logoAlt = site.site_name || "Skillkoro";
+  const logoAlt = site.site_name || "Leerney";
   const navigation = menus.navbar.length ? menus.navbar : DEFAULT_NAV;
   const moreNav = menus.navbar_more.length ? menus.navbar_more : DEFAULT_MORE;
   const companyLinks = menus.footer_company.length ? menus.footer_company : DEFAULT_COMPANY;

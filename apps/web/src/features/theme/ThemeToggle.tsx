@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 function applyTheme(dark: boolean) {
   document.documentElement.classList.toggle("dark", dark);
   try {
-    localStorage.setItem("skillkoro-theme", dark ? "dark" : "light");
+    localStorage.setItem("leerney-theme", dark ? "dark" : "light");
   } catch {
     /* ignore */
   }
@@ -25,7 +25,7 @@ export function ThemeToggle({ iconOnly = false }: Props = {}) {
   useEffect(() => {
     let stored: string | null = null;
     try {
-      stored = localStorage.getItem("skillkoro-theme");
+      stored = localStorage.getItem("leerney-theme");
     } catch {
       /* ignore */
     }

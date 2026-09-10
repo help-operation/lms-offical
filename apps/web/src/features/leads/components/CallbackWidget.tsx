@@ -40,7 +40,7 @@ const MessengerIcon = () => (
 );
 
 const MESSENGER_URL =
-  process.env.NEXT_PUBLIC_MESSENGER_URL ?? "https://m.me/SkillKoro";
+  process.env.NEXT_PUBLIC_MESSENGER_URL ?? "https://m.me/Leerney";
 
 interface FormState {
   name: string;
@@ -196,7 +196,7 @@ export function CallbackWidget({
               >
                 <X className="h-4 w-4" />
               </button>
-              <p className="text-2xl font-extrabold tracking-tight">Skillkoro</p>
+              <p className="text-2xl font-extrabold tracking-tight">Leerney</p>
               <p className="mt-4 text-sm font-semibold leading-snug">
                 A counselor will call you shortly to give details.
               </p>

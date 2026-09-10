@@ -369,7 +369,7 @@ export class LeadsService {
       amount,
       custName: lead.name || 'Customer',
       custPhone: lead.phone || '01700000000',
-      custEmail: lead.email || 'noreply@skillkoro.com',
+      custEmail: lead.email || 'noreply@leerney.com',
       callbackUrl,
       reference: `Lead #${lead.id}`,
       checkoutItems: courseRows.map((c) => c.title).join(', '),

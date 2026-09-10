@@ -12,7 +12,7 @@ import {
 import { trackBeginCheckout, trackPurchase, trackAddPaymentInfo } from "@/shared/utils/dataLayer";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-const GUEST_INFO_KEY = "skillkoro:checkout-guest-info";
+const GUEST_INFO_KEY = "leerney:checkout-guest-info";
 
 function loadStoredGuestInfo(): { name: string; email: string; phone: string } | null {
   if (typeof window === "undefined") return null;

@@ -40,7 +40,7 @@ async function getSiteSettings() {
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
-  const siteName   = settings?.general_site_name   || "Skillkoro Academy";
+  const siteName   = settings?.general_site_name   || "Leerney Academy";
   const tagline    = settings?.general_tagline      || "Learn. Grow. Succeed.";
   const faviconUrl = settings?.general_favicon_url  || null;
 
@@ -211,7 +211,7 @@ export default async function RootLayout({
         {/* Theme flash prevention */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('skillkoro-theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}`,
+            __html: `try{var t=localStorage.getItem('leerney-theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}`,
           }}
         />
 

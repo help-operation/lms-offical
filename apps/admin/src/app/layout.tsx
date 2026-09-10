@@ -24,7 +24,7 @@ const getSiteSettings = unstable_cache(
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings  = await getSiteSettings();
-  const siteName  = settings?.general_site_name  || "Skillkoro";
+  const siteName  = settings?.general_site_name  || "Leerney";
   const faviconUrl = settings?.general_favicon_url || null;
 
   return {

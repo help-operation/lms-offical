@@ -22,7 +22,7 @@ async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
   const db = drizzle(pool);
 
-  const email = 'student@skillkoro.com';
+  const email = 'student@leerney.com';
   const password = 'Student@1234';
   const hash = await bcrypt.hash(password, 10);
 

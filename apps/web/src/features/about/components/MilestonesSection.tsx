@@ -8,7 +8,7 @@ type Props = { content?: MilestonesContent };
 
 const DEFAULTS: Required<MilestonesContent> = {
   title: "How far we've come",
-  subtitle: "The biggest achievement at SkillKoro is including you as a true companion of time.",
+  subtitle: "The biggest achievement at Leerney is including you as a true companion of time.",
   milestones: [
     { date: "26 December, 2019", desc: "Participated in the BYLC Youth Carnival 2019." },
     { date: "26 December, 2019", desc: "Participated in the BYLC Youth Carnival 2019." },

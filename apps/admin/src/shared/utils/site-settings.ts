@@ -19,5 +19,5 @@ const getPublicSiteName = unstable_cache(
 
 export async function getAdminAuthSiteName(): Promise<string> {
   const settings = await getPublicSiteName();
-  return settings?.general_site_name || "Skillkoro";
+  return settings?.general_site_name || "Leerney";
 }

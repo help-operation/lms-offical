@@ -1193,7 +1193,7 @@ export function CourseEditorPage({ course, categories, modules: initialModules, 
                       timerMinutes={previewCourse.valueBreakdownInfo?.timerMinutes}
                       timerSeconds={previewCourse.valueBreakdownInfo?.timerSeconds}
                       offerLabel={previewCourse.valueBreakdownInfo?.offerLabel}
-                      logo={<img src="/Skillkoro-logo.png" alt="SkillKoro" className="h-8 w-auto" />}
+                      logo={<img src="/Leerney-logo.png" alt="Leerney" className="h-8 w-auto" />}
                       ctaButton={<span className="bg-green-500 text-white text-[13px] font-bold px-5 py-2 rounded-lg whitespace-nowrap shadow-md">{previewCourse.valueBreakdownInfo?.ctaText || "Enroll Now"}</span>}
                     />
                   )}
@@ -1227,7 +1227,7 @@ export function CourseEditorPage({ course, categories, modules: initialModules, 
                     timerMinutes={previewCourse.valueBreakdownInfo?.timerMinutes}
                     timerSeconds={previewCourse.valueBreakdownInfo?.timerSeconds}
                     offerLabel={previewCourse.valueBreakdownInfo?.offerLabel}
-                    logo={<img src="/Skillkoro-logo.png" alt="SkillKoro" className="h-8 w-auto" />}
+                    logo={<img src="/Leerney-logo.png" alt="Leerney" className="h-8 w-auto" />}
                     ctaButton={<span className="bg-green-500 text-white text-[13px] font-bold px-5 py-2 rounded-lg whitespace-nowrap shadow-md">{previewCourse.valueBreakdownInfo?.ctaText || "Enroll Now"}</span>}
                   />
                 )}

@@ -112,7 +112,7 @@ export const STORAGE_PROVIDER_DEFS: StorageProviderDef[] = [
         key: "senderId",
         label: "Sender ID",
         secret: false,
-        placeholder: "Skillkoro",
+        placeholder: "Leerney",
         helpText: "The masking name/number recipients see as the sender. Must be approved in your BulkSMSBD account.",
       },
       {

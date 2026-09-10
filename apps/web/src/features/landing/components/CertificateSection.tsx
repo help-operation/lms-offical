@@ -92,7 +92,7 @@ const Certificate = () => (
             </p>
             <p className="mt-3 text-sm font-bold text-gray-900">COURSE NAME</p>
             <p className="mt-1 text-[11px] text-gray-500">
-              held on DD MM , YYYY to DD MM , YYYY at SkillKoro.com
+              held on DD MM , YYYY to DD MM , YYYY at Leerney.com
             </p>
           </div>
         </div>
@@ -121,14 +121,14 @@ const Certificate = () => (
                 MENTOR NAME
               </div>
               <p>Instructor, Course Name</p>
-              <p>SkillKoro</p>
+              <p>Leerney</p>
             </div>
             <div>
               <div className="mb-1 border-t border-gray-400 pt-1 font-bold text-gray-700">
                 MAJADUR RAHAMAN ROBIN
               </div>
               <p>CEO, Founder</p>
-              <p>SkillKoro</p>
+              <p>Leerney</p>
             </div>
           </div>
         </div>

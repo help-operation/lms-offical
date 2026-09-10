@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SkillKoro Checkout</title>
+<title>Leerney Checkout</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
 
@@ -544,7 +544,7 @@
     <div class="terms-check">
       <input type="checkbox" id="acceptTerms" checked>
       <label for="acceptTerms">
-        By clicking "Place Order", I accept SkillKoro's
+        By clicking "Place Order", I accept Leerney's
         <a href="#">Terms &amp; Conditions</a>, <a href="#">Privacy Policy</a> &amp; <a href="#">Refund Policy</a>*
       </label>
     </div>

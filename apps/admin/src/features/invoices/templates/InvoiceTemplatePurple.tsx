@@ -127,15 +127,15 @@ export function InvoiceTemplatePurple({ invoice, brand, overrides, pageFormat = 
       <div className="mt-4 rounded-xl p-6 grid grid-cols-2 items-center" style={{ backgroundColor: YELLOW }}>
         <p className="font-bold text-[12px] text-gray-900">স্কিলকোরো, দক্ষ হও, দুনিয়া বদলাও</p>
         <div className="text-right text-[12px] font-bold text-gray-900">
-            <p>{b.website || "skillkoro.com"}</p>
-            <p>{b.email || "support@skillkoro.com"}</p>
+            <p>{b.website || "leerney.com"}</p>
+            <p>{b.email || "support@leerney.com"}</p>
         </div>
       </div>
 
       {/* Help & Secure Payment */}
       <div className="mt-3 border border-gray-200 rounded-xl text-center text-[11px] text-gray-600" style={{ backgroundColor: "#fbf9ff" }}>
         <div className="p-2 border-b border-gray-200">
-          Need help? Contact <span className="font-bold" style={{color: PURPLE}}>{b.email || "support@skillkoro.com"}</span>
+          Need help? Contact <span className="font-bold" style={{color: PURPLE}}>{b.email || "support@leerney.com"}</span>
         </div>
         <div className="p-2 flex items-center justify-center gap-2">
           Secure Payment Processing By: <span className="font-bold" style={{color: PURPLE}}>PayStation</span>

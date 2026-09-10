@@ -15,11 +15,11 @@ export type MediaContent = {
 type Props = { content?: MediaContent };
 
 const DEFAULTS: Required<MediaContent> = {
-  title: "SkillKoro in Media",
+  title: "Leerney in Media",
   articles: [
-    { id: 1, outlet: "THE BUSINESS STANDARD", date: "25th Nov 2025", image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=360&fit=crop", title: "SkillKoro launches idea innovation 5.0", link: "/blog" },
-    { id: 2, outlet: "THE BUSINESS STANDARD", date: "25th Nov 2025", image: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=360&fit=crop", title: "SkillKoro launches idea innovation 5.0", link: "/blog" },
-    { id: 3, outlet: "THE BUSINESS STANDARD", date: "25th Nov 2025", image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&h=360&fit=crop", title: "SkillKoro launches idea innovation 5.0", link: "/blog" },
+    { id: 1, outlet: "THE BUSINESS STANDARD", date: "25th Nov 2025", image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=360&fit=crop", title: "Leerney launches idea innovation 5.0", link: "/blog" },
+    { id: 2, outlet: "THE BUSINESS STANDARD", date: "25th Nov 2025", image: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=360&fit=crop", title: "Leerney launches idea innovation 5.0", link: "/blog" },
+    { id: 3, outlet: "THE BUSINESS STANDARD", date: "25th Nov 2025", image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&h=360&fit=crop", title: "Leerney launches idea innovation 5.0", link: "/blog" },
   ],
 };
 

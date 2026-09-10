@@ -124,7 +124,7 @@ export class SmsGateway {
   ): Promise<SmsDispatchResult> {
     const creds = await this.storageConfig.getDecryptedCredentials('bulksms');
     const apiKey = creds.apiKey?.trim() || this.config.get<string>('BULKSMSBD_API_KEY');
-    const senderId = creds.senderId?.trim() || this.config.get<string>('BULKSMSBD_SENDER_ID', 'Skillkoro');
+    const senderId = creds.senderId?.trim() || this.config.get<string>('BULKSMSBD_SENDER_ID', 'Leerney');
 
     if (!apiKey) {
       this.logger.warn('BULKSMSBD_API_KEY not set — SMS not sent (dev mode)');

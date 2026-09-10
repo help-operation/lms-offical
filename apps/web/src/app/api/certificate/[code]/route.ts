@@ -237,7 +237,7 @@ function CertificateDoc({
             { style: styles.innerBorder },
             // Brand
             createElement(View, { style: styles.brandRow },
-              createElement(Text, { style: styles.brandName }, "SKILLKORO"),
+              createElement(Text, { style: styles.brandName }, "LEERNEY"),
             ),
             createElement(Text, { style: styles.subtitle }, "Certificate of Completion"),
 
@@ -266,7 +266,7 @@ function CertificateDoc({
             // Signature
             createElement(View, { style: styles.signatureRow },
               createElement(View, { style: styles.signatureBlock },
-                createElement(Text, { style: styles.signatureName }, "Skillkoro"),
+                createElement(Text, { style: styles.signatureName }, "Leerney"),
                 createElement(View, { style: styles.signatureLine }),
                 createElement(Text, { style: styles.signatureTitle }, "Authorized Signature"),
               ),

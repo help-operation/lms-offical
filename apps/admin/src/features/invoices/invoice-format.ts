@@ -35,7 +35,7 @@ export interface InvoiceBrandSettings {
 }
 
 export const BRAND_DEFAULTS: Required<InvoiceBrandSettings> = {
-  companyName: "Skillkoro",
+  companyName: "Leerney",
   tagline: "Online Learning Platform",
   logoUrl: "",
   address: "",

@@ -40,7 +40,7 @@ const FALLBACK_ITEMS: TestimonialsContent["items"] = [
 
 const TestimonialSection = async ({ content = {} }: Props) => {
   const title    = content.title    ?? "What Our Students Say";
-  const subtitle = content.subtitle ?? "Join thousands of successful learners who have transformed their careers with Skillkoro.";
+  const subtitle = content.subtitle ?? "Join thousands of successful learners who have transformed their careers with Leerney.";
 
   // Fetch live curated reviews; fall back to CMS content items, then hardcoded defaults
   const liveReviews = await getFeaturedReviews();

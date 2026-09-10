@@ -11,7 +11,7 @@ export default async function StudentCertificatesPage() {
     getPublicSiteSettings(),
   ]);
   const certificates = res?.data ?? [];
-  const siteName = siteSettings.site_name || "Skillkoro";
+  const siteName = siteSettings.site_name || "Leerney";
 
   return (
     <div className="space-y-6">

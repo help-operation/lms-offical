@@ -41,7 +41,7 @@ async function main() {
   console.log(`  ✓ ${allCats.length} categories ready`);
 
   // Ensure a demo instructor exists
-  const instructorEmail = "instructor@skillkoro.com";
+  const instructorEmail = "instructor@leerney.com";
   const instHash = await bcrypt.hash("Instructor@1234", 10);
   const [instructor] = await db
     .insert(adminUsers)

@@ -6,7 +6,7 @@ export type WhyIctContent = {
 type Props = { content?: WhyIctContent };
 
 const DEFAULTS: Required<WhyIctContent> = {
-  title: "The skill journey — why SkillKoro?",
+  title: "The skill journey — why Leerney?",
   reasons: [
     {
       title: "Guidance from the country's best entrepreneurs",

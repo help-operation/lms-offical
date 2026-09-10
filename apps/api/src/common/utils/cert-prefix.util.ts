@@ -1,6 +1,6 @@
 /**
  * Derives a certificate-code prefix from the site name, e.g.
- * "Learning Management System" → "LMS", "Skillkoro" → "SKI".
+ * "Learning Management System" → "LMS", "Leerney" → "SKI".
  * Falls back to "CERT" when the name yields fewer than 2 letters/digits
  * (empty, punctuation-only, etc.) so codes stay collision-safe.
  */

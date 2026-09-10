@@ -13,7 +13,7 @@ type Props = { content?: ContactInfoContent };
 const DEFAULTS: Required<ContactInfoContent> = {
   address: "House 90/2, Gulshan Badda Link Rd, Dhaka 1212, Bangladesh",
   phone: "+880 1321-204263",
-  email: "support@skillkoro.com",
+  email: "support@leerney.com",
   hours_days: "Saturday – Thursday",
   hours_time: "10:00 AM – 6:00 PM",
 };

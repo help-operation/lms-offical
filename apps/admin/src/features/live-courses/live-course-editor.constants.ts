@@ -308,11 +308,11 @@ export const MOCK = {
     { url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
   ] as T3VideoItem[],
 
-  t3MessengerUrl: "https://m.me/skillkoro",
+  t3MessengerUrl: "https://m.me/leerney",
   t3Phone:        "+8801XXXXXXXXX",
-  t3BrandName:    "Skillkoro",
+  t3BrandName:    "Leerney",
   t3Tagline:      "শিখুন। বাড়ুন। সফল হন।",
-  t3Copyright:    `© ${new Date().getFullYear()} Skillkoro. All rights reserved.`,
+  t3Copyright:    `© ${new Date().getFullYear()} Leerney. All rights reserved.`,
 
   t3FaqItems: [
     { question: "কোর্সটি কি বাংলায়?",         answer: "হ্যাঁ, সম্পূর্ণ কোর্সটি বাংলায় পরিচালিত হয়।" },

@@ -91,7 +91,7 @@ async function main() {
   for (let i = 1; i <= 500; i++) {
     const fn = randomElement(FIRST_NAMES);
     const ln = randomElement(LAST_NAMES);
-    const email = `demo.student.${i}@skillkoro.com`;
+    const email = `demo.student.${i}@leerney.com`;
     const phone = generatePhone(i);
     const status = Math.random() < 0.92 ? 'active' : 'suspended';
     const createdAt = randomDate(12, 0);

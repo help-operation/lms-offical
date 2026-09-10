@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function VerifyPage() {
   const siteSettings = await getPublicSiteSettings();
-  const siteName = siteSettings.site_name || "Skillkoro";
+  const siteName = siteSettings.site_name || "Leerney";
   const certPrefix = deriveCertPrefix(siteName);
 
   return (

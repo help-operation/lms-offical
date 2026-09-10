@@ -3,7 +3,7 @@
 import { Moon, Sun } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "skillkoro-admin-theme";
+const STORAGE_KEY = "leerney-admin-theme";
 const ROOT_ID = "admin-dashboard-root";
 
 function applyTheme(dark: boolean) {
