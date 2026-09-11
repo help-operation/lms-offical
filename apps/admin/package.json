@@ -20,6 +20,7 @@
     "@repo/ui": "workspace:*",
     "@repo/validators": "workspace:*",
     "@tanstack/react-query": "^5.100.9",
+    "@tiptap/core": "3.23.4",
     "@tiptap/extension-image": "^3.23.4",
     "@tiptap/extension-link": "^3.23.4",
     "@tiptap/extension-placeholder": "^3.23.4",

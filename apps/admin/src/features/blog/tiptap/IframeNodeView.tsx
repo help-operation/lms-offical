@@ -1,14 +1,7 @@
 "use client";
 
-import { NodeViewWrapper, NodeViewContent } from "@tiptap/react";
+import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { Trash2, ExternalLink } from "lucide-react";
-import { useState } from "react";
-
-interface IframeAttrs {
-  src: string;
-  width?: string;
-  height?: string;
-}
 
 function getPlatformLabel(src: string): string {
   if (src.includes("youtube.com") || src.includes("youtu.be")) return "YouTube";
@@ -17,17 +10,8 @@ function getPlatformLabel(src: string): string {
   return "Embed";
 }
 
-export function IframeNodeView({
-  node,
-  updateAttributes,
-  deleteNode,
-}: {
-  node: { attrs: IframeAttrs };
-  updateAttributes: (attrs: Partial<IframeAttrs>) => void;
-  deleteNode: () => void;
-}) {
-  const { src } = node.attrs;
-  const [editing, setEditing] = useState(!src);
+export function IframeNodeView(props: ReactNodeViewProps) {
+  const { src = "", width = "100%", height = "400" } = props.node.attrs as { src?: string; width?: string; height?: string };
 
   if (!src) {
     return (
@@ -36,7 +20,7 @@ export function IframeNodeView({
           <p className="text-sm text-gray-400">Empty embed — select content to display</p>
           <button
             type="button"
-            onClick={deleteNode}
+            onClick={() => props.deleteNode()}
             className="mt-2 text-xs text-red-500 hover:text-red-700"
           >
             Remove
@@ -67,7 +51,7 @@ export function IframeNodeView({
           </a>
           <button
             type="button"
-            onClick={deleteNode}
+            onClick={() => props.deleteNode()}
             className="flex h-7 w-7 items-center justify-center rounded-md bg-red-600/80 text-white hover:bg-red-600 transition-colors"
             title="Remove embed"
           >
@@ -79,8 +63,8 @@ export function IframeNodeView({
         <div className="overflow-hidden rounded-xl border border-gray-200">
           <iframe
             src={src}
-            width={node.attrs.width ?? "100%"}
-            height={node.attrs.height ?? "400"}
+            width={width}
+            height={height}
             frameBorder="0"
             allowFullScreen
             referrerPolicy="no-referrer-when-downgrade"
