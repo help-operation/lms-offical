@@ -7,6 +7,9 @@ export interface BlogPost {
   excerpt: string | null;
   thumbnail: string | null;
   publishedAt: string | null;
+  publishAt: string | null;
+  isFeatured: boolean;
+  readingTime: number | null;
   authorFirstName: string;
   authorLastName: string;
   categoryId: number | null;
@@ -25,6 +28,7 @@ export interface BlogPostDetail extends BlogPost {
   excerpt: string | null;
   createdAt: string | null;
   authorId: number;
+  readingTime: number | null;
 }
 
 export interface BlogCategory {

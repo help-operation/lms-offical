@@ -92,9 +92,14 @@ async function BlogPost({
 
         {/* Meta */}
         <div className="mb-8 flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-          {post.publishedAt && (
+          {post.readingTime && (
             <span className="flex items-center gap-1.5 font-semibold text-amber-500 dark:text-amber-400">
               <Clock className="h-4 w-4" />
+              {post.readingTime} min read
+            </span>
+          )}
+          {post.publishedAt && (
+            <span>
               {new Date(post.publishedAt).toLocaleDateString("en-GB", {
                 day: "numeric", month: "long", year: "numeric",
               })}

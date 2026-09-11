@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Globe, Loader2, Plus, X, Search, Tag } from "lucide-react";
+import { ArrowLeft, Save, Globe, Loader2, Plus, X, Search, Star, Calendar } from "lucide-react";
 import { apiRequestBrowser } from "@/lib/api-client-browser";
 import { createBlogPostAction, updateBlogPostAction } from "@/features/blog/actions/blog.actions";
-import type { BlogPost, BlogCategory, BlogTag } from "@/features/blog/api";
+import type { BlogPost, BlogCategory, BlogTag, BlogAuthor } from "@/features/blog/api";
 import { RichTextEditor } from "./RichTextEditor";
 import { ImagePickerField } from "@/shared/components/ImagePickerField";
 import { toast } from "@repo/ui/sonner";
@@ -105,10 +105,24 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
   const [metaDescription, setMetaDescription] = useState(post?.metaDescription ?? "");
   const [ogImage, setOgImage] = useState(post?.ogImage ?? "");
 
-  // Fetch available tags on mount
+  // ── Featured state ──────────────────────────────────────────────────────────
+  const [isFeatured, setIsFeatured] = useState(post?.isFeatured ?? false);
+
+  // ── Author state ───────────────────────────────────────────────────────────
+  const [allAuthors, setAllAuthors] = useState<BlogAuthor[]>([]);
+  const [authorId, setAuthorId] = useState<number | "">(post?.authorId ?? "");
+  const [authorSearch, setAuthorSearch] = useState("");
+
+  // ── Schedule state ─────────────────────────────────────────────────────────
+  const [scheduleAt, setScheduleAt] = useState(post?.publishAt ? post.publishAt.slice(0, 16) : "" );
+
+  // Fetch available tags + authors on mount
   useEffect(() => {
     apiRequestBrowser<BlogTag[]>("/blog/tags")
       .then((res) => setAllTags(res.data ?? []))
+      .catch(() => {});
+    apiRequestBrowser<BlogAuthor[]>("/blog/admin/authors")
+      .then((res) => setAllAuthors(res.data ?? []))
       .catch(() => {});
   }, []);
 
@@ -133,10 +147,13 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
       thumbnail:  thumbnail.trim() || undefined,
       categoryId: categoryId !== "" ? Number(categoryId) : undefined,
       publish,
+      scheduleAt: (!publish && scheduleAt) ? scheduleAt : undefined,
       tags:       selectedTagIds,
       metaTitle:       metaTitle.trim() || undefined,
       metaDescription: metaDescription.trim() || undefined,
       ogImage:         ogImage.trim() || undefined,
+      isFeatured,
+      authorId:   authorId !== "" ? Number(authorId) : undefined,
     };
 
     startTransition(async () => {
@@ -166,6 +183,7 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
   }
 
   const isPublished = post?.status === "published";
+  const isScheduled = post?.status === "scheduled";
 
   return (
     <div className="flex flex-col h-full">
@@ -187,7 +205,7 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
         <div className="flex items-center gap-2">
           {error && <span className="text-xs text-red-500">{error}</span>}
 
-          {/* Save as draft */}
+          {/* Save as draft / Unpublish / Cancel Schedule */}
           <button
             onClick={() => handleSave(false)}
             disabled={isPending}
@@ -196,10 +214,10 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
             {isPending && saving === "draft"
               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
               : <Save className="h-3.5 w-3.5" />}
-            {isPublished ? "Unpublish" : "Save Draft"}
+            {isPublished ? "Unpublish" : isScheduled ? "Cancel Schedule" : "Save Draft"}
           </button>
 
-          {/* Publish */}
+          {/* Publish — show when not currently published */}
           {!isPublished && (
             <button
               onClick={() => handleSave(true)}
@@ -209,7 +227,7 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
               {isPending && saving === "publish"
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 : <Globe className="h-3.5 w-3.5" />}
-              Publish
+              {isScheduled ? "Publish Now" : "Publish"}
             </button>
           )}
 
@@ -263,7 +281,7 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
           <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</h3>
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isPublished ? "bg-green-500" : "bg-gray-400"}`} />
+              <div className={`w-2 h-2 rounded-full ${isPublished ? "bg-green-500" : isScheduled ? "bg-yellow-500" : "bg-gray-400"}`} />
               <span className="text-sm font-medium text-gray-700 capitalize">
                 {post?.status ?? "Draft"}
               </span>
@@ -482,6 +500,121 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
                   <X className="h-4 w-4" />
                 </button>
               </div>
+            )}
+          </div>
+
+          {/* Featured */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Featured</h3>
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div
+                className={`w-10 h-6 rounded-full relative transition-colors ${
+                  isFeatured ? "bg-brand-500" : "bg-gray-300"
+                }`}
+                onClick={() => setIsFeatured(!isFeatured)}
+              >
+                <div
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                    isFeatured ? "translate-x-[18px]" : "translate-x-0.5"
+                  }`}
+                />
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                  Featured Post
+                </span>
+                <p className="text-xs text-gray-400">Shown prominently on the blog listing</p>
+              </div>
+            </label>
+          </div>
+
+          {/* Author */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Author
+            </label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <input
+                value={authorSearch}
+                onChange={(e) => setAuthorSearch(e.target.value)}
+                placeholder={
+                  authorId !== ""
+                    ? allAuthors.find((a) => a.id === authorId)
+                        ? `${allAuthors.find((a) => a.id === authorId)!.firstName} ${allAuthors.find((a) => a.id === authorId)!.lastName}`
+                        : "Search authors…"
+                    : "Search authors…"
+                }
+                className="w-full rounded-xl border border-gray-200 pl-8 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            {authorId !== "" && (
+              <button
+                type="button"
+                onClick={() => { setAuthorId(""); setAuthorSearch(""); }}
+                className="text-xs text-brand-500 hover:text-brand-700"
+              >
+                Clear author
+              </button>
+            )}
+            {authorSearch && (
+              <div className="max-h-32 overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100">
+                {allAuthors
+                  .filter(
+                    (a) =>
+                      `${a.firstName} ${a.lastName}`.toLowerCase().includes(authorSearch.toLowerCase()) ||
+                      a.email.toLowerCase().includes(authorSearch.toLowerCase()),
+                  )
+                  .slice(0, 10)
+                  .map((author) => (
+                    <button
+                      key={author.id}
+                      type="button"
+                      onClick={() => {
+                        setAuthorId(author.id);
+                        setAuthorSearch("");
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="font-medium">{author.firstName} {author.lastName}</span>
+                      <span className="ml-2 text-xs text-gray-400">{author.email}</span>
+                    </button>
+                  ))}
+                {allAuthors.filter(
+                  (a) =>
+                    `${a.firstName} ${a.lastName}`.toLowerCase().includes(authorSearch.toLowerCase()) ||
+                    a.email.toLowerCase().includes(authorSearch.toLowerCase()),
+                ).length === 0 && (
+                  <p className="px-3 py-2 text-xs text-gray-400">No authors found</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Schedule */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <Calendar className="h-3.5 w-3.5" />
+              Schedule
+            </label>
+            <p className="text-xs text-gray-400">
+              Leave blank to publish immediately when you click Publish.
+            </p>
+            <input
+              type="datetime-local"
+              value={scheduleAt}
+              onChange={(e) => setScheduleAt(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            {scheduleAt && (
+              <button
+                type="button"
+                onClick={() => setScheduleAt("")}
+                className="text-xs text-brand-500 hover:text-brand-700"
+              >
+                Clear schedule (publish immediately)
+              </button>
             )}
           </div>
 

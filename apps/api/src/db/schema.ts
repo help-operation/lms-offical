@@ -151,7 +151,7 @@ export const ticketCategoryEnum = pgEnum('ticket_category', [
   'other',
 ]);
 
-export const blogStatusEnum = pgEnum('blog_status', ['draft', 'published']);
+export const blogStatusEnum = pgEnum('blog_status', ['draft', 'scheduled', 'published']);
 
 export const liveClassStatusEnum = pgEnum('live_class_status', [
   'scheduled',
@@ -1195,6 +1195,8 @@ export const blogPosts = pgTable('blog_posts', {
   content: text('content'),
   thumbnail: varchar('thumbnail', { length: 500 }),
   status: blogStatusEnum('status').default('draft').notNull(),
+  isFeatured: boolean('is_featured').default(false).notNull(),
+  publishAt: timestamp('publish_at'),
   shareCount: integer('share_count').default(0).notNull(),
   // SEO fields
   metaTitle: varchar('meta_title', { length: 255 }),

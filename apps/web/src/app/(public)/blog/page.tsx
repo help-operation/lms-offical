@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ThumbsUp, MessageCircle, Clock, ArrowRight } from "lucide-react";
+import { ThumbsUp, MessageCircle, Clock, ArrowRight, Star } from "lucide-react";
 import { getCachedBlogList, type BlogPost } from "@/features/blog/api";
 import TopCoursesSection from "@/features/landing/components/TopCoursesSection";
 import { getPublicPageSections } from "@/features/cms/api/page-sections";
@@ -40,10 +40,21 @@ function BlogCard({ post }: { post: BlogPost }) {
 
       {/* Body */}
       <div className="flex flex-1 flex-col p-5">
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 dark:text-amber-400">
-          <Clock className="h-3.5 w-3.5" />
-          {formatDate(post.publishedAt)}
-        </span>
+        <div className="flex items-center gap-3 text-xs font-semibold text-amber-500 dark:text-amber-400">
+          {post.readingTime ? (
+            <span className="flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              {post.readingTime} min read
+            </span>
+          ) : (
+            <span>{formatDate(post.publishedAt)}</span>
+          )}
+          {post.isFeatured && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+              Featured
+            </span>
+          )}
+        </div>
 
         <h3 className="mt-2 line-clamp-2 min-h-[52px] text-lg font-bold leading-snug text-gray-900 transition-colors group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-400">
           {post.title}

@@ -533,6 +533,13 @@
       "when": 1789100000000,
       "tag": "0076_blog_tags_seo",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1789200000000,
+      "tag": "0077_blog_featured_scheduling",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Globe, FileEdit, Pencil, Heart, MessageSquare, Share2, Tag } from "lucide-react";
+import { Plus, Trash2, Globe, FileEdit, Pencil, Heart, MessageSquare, Share2, Tag, Star, Clock } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import {
@@ -30,6 +30,14 @@ function buildAllCols(formatDate: (v: string | null | undefined) => string): Col
     {
       key: "authorFirstName", header: "Author", defaultVisible: true,
       exportFields: [{ header: "Author", getValue: (p) => `${p.authorFirstName} ${p.authorLastName}` }],
+    },
+    {
+      key: "isFeatured", header: "Featured", defaultVisible: true,
+      exportFields: [{ header: "Featured", getValue: (p) => p.isFeatured ? "Yes" : "No" }],
+    },
+    {
+      key: "readingTime", header: "Reading Time", defaultVisible: true,
+      exportFields: [{ header: "Reading Time", getValue: (p) => p.readingTime ? `${p.readingTime} min` : "" }],
     },
     {
       key: "status", header: "Status", defaultVisible: true,
@@ -137,13 +145,42 @@ export function BlogPostsClient({ initialData }: Props) {
         <span className="text-sm text-gray-500 dark:text-slate-400">{post.authorFirstName} {post.authorLastName}</span>
       ),
     }] : []),
+    ...(visibleCols.has("isFeatured") ? [{
+      key: "isFeatured" as const, header: "Featured",
+      render: (post: BlogPost) => (
+        post.isFeatured
+          ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              <Star className="h-3 w-3 fill-current" />
+              Featured
+            </span>
+          : <span className="text-xs text-gray-300 dark:text-slate-600">—</span>
+      ),
+    }] : []),
+    ...(visibleCols.has("readingTime") ? [{
+      key: "readingTime" as const, header: "Reading Time",
+      render: (post: BlogPost) => (
+        post.readingTime
+          ? <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
+              <Clock className="h-3 w-3" />
+              {post.readingTime} min
+            </span>
+          : <span className="text-xs text-gray-300 dark:text-slate-600">—</span>
+      ),
+    }] : []),
     ...(visibleCols.has("status") ? [{
       key: "status" as const, header: "Status",
-      render: (post: BlogPost) => (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${post.status === "published" ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" : "bg-gray-100 text-gray-500 dark:bg-slate-500/15 dark:text-slate-400"}`}>
-          {post.status}
-        </span>
-      ),
+      render: (post: BlogPost) => {
+        const colorMap: Record<string, string> = {
+          published: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+          scheduled: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400",
+          draft:     "bg-gray-100 text-gray-500 dark:bg-slate-500/15 dark:text-slate-400",
+        };
+        return (
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colorMap[post.status] ?? colorMap.draft}`}>
+            {post.status}
+          </span>
+        );
+      },
     }] : []),
     ...(visibleCols.has("tags") ? [{
       key: "tags" as const, header: "Tags",
@@ -310,7 +347,16 @@ export function BlogPostsClient({ initialData }: Props) {
             label: "All Status",
             options: [
               { label: "Draft",     value: "draft"     },
+              { label: "Scheduled", value: "scheduled" },
               { label: "Published", value: "published" },
+            ],
+          },
+          {
+            key: "isFeatured",
+            label: "All Featured",
+            options: [
+              { label: "Featured",    value: "true"  },
+              { label: "Not Featured", value: "false" },
             ],
           },
         ]}

@@ -32,15 +32,17 @@ export async function createBlogPostAction(data: {
   thumbnail?: string;
   categoryId?: number;
   publish?: boolean;
+  scheduleAt?: string;
   tags?: number[];
   metaTitle?: string;
   metaDescription?: string;
   ogImage?: string;
+  isFeatured?: boolean;
+  authorId?: number;
 }) {
   try {
     const res = await blogAdminApi.create(data);
     revalidatePath("/admin/blog");
-    // Public web cache is purged API-side (BlogService) — see RevalidationService.
     return { success: true as const, data: res.data };
   } catch (err) {
     return { success: false as const, message: extractMessage(err) };
@@ -57,17 +59,19 @@ export async function updateBlogPostAction(
     thumbnail?: string;
     categoryId?: number | null;
     publish?: boolean;
+    scheduleAt?: string | null;
     tags?: number[];
     metaTitle?: string | null;
     metaDescription?: string | null;
     ogImage?: string | null;
+    isFeatured?: boolean;
+    authorId?: number;
   }
 ) {
   try {
     const res = await blogAdminApi.update(id, data);
     revalidatePath("/admin/blog");
     revalidatePath(`/admin/blog/${id}/edit`);
-    // Public web cache is purged API-side (BlogService) — see RevalidationService.
     return { success: true as const, data: res.data };
   } catch (err) {
     return { success: false as const, message: extractMessage(err) };
@@ -78,7 +82,6 @@ export async function deleteBlogPostAction(id: number, slug?: string) {
   try {
     await blogAdminApi.remove(id);
     revalidatePath("/admin/blog");
-    // Public web cache is purged API-side (BlogService) — see RevalidationService.
     return { success: true as const };
   } catch (err) {
     return { success: false as const, message: extractMessage(err) };
