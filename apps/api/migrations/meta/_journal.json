@@ -526,6 +526,13 @@
       "when": 1789033278603,
       "tag": "0075_add_email_phone_verified",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1789100000000,
+      "tag": "0076_blog_tags_seo",
+      "breakpoints": true
     }
   ]
 }

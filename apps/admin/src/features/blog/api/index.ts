@@ -18,9 +18,19 @@ export interface BlogPost {
   likeCount?: number;
   commentCount?: number;
   shareCount?: number;
+  tags?: BlogTag[];
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  ogImage?: string | null;
 }
 
 export interface BlogCategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface BlogTag {
   id: number;
   name: string;
   slug: string;
@@ -43,10 +53,19 @@ export const blogAdminApi = {
   categories: () =>
     apiRequest<BlogCategory[]>("/blog/categories"),
 
-  create: (data: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean }) =>
+  tags: () =>
+    apiRequest<BlogTag[]>("/blog/tags"),
+
+  createTag: (name: string) =>
+    apiRequest<BlogTag>("/blog/tags", { method: "POST", body: JSON.stringify({ name }) }),
+
+  deleteTag: (id: number) =>
+    apiRequest<{ success: boolean }>(`/blog/tags/${id}`, { method: "DELETE" }),
+
+  create: (data: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean; tags?: number[]; metaTitle?: string; metaDescription?: string; ogImage?: string }) =>
     apiRequest<BlogPost>("/blog", { method: "POST", body: JSON.stringify(data) }),
 
-  update: (id: number, data: { title?: string; slug?: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number | null; publish?: boolean }) =>
+  update: (id: number, data: { title?: string; slug?: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number | null; publish?: boolean; tags?: number[]; metaTitle?: string | null; metaDescription?: string | null; ogImage?: string | null }) =>
     apiRequest<BlogPost>(`/blog/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 
   remove: (id: number) =>

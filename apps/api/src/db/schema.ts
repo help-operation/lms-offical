@@ -1196,10 +1196,31 @@ export const blogPosts = pgTable('blog_posts', {
   thumbnail: varchar('thumbnail', { length: 500 }),
   status: blogStatusEnum('status').default('draft').notNull(),
   shareCount: integer('share_count').default(0).notNull(),
+  // SEO fields
+  metaTitle: varchar('meta_title', { length: 255 }),
+  metaDescription: text('meta_description'),
+  ogImage: varchar('og_image', { length: 500 }),
   publishedAt: timestamp('published_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// ─── Blog Tags ────────────────────────────────────────────────────────────────
+
+export const blogTagsTable = pgTable('blog_tags', {
+  id:   serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  slug: varchar('slug', { length: 120 }).notNull().unique(),
+});
+
+export const blogPostTags = pgTable(
+  'blog_post_tags',
+  {
+    postId: integer('post_id').notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+    tagId:  integer('tag_id').notNull().references(() => blogTagsTable.id, { onDelete: 'cascade' }),
+  },
+  (t) => [unique('uq_blog_post_tag').on(t.postId, t.tagId)],
+);
 
 // ─── Blog Engagement ──────────────────────────────────────────────────────────
 

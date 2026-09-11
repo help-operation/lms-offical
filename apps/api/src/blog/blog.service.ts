@@ -13,7 +13,7 @@ import { RevalidationService } from '../common/revalidation/revalidation.service
 import { CacheTag, blogTags } from '../common/revalidation/cache-tags';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
-const { blogPosts, blogCategories, blogPostLikes, blogPostComments, users, adminUsers } = schema;
+const { blogPosts, blogCategories, blogPostLikes, blogPostComments, blogTagsTable, blogPostTags, users, adminUsers } = schema;
 
 @Injectable()
 export class BlogService {
@@ -44,6 +44,7 @@ export class BlogService {
         likeCount:    sql<number>`(SELECT COUNT(*) FROM ${blogPostLikes} WHERE ${blogPostLikes.postId} = ${blogPosts.id})`.mapWith(Number),
         commentCount: sql<number>`(SELECT COUNT(*) FROM ${blogPostComments} WHERE ${blogPostComments.postId} = ${blogPosts.id})`.mapWith(Number),
         shareCount:   blogPosts.shareCount,
+        tags: sql<string[]>`COALESCE((SELECT array_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '{}')`.mapWith(JSON.parse),
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -58,6 +59,7 @@ export class BlogService {
         id: blogPosts.id,
         title: blogPosts.title,
         slug: blogPosts.slug,
+        excerpt: blogPosts.excerpt,
         content: blogPosts.content,
         thumbnail: blogPosts.thumbnail,
         status: blogPosts.status,
@@ -67,6 +69,10 @@ export class BlogService {
         categoryId: blogPosts.categoryId,
         authorFirstName: adminUsers.firstName,
         authorLastName: adminUsers.lastName,
+        metaTitle: blogPosts.metaTitle,
+        metaDescription: blogPosts.metaDescription,
+        ogImage: blogPosts.ogImage,
+        tags: sql<string[]>`COALESCE((SELECT array_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '{}')`.mapWith(JSON.parse),
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -104,6 +110,10 @@ export class BlogService {
           likeCount:    sql<number>`(SELECT COUNT(*) FROM ${blogPostLikes} WHERE ${blogPostLikes.postId} = ${blogPosts.id})`.mapWith(Number),
           commentCount: sql<number>`(SELECT COUNT(*) FROM ${blogPostComments} WHERE ${blogPostComments.postId} = ${blogPosts.id})`.mapWith(Number),
           shareCount:   blogPosts.shareCount,
+          metaTitle: blogPosts.metaTitle,
+          metaDescription: blogPosts.metaDescription,
+          ogImage: blogPosts.ogImage,
+          tags: sql<string[]>`COALESCE((SELECT array_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '{}')`.mapWith(JSON.parse),
         })
         .from(blogPosts)
         .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -137,6 +147,10 @@ export class BlogService {
         authorId:        blogPosts.authorId,
         authorFirstName: adminUsers.firstName,
         authorLastName:  adminUsers.lastName,
+        metaTitle: blogPosts.metaTitle,
+        metaDescription: blogPosts.metaDescription,
+        ogImage: blogPosts.ogImage,
+        tags: sql<string[]>`COALESCE((SELECT array_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '{}')`.mapWith(JSON.parse),
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -148,7 +162,7 @@ export class BlogService {
 
   async create(
     authorId: number,
-    data: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean },
+    data: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean; tags?: number[]; metaTitle?: string; metaDescription?: string; ogImage?: string },
   ) {
     const slug = await this.uniqueSlug(data.title);
     const [post] = await this.db
@@ -163,8 +177,18 @@ export class BlogService {
         categoryId: data.categoryId,
         status:     data.publish ? 'published' : 'draft',
         publishedAt: data.publish ? new Date() : undefined,
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
+        ogImage: data.ogImage,
       })
       .returning();
+
+    if (data.tags?.length) {
+      await this.db.insert(blogPostTags).values(
+        data.tags.map((tagId) => ({ postId: post.id, tagId })),
+      );
+    }
+
     this.revalidation.revalidate(blogTags(post.slug));
     void this.activityLogs.log({ adminUserId: authorId, action: 'blog_post_created', entity: 'blog_post', entityId: post.id, meta: { title: data.title } });
     return post;
@@ -174,7 +198,7 @@ export class BlogService {
     id: number,
     userId: number,
     role: string,
-    data: { title?: string; slug?: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number | null; publish?: boolean },
+    data: { title?: string; slug?: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number | null; publish?: boolean; tags?: number[]; metaTitle?: string | null; metaDescription?: string | null; ogImage?: string | null },
   ) {
     const [post] = await this.db.select().from(blogPosts).where(eq(blogPosts.id, id));
     if (!post) throw new NotFoundException('Post not found');
@@ -199,10 +223,23 @@ export class BlogService {
           status:      data.publish ? 'published' : 'draft',
           publishedAt: data.publish ? new Date() : null,
         }),
+        ...(data.metaTitle       !== undefined && { metaTitle: data.metaTitle }),
+        ...(data.metaDescription !== undefined && { metaDescription: data.metaDescription }),
+        ...(data.ogImage         !== undefined && { ogImage: data.ogImage }),
         updatedAt: new Date(),
       })
       .where(eq(blogPosts.id, id))
       .returning();
+
+    if (data.tags) {
+      await this.db.delete(blogPostTags).where(eq(blogPostTags.postId, id));
+      if (data.tags.length) {
+        await this.db.insert(blogPostTags).values(
+          data.tags.map((tagId) => ({ postId: id, tagId })),
+        );
+      }
+    }
+
     this.revalidation.revalidate(blogTags(updated.slug));
     void this.activityLogs.log({ adminUserId: userId, action: 'blog_post_updated', entity: 'blog_post', entityId: id });
     return updated;
@@ -398,6 +435,25 @@ export class BlogService {
 
   async deleteCategory(id: number) {
     await this.db.delete(blogCategories).where(eq(blogCategories.id, id));
+    this.revalidation.revalidate([CacheTag.blog]);
+    return { success: true };
+  }
+
+  // ── Tags ─────────────────────────────────────────────────────────────────────
+
+  async tags() {
+    return this.db.select().from(blogTagsTable).orderBy(blogTagsTable.name);
+  }
+
+  async createTag(name: string) {
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const [row] = await this.db.insert(blogTagsTable).values({ name, slug }).returning();
+    this.revalidation.revalidate([CacheTag.blog]);
+    return row;
+  }
+
+  async deleteTag(id: number) {
+    await this.db.delete(blogTagsTable).where(eq(blogTagsTable.id, id));
     this.revalidation.revalidate([CacheTag.blog]);
     return { success: true };
   }

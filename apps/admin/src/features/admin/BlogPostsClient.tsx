@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Globe, FileEdit, Pencil, Heart, MessageSquare, Share2 } from "lucide-react";
+import { Plus, Trash2, Globe, FileEdit, Pencil, Heart, MessageSquare, Share2, Tag } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import {
@@ -34,6 +34,10 @@ function buildAllCols(formatDate: (v: string | null | undefined) => string): Col
     {
       key: "status", header: "Status", defaultVisible: true,
       exportFields: [{ header: "Status", getValue: (p) => p.status }],
+    },
+    {
+      key: "tags", header: "Tags", defaultVisible: true,
+      exportFields: [{ header: "Tags", getValue: (p) => (p.tags ?? []).map((t) => t.name).join(", ") }],
     },
     {
       key: "createdAt", header: "Date", defaultVisible: true,
@@ -140,6 +144,26 @@ export function BlogPostsClient({ initialData }: Props) {
           {post.status}
         </span>
       ),
+    }] : []),
+    ...(visibleCols.has("tags") ? [{
+      key: "tags" as const, header: "Tags",
+      render: (post: BlogPost) => {
+        const tags = post.tags ?? [];
+        if (tags.length === 0) return <span className="text-xs text-gray-300 dark:text-slate-600">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, 3).map((t) => (
+              <span key={t.id} className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-500/10 px-2 py-0.5 text-xs font-medium text-brand-700 dark:text-brand-400">
+                <Tag className="h-2.5 w-2.5" />
+                {t.name}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="text-xs text-gray-400 dark:text-slate-500">+{tags.length - 3}</span>
+            )}
+          </div>
+        );
+      },
     }] : []),
     ...(visibleCols.has("createdAt") ? [{
       key: "createdAt" as const, header: "Date", sortable: true,

@@ -16,9 +16,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = await getCachedBlogPost(slug).catch(() => null);
   if (!post) return { title: "Post not found" };
+  const title = post.metaTitle || post.title;
+  const description = post.metaDescription || post.excerpt || undefined;
   return {
-    title: post.title,
-    description: post.excerpt ?? undefined,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: post.ogImage ? [post.ogImage] : post.thumbnail ? [post.thumbnail] : undefined,
+    },
+    twitter: {
+      title,
+      description,
+      images: post.ogImage ? [post.ogImage] : post.thumbnail ? [post.thumbnail] : undefined,
+    },
   };
 }
 
@@ -94,6 +106,20 @@ async function BlogPost({
           <p className="mb-8 text-base text-gray-500 italic border-l-4 border-brand-200 pl-4 dark:border-brand-500/40 dark:text-gray-400">
             {post.excerpt}
           </p>
+        )}
+
+        {/* Tags */}
+        {post.tags && post.tags.length > 0 && (
+          <div className="mb-8 flex flex-wrap gap-2">
+            {post.tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-400"
+              >
+                #{tag.name}
+              </span>
+            ))}
+          </div>
         )}
 
         {/* Content */}

@@ -32,6 +32,10 @@ export async function createBlogPostAction(data: {
   thumbnail?: string;
   categoryId?: number;
   publish?: boolean;
+  tags?: number[];
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImage?: string;
 }) {
   try {
     const res = await blogAdminApi.create(data);
@@ -53,6 +57,10 @@ export async function updateBlogPostAction(
     thumbnail?: string;
     categoryId?: number | null;
     publish?: boolean;
+    tags?: number[];
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    ogImage?: string | null;
   }
 ) {
   try {

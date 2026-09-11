@@ -14,6 +14,10 @@ export interface BlogPost {
   categorySlug: string | null;
   likeCount?: number;
   commentCount?: number;
+  tags?: BlogTag[];
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  ogImage?: string | null;
 }
 
 export interface BlogPostDetail extends BlogPost {
@@ -24,6 +28,12 @@ export interface BlogPostDetail extends BlogPost {
 }
 
 export interface BlogCategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface BlogTag {
   id: number;
   name: string;
   slug: string;
