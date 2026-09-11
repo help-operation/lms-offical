@@ -21,14 +21,15 @@
     "@tanstack/react-query": "^5.100.9",
     "@vidstack/react": "^0.6.15",
     "framer-motion": "^12.38.0",
+    "isomorphic-dompurify": "^4.2.0",
     "lucide-react": "^1.14.0",
     "next": "16.2.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.75.0",
-    "vidstack": "^0.6.15",
     "recharts": "^3.8.1",
+    "vidstack": "^0.6.15",
     "zod": "^4.4.3"
   },
   "devDependencies": {

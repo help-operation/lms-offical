@@ -1,13 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import Image from "@tiptap/extension-image";
+import { Iframe } from "./tiptap/iframe-extension";
+import { EmbedDialog } from "./tiptap/EmbedDialog";
+import { MediaLibraryModal } from "@/features/media/components/MediaLibraryModal";
 import {
   Bold, Italic, UnderlineIcon, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, Code, Minus, Link2, Link2Off, Undo, Redo,
+  ImageIcon, MonitorPlay,
 } from "lucide-react";
 
 interface Props {
@@ -51,6 +57,9 @@ function Divider() {
 }
 
 export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€¦" }: Props) {
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const [embedOpen, setEmbedOpen] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -59,6 +68,8 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
       }),
       Underline,
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: "noopener noreferrer" } }),
+      Image.configure({ inline: false, allowBase64: true }),
+      Iframe,
       Placeholder.configure({ placeholder }),
     ],
     content: value || "",
@@ -78,6 +89,15 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
     if (url === null) return;
     if (url === "") { editor!.chain().focus().extendMarkRange("link").unsetLink().run(); return; }
     editor!.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  }
+
+  function handleMediaSelect(file: { url: string }) {
+    editor!.chain().focus().setImage({ src: file.url, alt: "" }).run();
+    setMediaOpen(false);
+  }
+
+  function handleEmbedInsert(src: string) {
+    editor!.chain().focus().insertContent({ type: "iframe", attrs: { src } }).run();
   }
 
   return (
@@ -157,12 +177,40 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
             <Link2Off className="h-3.5 w-3.5" />
           </ToolbarBtn>
         )}
+
+        <Divider />
+
+        {/* Image */}
+        <ToolbarBtn onClick={() => setMediaOpen(true)} title="Insert image from media library">
+          <ImageIcon className="h-3.5 w-3.5" />
+        </ToolbarBtn>
+
+        {/* Embed */}
+        <ToolbarBtn onClick={() => setEmbedOpen(true)} title="Insert video embed (YouTube, Vimeo, Facebook)">
+          <MonitorPlay className="h-3.5 w-3.5" />
+        </ToolbarBtn>
       </div>
 
       {/* Editor content */}
       <EditorContent
         editor={editor}
         className="flex-1 overflow-y-auto px-5 py-4 text-sm text-gray-800 leading-relaxed"
+      />
+
+      {/* Media Library Modal */}
+      {mediaOpen && (
+        <MediaLibraryModal
+          filterType="image"
+          onSelect={handleMediaSelect}
+          onClose={() => setMediaOpen(false)}
+        />
+      )}
+
+      {/* Embed Dialog */}
+      <EmbedDialog
+        open={embedOpen}
+        onClose={() => setEmbedOpen(false)}
+        onInsert={handleEmbedInsert}
       />
     </div>
   );

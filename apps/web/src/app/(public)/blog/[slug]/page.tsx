@@ -10,6 +10,7 @@ import { BlogComments } from "@/features/blog/BlogComments";
 import { BlogDetailsSkeleton } from "@/features/blog/BlogDetailsSkeleton";
 import { ContentContext } from "@/shared/components/ContentContext";
 import { ScrollDepthTracker } from "@/shared/components/ScrollDepthTracker";
+import { sanitizeBlogContent } from "@/lib/sanitize";
 import type { MeResponse } from "@repo/validators";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -124,8 +125,8 @@ async function BlogPost({
 
         {/* Content */}
         <div
-          className="prose prose-gray dark:prose-invert max-w-none text-gray-700 leading-relaxed mb-10 dark:text-gray-300"
-          dangerouslySetInnerHTML={{ __html: post.content ?? "" }}
+          className="prose prose-gray dark:prose-invert max-w-none text-gray-700 leading-relaxed mb-10 dark:text-gray-300 [&_iframe]:h-auto [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-xl [&_iframe]:border-0"
+          dangerouslySetInnerHTML={{ __html: sanitizeBlogContent(post.content) }}
         />
 
         {/* ── Engagement bar ── */}

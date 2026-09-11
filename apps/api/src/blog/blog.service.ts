@@ -4,6 +4,7 @@ import { eq, desc, asc, and, ilike, sql, SQL } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DB_TOKEN } from '../db/db.module';
 import { toSlug } from '../common/utils/slug.util';
+import { validateEmbedUrlsInContent } from '../common/utils/embed-validation.util';
 import {
   buildTableQuery,
   formatPaginatedResponse,
@@ -164,6 +165,7 @@ export class BlogService {
     authorId: number,
     data: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean; tags?: number[]; metaTitle?: string; metaDescription?: string; ogImage?: string },
   ) {
+    if (data.content) validateEmbedUrlsInContent(data.content);
     const slug = await this.uniqueSlug(data.title);
     const [post] = await this.db
       .insert(blogPosts)
@@ -203,6 +205,8 @@ export class BlogService {
     const [post] = await this.db.select().from(blogPosts).where(eq(blogPosts.id, id));
     if (!post) throw new NotFoundException('Post not found');
     if (role !== 'SUPER_ADMIN' && post.authorId !== userId) throw new ForbiddenException();
+
+    if (data.content) validateEmbedUrlsInContent(data.content);
 
     // If a custom slug is provided, ensure uniqueness (unless unchanged)
     let resolvedSlug: string | undefined;
