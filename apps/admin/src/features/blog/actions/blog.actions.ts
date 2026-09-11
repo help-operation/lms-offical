@@ -78,7 +78,7 @@ export async function updateBlogPostAction(
   }
 }
 
-export async function deleteBlogPostAction(id: number, slug?: string) {
+export async function deleteBlogPostAction(id: number, _slug?: string) {
   try {
     await blogAdminApi.remove(id);
     revalidatePath("/admin/blog");

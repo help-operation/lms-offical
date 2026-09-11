@@ -5,7 +5,6 @@ import * as schema from '../db/schema';
 import { DB_TOKEN } from '../db/db.module';
 import { toSlug } from '../common/utils/slug.util';
 import { validateEmbedUrlsInContent } from '../common/utils/embed-validation.util';
-import { calculateReadingTime } from '../common/utils/reading-time.util';
 import {
   buildTableQuery,
   formatPaginatedResponse,

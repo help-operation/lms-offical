@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Globe, Loader2, Plus, X, Search, Star, Calendar } from "lucide-react";
+import { ArrowLeft, Save, Globe, Loader2, Plus, X, Search, Calendar } from "lucide-react";
 import { apiRequestBrowser } from "@/lib/api-client-browser";
 import { createBlogPostAction, updateBlogPostAction } from "@/features/blog/actions/blog.actions";
 import type { BlogPost, BlogCategory, BlogTag, BlogAuthor } from "@/features/blog/api";
