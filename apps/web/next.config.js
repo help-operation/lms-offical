@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  serverExternalPackages: ["jsdom"],
   // cacheComponents (Partial Prerendering) removed: with it on, any route
   // with a loading.tsx over uncached dynamic data (checkout, etc.) gets
   // prerendered as a static shell + a "postponed" stream for the rest.
