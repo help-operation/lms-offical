@@ -341,9 +341,7 @@ function ContactInfoSection({
 
 // ─── Address Section ────────────────────────────────────────────────────────
 
-const BD_DIVISIONS: Record<string, string[]> = {
-  Bangladesh: ["Barisal", "Chittagong", "Dhaka", "Khulna", "Mymensingh", "Rajshahi", "Rangpur", "Sylhet"],
-};
+import { BD_DIVISIONS, BD_DISTRICTS, BD_THANAS } from "@/lib/bd-locations";
 
 function AddressSection() {
   const [address, setAddress] = useState<AddressData>({});
@@ -385,6 +383,22 @@ function AddressSection() {
         const presentField = field.replace("permanent", "present");
         next[presentField] = value;
       }
+      if (field.endsWith("Division")) {
+        const prefix = field.replace("Division", "");
+        next[`${prefix}District`] = "";
+        next[`${prefix}Thana`] = "";
+        if (sameAsPermanent && prefix === "permanent") {
+          next.presentDistrict = "";
+          next.presentThana = "";
+        }
+      }
+      if (field.endsWith("District")) {
+        const prefix = field.replace("District", "");
+        next[`${prefix}Thana`] = "";
+        if (sameAsPermanent && prefix === "permanent") {
+          next.presentThana = "";
+        }
+      }
       return next;
     });
   }
@@ -418,9 +432,14 @@ function AddressSection() {
 
   if (loading) return <Section icon={MapPin} title="Address" description="Your permanent and present address."><div className="animate-pulse space-y-4"><div className="h-32 rounded-xl bg-gray-200 dark:bg-gray-700" /></div></Section>;
 
-  const divisions = BD_DIVISIONS["Bangladesh"] ?? [];
+  const divisions = BD_DIVISIONS;
 
   function renderAddressFields(prefix: "permanent" | "present", disabled: boolean) {
+    const division = (address as any)[`${prefix}Division`] as string | undefined;
+    const district = (address as any)[`${prefix}District`] as string | undefined;
+    const districts = division ? (BD_DISTRICTS as Record<string, string[]>)[division] ?? [] : [];
+    const thanas = district ? BD_THANAS[district] ?? [] : [];
+
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -429,18 +448,24 @@ function AddressSection() {
         </div>
         <div>
           <label className={labelClass}>Division</label>
-          <select className={inputClass} value={(address as any)[`${prefix}Division`] ?? ""} onChange={(e) => updateField(`${prefix}Division`, e.target.value)} disabled={disabled}>
+          <select className={inputClass} value={division ?? ""} onChange={(e) => updateField(`${prefix}Division`, e.target.value)} disabled={disabled}>
             <option value="">Select Division</option>
             {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
         <div>
           <label className={labelClass}>District</label>
-          <input className={inputClass} value={(address as any)[`${prefix}District`] ?? ""} onChange={(e) => updateField(`${prefix}District`, e.target.value)} disabled={disabled} />
+          <select className={inputClass} value={district ?? ""} onChange={(e) => updateField(`${prefix}District`, e.target.value)} disabled={disabled || !division}>
+            <option value="">{division ? "Select District" : "Select division first"}</option>
+            {districts.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
         </div>
         <div>
           <label className={labelClass}>Thana / Upazila</label>
-          <input className={inputClass} value={(address as any)[`${prefix}Thana`] ?? ""} onChange={(e) => updateField(`${prefix}Thana`, e.target.value)} disabled={disabled} />
+          <select className={inputClass} value={(address as any)[`${prefix}Thana`] ?? ""} onChange={(e) => updateField(`${prefix}Thana`, e.target.value)} disabled={disabled || !district}>
+            <option value="">{district ? "Select Thana" : "Select district first"}</option>
+            {thanas.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
         <div>
           <label className={labelClass}>Union</label>
