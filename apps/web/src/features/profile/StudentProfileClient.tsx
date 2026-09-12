@@ -242,8 +242,8 @@ function PersonalInfoSection({
   profile: AccountProfile;
   onSaved: (firstName: string, lastName: string, gender: "male" | "female" | "other" | null) => void;
 }) {
-  const [firstName, setFirstName] = useState(profile.firstName);
-  const [lastName, setLastName] = useState(profile.lastName);
+  const [firstName, setFirstName] = useState(profile.firstName ?? "");
+  const [lastName, setLastName] = useState(profile.lastName ?? "");
   const [gender, setGender] = useState(profile.gender ?? "");
   const [pending, start] = useTransition();
 
@@ -355,8 +355,24 @@ function AddressSection() {
   useEffect(() => {
     settingsApiBrowser.getAddress()
       .then((res) => {
-        setAddress(res.data);
-        setSameAsPermanent(!!res.data.sameAsPermanent);
+        const d = res.data;
+        setAddress({
+          permanentCountry: d.permanentCountry ?? "",
+          permanentDivision: d.permanentDivision ?? "",
+          permanentDistrict: d.permanentDistrict ?? "",
+          permanentThana: d.permanentThana ?? "",
+          permanentUnion: d.permanentUnion ?? "",
+          permanentPostCode: d.permanentPostCode ?? "",
+          permanentAddress: d.permanentAddress ?? "",
+          presentCountry: d.presentCountry ?? "",
+          presentDivision: d.presentDivision ?? "",
+          presentDistrict: d.presentDistrict ?? "",
+          presentThana: d.presentThana ?? "",
+          presentUnion: d.presentUnion ?? "",
+          presentPostCode: d.presentPostCode ?? "",
+          presentAddress: d.presentAddress ?? "",
+        });
+        setSameAsPermanent(!!d.sameAsPermanent);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -490,7 +506,11 @@ function EmergencyContactSection() {
 
   useEffect(() => {
     settingsApiBrowser.getEmergencyContact()
-      .then((res) => setContact(res.data))
+      .then((res) => setContact({
+          emergencyContactName: res.data.emergencyContactName ?? "",
+          emergencyContactPhone: res.data.emergencyContactPhone ?? "",
+          emergencyContactRelationship: res.data.emergencyContactRelationship ?? "",
+        }))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
