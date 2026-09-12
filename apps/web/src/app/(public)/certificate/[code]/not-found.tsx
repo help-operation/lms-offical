@@ -5,7 +5,7 @@ import { deriveCertPrefix } from "@/shared/utils/cert-prefix";
 
 export default async function CertificateNotFound() {
   const siteSettings = await getPublicSiteSettings();
-  const certPrefix = deriveCertPrefix(siteSettings.site_name || "Skillkoro");
+  const certPrefix = deriveCertPrefix(siteSettings.site_name || "Leerney");
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center bg-gradient-to-br from-brand-50 via-white to-indigo-50 px-4 py-16 transition-colors duration-300 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">

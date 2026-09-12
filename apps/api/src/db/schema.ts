@@ -151,7 +151,7 @@ export const ticketCategoryEnum = pgEnum('ticket_category', [
   'other',
 ]);
 
-export const blogStatusEnum = pgEnum('blog_status', ['draft', 'published']);
+export const blogStatusEnum = pgEnum('blog_status', ['draft', 'scheduled', 'published']);
 
 export const liveClassStatusEnum = pgEnum('live_class_status', [
   'scheduled',
@@ -196,7 +196,13 @@ export const users = pgTable('users', {
   password: varchar('password', { length: 255 }),
   role: userRoleEnum('role').default('GUEST').notNull(),
   status: userStatusEnum('status').default('active').notNull(),
-  avatar: varchar('avatar', { length: 500 }),
+  avatar: text('avatar'),
+  // ── Contact verification ─────────────────────────────────────────────────
+  // Tracks whether the user has completed OTP verification for each contact
+  // method. New Google OAuth users start unverified; email/phone signup users
+  // are marked verified at signup (OTP already verified at creation time).
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  phoneVerified: boolean('phone_verified').default(false).notNull(),
   // Self-reported, nullable — historical rows show as "Not specified" on the dashboard.
   gender: genderEnum('gender'),
   // Billing/location fields — not collected anywhere yet (no checkout step asks for
@@ -1189,11 +1195,34 @@ export const blogPosts = pgTable('blog_posts', {
   content: text('content'),
   thumbnail: varchar('thumbnail', { length: 500 }),
   status: blogStatusEnum('status').default('draft').notNull(),
+  isFeatured: boolean('is_featured').default(false).notNull(),
+  publishAt: timestamp('publish_at'),
   shareCount: integer('share_count').default(0).notNull(),
+  // SEO fields
+  metaTitle: varchar('meta_title', { length: 255 }),
+  metaDescription: text('meta_description'),
+  ogImage: varchar('og_image', { length: 500 }),
   publishedAt: timestamp('published_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// ─── Blog Tags ────────────────────────────────────────────────────────────────
+
+export const blogTagsTable = pgTable('blog_tags', {
+  id:   serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  slug: varchar('slug', { length: 120 }).notNull().unique(),
+});
+
+export const blogPostTags = pgTable(
+  'blog_post_tags',
+  {
+    postId: integer('post_id').notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+    tagId:  integer('tag_id').notNull().references(() => blogTagsTable.id, { onDelete: 'cascade' }),
+  },
+  (t) => [unique('uq_blog_post_tag').on(t.postId, t.tagId)],
+);
 
 // ─── Blog Engagement ──────────────────────────────────────────────────────────
 

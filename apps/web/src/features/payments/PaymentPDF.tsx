@@ -84,7 +84,7 @@ export type InvoiceBrand = {
 };
 
 export const DEFAULT_INVOICE_BRAND: InvoiceBrand = {
-  companyName: "Skillkoro",
+  companyName: "Leerney",
   tagline:     "Online Learning Platform",
 };
 

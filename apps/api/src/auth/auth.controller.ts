@@ -30,7 +30,7 @@ import { adminUsers } from 'src/db/schema';
 import { RbacService } from 'src/rbac/rbac.service';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-// In prod set COOKIE_DOMAIN=.jashoreithub.com so cookies are shared across
+// In prod set COOKIE_DOMAIN=.leerney.com so cookies are shared across
 // lms-web / lms-admin / lms-api subdomains. Leave unset in local dev.
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
 const CLEAR_COOKIE_OPTS = { path: '/', domain: COOKIE_DOMAIN };

@@ -22,7 +22,7 @@ const ADMIN_ORIGINS = (
 /**
  * Pick the JWT based on which app the request came from, rather than a fixed
  * admin-first order. This matters because in production all cookies are scoped
- * to the shared parent domain (e.g. `.skillkoro.com`), so a browser logged into
+ * to the shared parent domain (e.g. `.leerney.com`), so a browser logged into
  * both the admin and student apps sends BOTH `admin_access_token` and
  * `access_token` to the API. Selecting by Origin ensures a student checkout uses
  * the student token even when an admin cookie is also present.

@@ -95,7 +95,7 @@ export class EmailBroadcastService {
     for (const r of live) consider(r.userId, { courseName: r.courseName, batchName: r.batchName, at: r.at });
 
     const { general_site_name } = await this.systemSettings.getByKeys(['general_site_name']);
-    const siteName = general_site_name || 'Skillkoro';
+    const siteName = general_site_name || 'Leerney';
 
     const recipients = studentRows
       .map((student) => ({ student, email: (student.email ?? '').trim() }))

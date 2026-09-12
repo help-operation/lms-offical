@@ -83,7 +83,7 @@ export function MobileSidebar({ permissions, siteName }: { permissions?: string[
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand shadow-md shadow-brand/25 shrink-0">
               <GraduationCap className="h-4 w-4 text-white" />
             </div>
-            <span className="text-base font-bold text-gray-900 dark:text-white">{siteName || "Skillkoro"}</span>
+            <span className="text-base font-bold text-gray-900 dark:text-white">{siteName || "Leerney"}</span>
           </div>
           <button
             onClick={closeMobile}

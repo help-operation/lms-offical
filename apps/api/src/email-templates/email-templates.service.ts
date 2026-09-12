@@ -604,7 +604,7 @@ export class EmailTemplatesService implements OnModuleInit {
       'general_tagline',
     ]);
     return {
-      site_name: general_site_name || 'Skillkoro',
+      site_name: general_site_name || 'Leerney',
       tagline: general_tagline || 'Learn. Grow. Succeed.',
     };
   }

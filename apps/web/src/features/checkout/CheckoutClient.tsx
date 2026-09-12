@@ -16,7 +16,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 // Guest name/email/phone survive the full-page redirect to the payment
 // gateway and back via sessionStorage, so "Try again" after a failed payment
 // lands the guest back on checkout with their details still filled in.
-const GUEST_INFO_KEY = "skillkoro:checkout-guest-info";
+const GUEST_INFO_KEY = "leerney:checkout-guest-info";
 
 function loadStoredGuestInfo(): { name: string; email: string; phone: string } | null {
   if (typeof window === "undefined") return null;
@@ -487,7 +487,7 @@ export function CheckoutClient({
             className="w-[17px] h-[17px] shrink-0 mt-[1px] border-[1.5px] border-[#E9E5F2] dark:border-gray-600 rounded-[5px] cursor-pointer accent-[#A436F1]"
           />
           <label htmlFor="acceptTerms" className="cursor-pointer">
-            By clicking &quot;Place Order&quot;, I accept SkillKoro&apos;s{" "}
+            By clicking &quot;Place Order&quot;, I accept Leerney&apos;s{" "}
             <a href="/terms" className="text-[#7E1FD1] dark:text-[#C084FC] no-underline hover:underline">Terms &amp; Conditions</a>,{" "}
             <a href="/privacy" className="text-[#7E1FD1] dark:text-[#C084FC] no-underline hover:underline">Privacy Policy</a> &amp;{" "}
             <a href="/refund-policy" className="text-[#7E1FD1] dark:text-[#C084FC] no-underline hover:underline">Refund Policy</a>*

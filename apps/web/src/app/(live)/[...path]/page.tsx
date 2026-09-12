@@ -82,8 +82,8 @@ export default async function CustomPathCoursePage({ params, searchParams }: Pro
   // GTM dataLayer — view_item for the ecommerce funnel
   const viewTracker = <CourseViewTracker courseId={course.id} title={course.title} price={parseFloat(course.price)} />;
 
-  const logoUrl = siteSettings.logo_url || "/Skillkoro-logo.png";
-  const logoAlt = siteSettings.site_name || "Skillkoro";
+  const logoUrl = siteSettings.logo_url || "/Leerney-logo.png";
+  const logoAlt = siteSettings.site_name || "Leerney";
 
   if (course.template === "2") return <>{tracker}{viewTracker}<LiveCourseTemplate2 course={{ ...course, batchId }} user={user} enrolled={enrolled} checkoutError={checkoutError} logoUrl={logoUrl} logoAlt={logoAlt} /></>;
   if (course.template === "3") return <>{tracker}{viewTracker}<LiveCourseTemplate3 course={{ ...course, batchId }} user={user} enrolled={enrolled} checkoutError={checkoutError} logoUrl={logoUrl} logoAlt={logoAlt} /></>;

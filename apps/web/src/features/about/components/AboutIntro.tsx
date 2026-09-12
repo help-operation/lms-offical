@@ -15,15 +15,15 @@ type Props = { content?: AboutIntroContent };
 const DEFAULTS: Required<AboutIntroContent> = {
   title: "About Us",
   intro_lead: "One of today's most popular online learning platforms — ",
-  intro_link_text: "SkillKoro.com",
+  intro_link_text: "Leerney.com",
   intro_link_url: "/",
   intro_paragraph:
-    "SkillKoro.com's journey began in 2018. Although it started primarily with domain-hosting and bulk SMS marketing, in 2024 — under the leadership of Majadur Rahaman Robin — SkillKoro was re-established with a single goal: to make IT education simple and accessible for everyone worldwide and to help them develop their careers.",
+    "Leerney.com's journey began in 2018. Although it started primarily with domain-hosting and bulk SMS marketing, in 2024 — under the leadership of Majadur Rahaman Robin — Leerney was re-established with a single goal: to make IT education simple and accessible for everyone worldwide and to help them develop their careers.",
   subsections: [
     {
       title: "Our Founders",
       paragraphs: [
-        "Founded by angel investor and entrepreneur Mr. Rafid Ahsan Noor, alongside co-founder Mr. Arif M Rajon who joined in June 2024, SkillKoro.com formally began its journey with government approval and has steadily moved forward, earning growing trust. Through modern skill-development courses, real-life projects and industry-expert mentors, we are preparing the next generation for tomorrow's job and freelancing markets.",
+        "Founded by angel investor and entrepreneur Mr. Rafid Ahsan Noor, alongside co-founder Mr. Arif M Rajon who joined in June 2024, Leerney.com formally began its journey with government approval and has steadily moved forward, earning growing trust. Through modern skill-development courses, real-life projects and industry-expert mentors, we are preparing the next generation for tomorrow's job and freelancing markets.",
       ],
     },
     {

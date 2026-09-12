@@ -105,6 +105,8 @@ export const MeResponseSchema = z.object({
   role: UserRoleSchema,
   status: UserStatusSchema,
   avatar: z.string().nullable(),
+  emailVerified: z.boolean().optional().default(false),
+  phoneVerified: z.boolean().optional().default(false),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   // Effective admin permission slugs (empty for web users). Drives the admin

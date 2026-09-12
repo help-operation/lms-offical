@@ -9,7 +9,7 @@ import { useEffect } from "react";
 export function ThemeFlashGuard() {
   useEffect(() => {
     try {
-      if (localStorage.getItem("skillkoro-admin-theme") === "dark") {
+      if (localStorage.getItem("leerney-admin-theme") === "dark") {
         document.getElementById("admin-dashboard-root")?.classList.add("dark");
       }
     } catch {

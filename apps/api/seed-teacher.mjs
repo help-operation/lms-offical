@@ -37,7 +37,7 @@ const bcrypt = await import('bcrypt');
 
 const sql = neon(DATABASE_URL);
 
-const email = 'teacher@skillkoro.com';
+const email = 'teacher@leerney.com';
 const password = 'Teacher@1234';
 const hash = await bcrypt.hash(password, 10);
 

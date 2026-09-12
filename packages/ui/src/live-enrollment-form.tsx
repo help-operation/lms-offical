@@ -76,7 +76,7 @@ export interface EnrollmentUser {
 
 export interface LiveEnrollmentFormProps {
   course: LiveEnrollmentCourse;
-  /** Base URL used for the /live/[slug]/pay redirect, e.g. "https://skillkoro.com". Defaults to "" (relative). */
+  /** Base URL used for the /live/[slug]/pay redirect, e.g. "https://leerney.com". Defaults to "" (relative). */
   baseUrl?: string;
   /** When true, the section is hidden — safe to pass during admin preview. */
   previewMode?: boolean;

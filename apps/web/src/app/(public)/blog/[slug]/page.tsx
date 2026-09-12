@@ -10,15 +10,28 @@ import { BlogComments } from "@/features/blog/BlogComments";
 import { BlogDetailsSkeleton } from "@/features/blog/BlogDetailsSkeleton";
 import { ContentContext } from "@/shared/components/ContentContext";
 import { ScrollDepthTracker } from "@/shared/components/ScrollDepthTracker";
+import { sanitizeBlogContent } from "@/lib/sanitize";
 import type { MeResponse } from "@repo/validators";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await getCachedBlogPost(slug).catch(() => null);
   if (!post) return { title: "Post not found" };
+  const title = post.metaTitle || post.title;
+  const description = post.metaDescription || post.excerpt || undefined;
   return {
-    title: post.title,
-    description: post.excerpt ?? undefined,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: post.ogImage ? [post.ogImage] : post.thumbnail ? [post.thumbnail] : undefined,
+    },
+    twitter: {
+      title,
+      description,
+      images: post.ogImage ? [post.ogImage] : post.thumbnail ? [post.thumbnail] : undefined,
+    },
   };
 }
 
@@ -79,9 +92,14 @@ async function BlogPost({
 
         {/* Meta */}
         <div className="mb-8 flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-          {post.publishedAt && (
+          {post.readingTime && (
             <span className="flex items-center gap-1.5 font-semibold text-amber-500 dark:text-amber-400">
               <Clock className="h-4 w-4" />
+              {post.readingTime} min read
+            </span>
+          )}
+          {post.publishedAt && (
+            <span>
               {new Date(post.publishedAt).toLocaleDateString("en-GB", {
                 day: "numeric", month: "long", year: "numeric",
               })}
@@ -96,10 +114,24 @@ async function BlogPost({
           </p>
         )}
 
+        {/* Tags */}
+        {post.tags && post.tags.length > 0 && (
+          <div className="mb-8 flex flex-wrap gap-2">
+            {post.tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-400"
+              >
+                #{tag.name}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Content */}
         <div
-          className="prose prose-gray dark:prose-invert max-w-none text-gray-700 leading-relaxed mb-10 dark:text-gray-300"
-          dangerouslySetInnerHTML={{ __html: post.content ?? "" }}
+          className="prose prose-gray dark:prose-invert max-w-none text-gray-700 leading-relaxed mb-10 dark:text-gray-300 [&_iframe]:h-auto [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-xl [&_iframe]:border-0"
+          dangerouslySetInnerHTML={{ __html: sanitizeBlogContent(post.content) }}
         />
 
         {/* ── Engagement bar ── */}

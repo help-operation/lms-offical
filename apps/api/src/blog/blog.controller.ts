@@ -61,11 +61,40 @@ export class BlogController {
     return this.svc.deleteCategory(id);
   }
 
+  // ── Tags ─────────────────────────────────────────────────────────────────────
+
+  @Get('tags')
+  @Public()
+  tags() {
+    return this.svc.tags();
+  }
+
+  @Post('tags')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('create_blog_categories')
+  createTag(@Body() body: { name: string }) {
+    return this.svc.createTag(body.name);
+  }
+
+  @Delete('tags/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('delete_blog_categories')
+  deleteTag(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.deleteTag(id);
+  }
+
   @Get('admin/posts')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('view_blog')
   listAll(@Query() query: TableQueryInput) {
     return this.svc.listAll(query);
+  }
+
+  @Get('admin/authors')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('create_blog')
+  listAuthors() {
+    return this.svc.listEligibleAuthors();
   }
 
   @Get('admin/comments')
@@ -94,7 +123,7 @@ export class BlogController {
   @RequirePermissions('create_blog')
   create(
     @CurrentUser() user: RequestUser,
-    @Body() body: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean },
+    @Body() body: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean; scheduleAt?: string; tags?: number[]; metaTitle?: string; metaDescription?: string; ogImage?: string; isFeatured?: boolean; authorId?: number },
   ) {
     return this.svc.create(user.userId, body);
   }
@@ -105,7 +134,7 @@ export class BlogController {
   update(
     @CurrentUser() user: RequestUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { title?: string; slug?: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number | null; publish?: boolean },
+    @Body() body: { title?: string; slug?: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number | null; publish?: boolean; scheduleAt?: string | null; tags?: number[]; metaTitle?: string | null; metaDescription?: string | null; ogImage?: string | null; isFeatured?: boolean; authorId?: number },
   ) {
     return this.svc.update(id, user.userId, user.role, body);
   }

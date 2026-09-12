@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link2, Check, Share2 } from "lucide-react";
 
 // X/Twitter icon (not in lucide-react as of v0.4xx)
@@ -38,14 +38,17 @@ interface Props {
 
 export function BlogShare({ title, slug, postId }: Props) {
   const [copied, setCopied] = useState(false);
+  const [fullUrl, setFullUrl] = useState("");
+
+  useEffect(() => {
+    setFullUrl(`${window.location.origin}/blog/${slug}`);
+  }, [slug]);
 
   function trackShare() {
     fetch(`${API_URL}/blog/${postId}/share`, { method: "POST" }).catch(() => {});
   }
 
-  const url = typeof window !== "undefined"
-    ? `${window.location.origin}/blog/${slug}`
-    : `/blog/${slug}`;
+  const url = fullUrl || `/blog/${slug}`;
 
   const encodedUrl   = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
@@ -99,7 +102,11 @@ export function BlogShare({ title, slug, postId }: Props) {
     }
   }
 
-  const hasNativeShare = typeof navigator !== "undefined" && "share" in navigator;
+  const [hasNativeShare, setHasNativeShare] = useState(false);
+
+  useEffect(() => {
+    setHasNativeShare("share" in navigator);
+  }, []);
 
   return (
     <div className="flex flex-wrap items-center gap-2">

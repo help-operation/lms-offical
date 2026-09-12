@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Globe, FileEdit, Pencil, Heart, MessageSquare, Share2 } from "lucide-react";
+import { Plus, Trash2, Globe, FileEdit, Pencil, Heart, MessageSquare, Share2, Tag, Star, Clock } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
 import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import {
@@ -32,8 +32,20 @@ function buildAllCols(formatDate: (v: string | null | undefined) => string): Col
       exportFields: [{ header: "Author", getValue: (p) => `${p.authorFirstName} ${p.authorLastName}` }],
     },
     {
+      key: "isFeatured", header: "Featured", defaultVisible: true,
+      exportFields: [{ header: "Featured", getValue: (p) => p.isFeatured ? "Yes" : "No" }],
+    },
+    {
+      key: "readingTime", header: "Reading Time", defaultVisible: true,
+      exportFields: [{ header: "Reading Time", getValue: (p) => p.readingTime ? `${p.readingTime} min` : "" }],
+    },
+    {
       key: "status", header: "Status", defaultVisible: true,
       exportFields: [{ header: "Status", getValue: (p) => p.status }],
+    },
+    {
+      key: "tags", header: "Tags", defaultVisible: true,
+      exportFields: [{ header: "Tags", getValue: (p) => (p.tags ?? []).map((t) => t.name).join(", ") }],
     },
     {
       key: "createdAt", header: "Date", defaultVisible: true,
@@ -67,6 +79,18 @@ export function BlogPostsClient({ initialData }: Props) {
   const [toggleTarget, setToggleTarget] = useState<BlogPost | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BlogPost | null>(null);
   const [visibleCols, setVisibleCols] = useState<Set<string>>(DEFAULT_VISIBLE);
+
+  useEffect(() => {
+    setPosts(initialData.data);
+    setPagination(initialData.pagination);
+  }, [initialData]);
+
+  // Always fetch fresh data on mount so posts appear even if the server-side
+  // initialData fetch failed silently (auth timeout, network hiccup, etc.)
+  useEffect(() => {
+    fetchPosts({ page: 1, per_page: 20 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function fetchPosts(params: TableQueryParams) {
     setIsLoading(true);
@@ -133,13 +157,62 @@ export function BlogPostsClient({ initialData }: Props) {
         <span className="text-sm text-gray-500 dark:text-slate-400">{post.authorFirstName} {post.authorLastName}</span>
       ),
     }] : []),
+    ...(visibleCols.has("isFeatured") ? [{
+      key: "isFeatured" as const, header: "Featured",
+      render: (post: BlogPost) => (
+        post.isFeatured
+          ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              <Star className="h-3 w-3 fill-current" />
+              Featured
+            </span>
+          : <span className="text-xs text-gray-300 dark:text-slate-600">—</span>
+      ),
+    }] : []),
+    ...(visibleCols.has("readingTime") ? [{
+      key: "readingTime" as const, header: "Reading Time",
+      render: (post: BlogPost) => (
+        post.readingTime
+          ? <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
+              <Clock className="h-3 w-3" />
+              {post.readingTime} min
+            </span>
+          : <span className="text-xs text-gray-300 dark:text-slate-600">—</span>
+      ),
+    }] : []),
     ...(visibleCols.has("status") ? [{
       key: "status" as const, header: "Status",
-      render: (post: BlogPost) => (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${post.status === "published" ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" : "bg-gray-100 text-gray-500 dark:bg-slate-500/15 dark:text-slate-400"}`}>
-          {post.status}
-        </span>
-      ),
+      render: (post: BlogPost) => {
+        const colorMap: Record<string, string> = {
+          published: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+          scheduled: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400",
+          draft:     "bg-gray-100 text-gray-500 dark:bg-slate-500/15 dark:text-slate-400",
+        };
+        return (
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colorMap[post.status] ?? colorMap.draft}`}>
+            {post.status}
+          </span>
+        );
+      },
+    }] : []),
+    ...(visibleCols.has("tags") ? [{
+      key: "tags" as const, header: "Tags",
+      render: (post: BlogPost) => {
+        const tags = post.tags ?? [];
+        if (tags.length === 0) return <span className="text-xs text-gray-300 dark:text-slate-600">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, 3).map((t) => (
+              <span key={t.id} className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-500/10 px-2 py-0.5 text-xs font-medium text-brand-700 dark:text-brand-400">
+                <Tag className="h-2.5 w-2.5" />
+                {t.name}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="text-xs text-gray-400 dark:text-slate-500">+{tags.length - 3}</span>
+            )}
+          </div>
+        );
+      },
     }] : []),
     ...(visibleCols.has("createdAt") ? [{
       key: "createdAt" as const, header: "Date", sortable: true,
@@ -286,7 +359,16 @@ export function BlogPostsClient({ initialData }: Props) {
             label: "All Status",
             options: [
               { label: "Draft",     value: "draft"     },
+              { label: "Scheduled", value: "scheduled" },
               { label: "Published", value: "published" },
+            ],
+          },
+          {
+            key: "isFeatured",
+            label: "All Featured",
+            options: [
+              { label: "Featured",    value: "true"  },
+              { label: "Not Featured", value: "false" },
             ],
           },
         ]}

@@ -21,7 +21,7 @@ const { supportTickets, supportMessages, users, adminUsers, cannedResponses } = 
 const ADMIN_ROLES = new Set(['SUPER_ADMIN', 'INSTRUCTOR']);
 const isAdminRole = (role: string) => ADMIN_ROLES.has(role);
 
-const frontendUrl = () => process.env.FRONTEND_URL ?? 'https://skillkoro.com';
+const frontendUrl = () => process.env.FRONTEND_URL ?? 'https://leerney.com';
 
 const CATEGORY_LABELS: Record<string, string> = {
   billing: 'Billing & Payment', technical: 'Technical Issue',

@@ -512,6 +512,34 @@
       "when": 1788344459228,
       "tag": "0072_extended_staff_management",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1789030483668,
+      "tag": "0073_sloppy_spyke",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1789033278603,
+      "tag": "0075_add_email_phone_verified",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1789100000000,
+      "tag": "0076_blog_tags_seo",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1789200000000,
+      "tag": "0077_blog_featured_scheduling",
+      "breakpoints": true
     }
   ]
 }

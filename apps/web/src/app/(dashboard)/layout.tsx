@@ -70,6 +70,18 @@ async function DashboardLayoutContent({
     redirect("/");
   }
 
+  // Server-side verification enforcement: unverified users must verify before
+  // accessing the dashboard. This prevents manual URL bypass.
+  // Email/Google accounts: require emailVerified. Phone-only accounts: require phoneVerified.
+  if (user.data.email !== null && !user.data.emailVerified) {
+    redirect(`/verify-email?email=${encodeURIComponent(user.data.email)}`);
+  }
+  if (user.data.email === null && !user.data.phoneVerified) {
+    // Phone-only unverified — shouldn't happen in normal flow (phone signup
+    // sets phoneVerified=true). Redirect to home as safety fallback.
+    redirect("/");
+  }
+
   const initials =
     `${user.data.firstName.slice(0, 1)}${user.data.lastName.slice(0, 1)}`.toUpperCase();
   const isStudent = user.data.role === "STUDENT";
@@ -77,9 +89,9 @@ async function DashboardLayoutContent({
   const isGuest = !isStudent;
 
   const site = await getPublicSiteSettings();
-  const logoSrc = site.logo_url || "/Skillkoro-logo.png";
+  const logoSrc = site.logo_url || "/Leerney-logo.png";
   const logoDarkSrc = site.logo_url_dark || undefined;
-  const logoAlt = site.site_name || "Skillkoro";
+  const logoAlt = site.site_name || "Leerney";
 
   const [contactSettings, socialLinks] = isGuest
     ? await Promise.all([getPublicContactSettings(), getPublicSocialLinks()])

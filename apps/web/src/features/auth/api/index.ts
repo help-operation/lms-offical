@@ -68,6 +68,12 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
+  accountVerifyEmail: (data: { email: string; code: string }) =>
+    apiRequest<null>("/auth/account/verify-email", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   logout: () =>
     apiRequest<null>("/auth/logout", { method: "POST" }),
 

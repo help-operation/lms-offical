@@ -172,7 +172,7 @@ function CopyCode({ code }: { code: string }) {
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
-const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL ?? "https://skillkoro.com";
+const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL ?? "https://leerney.com";
 
 const ALL_COLS: ColDef<CertRow>[] = [
   {

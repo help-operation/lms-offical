@@ -180,7 +180,7 @@ export default async function CourseDetailPage({ params }: Props) {
               courseSlug={course.slug}
               price={price}
               discountPrice={discountPrice}
-              logoUrl={siteSettings.logo_url || "/Skillkoro-logo.png"}
+              logoUrl={siteSettings.logo_url || "/Leerney-logo.png"}
               logoAlt={siteSettings.site_name || "Logo"}
               timerHours={course.valueBreakdownInfo?.timerHours}
               timerMinutes={course.valueBreakdownInfo?.timerMinutes}

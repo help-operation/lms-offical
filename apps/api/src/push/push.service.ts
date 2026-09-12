@@ -17,7 +17,7 @@ export class PushService {
   ) {
     const publicKey  = config.get<string>('VAPID_PUBLIC_KEY');
     const privateKey = config.get<string>('VAPID_PRIVATE_KEY');
-    const subject    = config.get<string>('VAPID_SUBJECT') ?? 'mailto:support@skillkoro.com';
+    const subject    = config.get<string>('VAPID_SUBJECT') ?? 'mailto:support@leerney.com';
 
     if (publicKey && privateKey) {
       webpush.setVapidDetails(subject, publicKey, privateKey);

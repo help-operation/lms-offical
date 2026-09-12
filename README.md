@@ -1,4 +1,4 @@
-# Skillkoro LMS
+# Leerney LMS
 
 > A full-stack Learning Management System built with Next.js, NestJS, Turborepo,
 > shared UI components, shared validation schemas, and PostgreSQL.
@@ -12,7 +12,7 @@
 
 ## Overview
 
-Skillkoro LMS is a modern online academy foundation. The repository is organized
+Leerney LMS is a modern online academy foundation. The repository is organized
 as a Turborepo monorepo with a Next.js frontend, a NestJS API, a reusable UI
 package, and shared Zod validation contracts.
 

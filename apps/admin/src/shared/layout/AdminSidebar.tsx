@@ -71,7 +71,7 @@ export function AdminSidebar({ permissions, siteName }: { permissions?: string[]
             <GraduationCap className="h-4 w-4 text-white" />
           </div>
           {!collapsed && (
-            <span className="text-base font-bold text-gray-900 dark:text-white whitespace-nowrap truncate">{siteName || "Skillkoro"}</span>
+            <span className="text-base font-bold text-gray-900 dark:text-white whitespace-nowrap truncate">{siteName || "Leerney"}</span>
           )}
         </div>
         {/* Toggle button — top right of sidebar */}

@@ -1,9 +1,10 @@
 import { Injectable, Inject, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import type { DB } from 'src/db';
-import { eq, desc, asc, and, ilike, sql, SQL } from 'drizzle-orm';
+import { eq, desc, asc, and, or, ilike, sql, SQL, lte } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DB_TOKEN } from '../db/db.module';
 import { toSlug } from '../common/utils/slug.util';
+import { validateEmbedUrlsInContent } from '../common/utils/embed-validation.util';
 import {
   buildTableQuery,
   formatPaginatedResponse,
@@ -13,7 +14,7 @@ import { RevalidationService } from '../common/revalidation/revalidation.service
 import { CacheTag, blogTags } from '../common/revalidation/cache-tags';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
-const { blogPosts, blogCategories, blogPostLikes, blogPostComments, users, adminUsers } = schema;
+const { blogPosts, blogCategories, blogPostLikes, blogPostComments, blogTagsTable, blogPostTags, users, adminUsers, roles, rolePermissions, permissions } = schema;
 
 @Injectable()
 export class BlogService {
@@ -24,7 +25,13 @@ export class BlogService {
   ) {}
 
   async listPublished(search?: string, categoryId?: number) {
-    const conditions: SQL[] = [eq(blogPosts.status, 'published')];
+    const now = new Date();
+    const conditions: SQL[] = [
+      or(
+        eq(blogPosts.status, 'published'),
+        and(eq(blogPosts.status, 'scheduled'), lte(blogPosts.publishAt, now))!,
+      )!,
+    ];
     if (search) conditions.push(ilike(blogPosts.title, `%${search}%`));
     if (categoryId) conditions.push(eq(blogPosts.categoryId, categoryId));
 
@@ -36,6 +43,7 @@ export class BlogService {
         excerpt: blogPosts.excerpt,
         thumbnail: blogPosts.thumbnail,
         publishedAt: blogPosts.publishedAt,
+        isFeatured: blogPosts.isFeatured,
         authorFirstName: adminUsers.firstName,
         authorLastName: adminUsers.lastName,
         categoryId: blogPosts.categoryId,
@@ -44,20 +52,24 @@ export class BlogService {
         likeCount:    sql<number>`(SELECT COUNT(*) FROM ${blogPostLikes} WHERE ${blogPostLikes.postId} = ${blogPosts.id})`.mapWith(Number),
         commentCount: sql<number>`(SELECT COUNT(*) FROM ${blogPostComments} WHERE ${blogPostComments.postId} = ${blogPosts.id})`.mapWith(Number),
         shareCount:   blogPosts.shareCount,
+        readingTime: sql<number>`GREATEST(1, CEIL(LENGTH(REGEXP_REPLACE(COALESCE(${blogPosts.content}, ''), '<[^>]*>', ' ', 'g')) / 8.0 / 200.0))`.mapWith(Number),
+        tags: sql<string[]>`COALESCE((SELECT json_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '[]'::json)`,
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
       .leftJoin(blogCategories, eq(blogPosts.categoryId, blogCategories.id))
       .where(and(...conditions))
-      .orderBy(desc(blogPosts.publishedAt));
+      .orderBy(desc(blogPosts.isFeatured), desc(blogPosts.publishedAt));
   }
 
   async findBySlug(slug: string) {
+    const now = new Date();
     const [post] = await this.db
       .select({
         id: blogPosts.id,
         title: blogPosts.title,
         slug: blogPosts.slug,
+        excerpt: blogPosts.excerpt,
         content: blogPosts.content,
         thumbnail: blogPosts.thumbnail,
         status: blogPosts.status,
@@ -67,10 +79,22 @@ export class BlogService {
         categoryId: blogPosts.categoryId,
         authorFirstName: adminUsers.firstName,
         authorLastName: adminUsers.lastName,
+        metaTitle: blogPosts.metaTitle,
+        metaDescription: blogPosts.metaDescription,
+        ogImage: blogPosts.ogImage,
+        isFeatured: blogPosts.isFeatured,
+        readingTime: sql<number>`GREATEST(1, CEIL(LENGTH(REGEXP_REPLACE(COALESCE(${blogPosts.content}, ''), '<[^>]*>', ' ', 'g')) / 8.0 / 200.0))`.mapWith(Number),
+        tags: sql<string[]>`COALESCE((SELECT json_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '[]'::json)`,
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
-      .where(and(eq(blogPosts.slug, slug), eq(blogPosts.status, 'published')));
+      .where(and(
+        eq(blogPosts.slug, slug),
+        or(
+          eq(blogPosts.status, 'published'),
+          and(eq(blogPosts.status, 'scheduled'), lte(blogPosts.publishAt, now))!,
+        )!,
+      ));
 
     if (!post) throw new NotFoundException('Post not found');
     return post;
@@ -79,11 +103,18 @@ export class BlogService {
   async listAll(params: TableQueryInput = {}) {
     const q = buildTableQuery(params, {
       searchable:  [blogPosts.title, blogPosts.slug],
-      sortable:    { createdAt: blogPosts.createdAt, title: blogPosts.title, publishedAt: blogPosts.publishedAt },
-      filterable:  { status: (v) => eq(blogPosts.status, v as 'draft' | 'published') },
+      sortable:    { createdAt: blogPosts.createdAt, title: blogPosts.title, publishedAt: blogPosts.publishedAt, publishAt: blogPosts.publishAt },
+      filterable:  {
+        status: (v) => eq(blogPosts.status, v as 'draft' | 'scheduled' | 'published'),
+        isFeatured: (v) => eq(blogPosts.isFeatured, v === 'true'),
+        categoryId: (v) => eq(blogPosts.categoryId, parseInt(v, 10)),
+        authorId: (v) => eq(blogPosts.authorId, parseInt(v, 10)),
+      },
       dateColumn:  blogPosts.createdAt,
       defaultSort: desc(blogPosts.createdAt),
     });
+
+    const readingTimeExpr = sql<number>`GREATEST(1, CEIL(LENGTH(REGEXP_REPLACE(COALESCE(${blogPosts.content}, ''), '<[^>]*>', ' ', 'g')) / 8.0 / 200.0))`.mapWith(Number);
 
     const [rows, [countRow]] = await Promise.all([
       this.db
@@ -96,14 +127,21 @@ export class BlogService {
           thumbnail:       blogPosts.thumbnail,
           status:          blogPosts.status,
           publishedAt:     blogPosts.publishedAt,
+          publishAt:       blogPosts.publishAt,
+          isFeatured:      blogPosts.isFeatured,
           createdAt:       blogPosts.createdAt,
           authorId:        blogPosts.authorId,
           categoryId:      blogPosts.categoryId,
           authorFirstName: adminUsers.firstName,
           authorLastName:  adminUsers.lastName,
+          readingTime:     readingTimeExpr,
           likeCount:    sql<number>`(SELECT COUNT(*) FROM ${blogPostLikes} WHERE ${blogPostLikes.postId} = ${blogPosts.id})`.mapWith(Number),
           commentCount: sql<number>`(SELECT COUNT(*) FROM ${blogPostComments} WHERE ${blogPostComments.postId} = ${blogPosts.id})`.mapWith(Number),
           shareCount:   blogPosts.shareCount,
+          metaTitle: blogPosts.metaTitle,
+          metaDescription: blogPosts.metaDescription,
+          ogImage: blogPosts.ogImage,
+          tags: sql<string[]>`COALESCE((SELECT json_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '[]'::json)`,
         })
         .from(blogPosts)
         .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -122,6 +160,8 @@ export class BlogService {
   }
 
   async findByIdAdmin(id: number) {
+    const readingTimeExpr = sql<number>`GREATEST(1, CEIL(LENGTH(REGEXP_REPLACE(COALESCE(${blogPosts.content}, ''), '<[^>]*>', ' ', 'g')) / 8.0 / 200.0))`.mapWith(Number);
+
     const [post] = await this.db
       .select({
         id:              blogPosts.id,
@@ -133,10 +173,17 @@ export class BlogService {
         status:          blogPosts.status,
         categoryId:      blogPosts.categoryId,
         publishedAt:     blogPosts.publishedAt,
+        publishAt:       blogPosts.publishAt,
+        isFeatured:      blogPosts.isFeatured,
         createdAt:       blogPosts.createdAt,
         authorId:        blogPosts.authorId,
         authorFirstName: adminUsers.firstName,
         authorLastName:  adminUsers.lastName,
+        readingTime:     readingTimeExpr,
+        metaTitle: blogPosts.metaTitle,
+        metaDescription: blogPosts.metaDescription,
+        ogImage: blogPosts.ogImage,
+        tags: sql<string[]>`COALESCE((SELECT json_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '[]'::json)`,
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -148,23 +195,60 @@ export class BlogService {
 
   async create(
     authorId: number,
-    data: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean },
+    data: { title: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number; publish?: boolean; scheduleAt?: string; tags?: number[]; metaTitle?: string; metaDescription?: string; ogImage?: string; isFeatured?: boolean; authorId?: number },
   ) {
+    if (data.content) validateEmbedUrlsInContent(data.content);
     const slug = await this.uniqueSlug(data.title);
+
+    // Determine status and dates
+    let status: 'draft' | 'scheduled' | 'published' = 'draft';
+    let publishedAt: Date | undefined;
+    let publishAt: Date | undefined;
+
+    if (data.scheduleAt) {
+      const scheduleDate = new Date(data.scheduleAt);
+      if (scheduleDate <= new Date()) throw new BadRequestException('Schedule date must be in the future');
+      status = 'scheduled';
+      publishAt = scheduleDate;
+    } else if (data.publish) {
+      status = 'published';
+      publishedAt = new Date();
+    }
+
+    // Validate and resolve author
+    let resolvedAuthorId = authorId;
+    if (data.authorId && data.authorId !== authorId) {
+      const targetAuthor = await this.db.select().from(adminUsers).where(eq(adminUsers.id, data.authorId)).then((r) => r[0]);
+      if (!targetAuthor) throw new BadRequestException('Selected author not found');
+      resolvedAuthorId = data.authorId;
+    }
+
     const [post] = await this.db
       .insert(blogPosts)
       .values({
-        authorId,
+        authorId: resolvedAuthorId,
         title:      data.title,
         slug,
         excerpt:    data.excerpt,
         content:    data.content,
         thumbnail:  data.thumbnail,
         categoryId: data.categoryId,
-        status:     data.publish ? 'published' : 'draft',
-        publishedAt: data.publish ? new Date() : undefined,
+        status,
+        publishedAt,
+        publishAt,
+        isFeatured: data.isFeatured ?? false,
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
+        ogImage: data.ogImage,
       })
       .returning();
+
+    if (data.tags?.length) {
+      await this.db.insert(blogPostTags).values(
+        data.tags.map((tagId) => ({ postId: post.id, tagId })),
+      );
+    }
+
     this.revalidation.revalidate(blogTags(post.slug));
     void this.activityLogs.log({ adminUserId: authorId, action: 'blog_post_created', entity: 'blog_post', entityId: post.id, meta: { title: data.title } });
     return post;
@@ -174,16 +258,47 @@ export class BlogService {
     id: number,
     userId: number,
     role: string,
-    data: { title?: string; slug?: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number | null; publish?: boolean },
+    data: { title?: string; slug?: string; excerpt?: string; content?: string; thumbnail?: string; categoryId?: number | null; publish?: boolean; scheduleAt?: string | null; tags?: number[]; metaTitle?: string | null; metaDescription?: string | null; ogImage?: string | null; isFeatured?: boolean; authorId?: number },
   ) {
     const [post] = await this.db.select().from(blogPosts).where(eq(blogPosts.id, id));
     if (!post) throw new NotFoundException('Post not found');
     if (role !== 'SUPER_ADMIN' && post.authorId !== userId) throw new ForbiddenException();
 
+    if (data.content) validateEmbedUrlsInContent(data.content);
+
     // If a custom slug is provided, ensure uniqueness (unless unchanged)
     let resolvedSlug: string | undefined;
     if (data.slug && data.slug !== post.slug) {
       resolvedSlug = await this.uniqueSlug(data.slug);
+    }
+
+    // Determine status/dates from the new publish model
+    const setStatus: Partial<typeof blogPosts.$inferInsert> = {};
+    if (data.scheduleAt !== undefined || data.publish !== undefined) {
+      if (data.scheduleAt) {
+        const scheduleDate = new Date(data.scheduleAt);
+        if (scheduleDate <= new Date()) throw new BadRequestException('Schedule date must be in the future');
+        setStatus.status = 'scheduled';
+        setStatus.publishAt = scheduleDate;
+        setStatus.publishedAt = null; // clear publishedAt when scheduling
+      } else if (data.publish === true) {
+        setStatus.status = 'published';
+        setStatus.publishedAt = new Date();
+        setStatus.publishAt = null;
+      } else if (data.publish === false) {
+        setStatus.status = 'draft';
+        setStatus.publishedAt = null;
+        setStatus.publishAt = null;
+      }
+    }
+
+    // Validate and resolve author
+    let resolvedAuthorId: number | undefined;
+    if (data.authorId !== undefined && data.authorId !== post.authorId) {
+      if (role !== 'SUPER_ADMIN') throw new ForbiddenException('Only Super Admin can change post author');
+      const targetAuthor = await this.db.select().from(adminUsers).where(eq(adminUsers.id, data.authorId)).then((r) => r[0]);
+      if (!targetAuthor) throw new BadRequestException('Selected author not found');
+      resolvedAuthorId = data.authorId;
     }
 
     const [updated] = await this.db
@@ -195,14 +310,26 @@ export class BlogService {
         ...(data.content   !== undefined && { content: data.content }),
         ...(data.thumbnail !== undefined && { thumbnail: data.thumbnail }),
         ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
-        ...(data.publish   !== undefined && {
-          status:      data.publish ? 'published' : 'draft',
-          publishedAt: data.publish ? new Date() : null,
-        }),
+        ...(data.isFeatured !== undefined && { isFeatured: data.isFeatured }),
+        ...(resolvedAuthorId !== undefined && { authorId: resolvedAuthorId }),
+        ...setStatus,
+        ...(data.metaTitle       !== undefined && { metaTitle: data.metaTitle }),
+        ...(data.metaDescription !== undefined && { metaDescription: data.metaDescription }),
+        ...(data.ogImage         !== undefined && { ogImage: data.ogImage }),
         updatedAt: new Date(),
       })
       .where(eq(blogPosts.id, id))
       .returning();
+
+    if (data.tags) {
+      await this.db.delete(blogPostTags).where(eq(blogPostTags.postId, id));
+      if (data.tags.length) {
+        await this.db.insert(blogPostTags).values(
+          data.tags.map((tagId) => ({ postId: id, tagId })),
+        );
+      }
+    }
+
     this.revalidation.revalidate(blogTags(updated.slug));
     void this.activityLogs.log({ adminUserId: userId, action: 'blog_post_updated', entity: 'blog_post', entityId: id });
     return updated;
@@ -400,6 +527,46 @@ export class BlogService {
     await this.db.delete(blogCategories).where(eq(blogCategories.id, id));
     this.revalidation.revalidate([CacheTag.blog]);
     return { success: true };
+  }
+
+  // ── Tags ─────────────────────────────────────────────────────────────────────
+
+  async tags() {
+    return this.db.select().from(blogTagsTable).orderBy(blogTagsTable.name);
+  }
+
+  async createTag(name: string) {
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const [row] = await this.db.insert(blogTagsTable).values({ name, slug }).returning();
+    this.revalidation.revalidate([CacheTag.blog]);
+    return row;
+  }
+
+  async deleteTag(id: number) {
+    await this.db.delete(blogTagsTable).where(eq(blogTagsTable.id, id));
+    this.revalidation.revalidate([CacheTag.blog]);
+    return { success: true };
+  }
+
+  // ── Authors ──────────────────────────────────────────────────────────────────
+
+  async listEligibleAuthors() {
+    // Admin users with create_blog permission (via role_permissions join)
+    return this.db
+      .selectDistinct({
+        id: adminUsers.id,
+        firstName: adminUsers.firstName,
+        lastName: adminUsers.lastName,
+        email: adminUsers.email,
+        avatar: adminUsers.avatar,
+        role: adminUsers.role,
+      })
+      .from(adminUsers)
+      .innerJoin(roles, eq(adminUsers.roleId, roles.id))
+      .innerJoin(rolePermissions, eq(roles.id, rolePermissions.roleId))
+      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .where(eq(permissions.slug, 'create_blog'))
+      .orderBy(adminUsers.firstName);
   }
 
   private async uniqueSlug(title: string): Promise<string> {

@@ -729,7 +729,7 @@ export class OrdersService {
       amount,
       custName:      `${user.firstName} ${user.lastName}`.trim() || 'Customer',
       custPhone:     user.phone ?? '01700000000',
-      custEmail:     user.email ?? 'noreply@skillkoro.com',
+      custEmail:     user.email ?? 'noreply@leerney.com',
       callbackUrl,
       reference:     `Order #${orderId}`,
       checkoutItems: items.map(i => i.title).join(', '),

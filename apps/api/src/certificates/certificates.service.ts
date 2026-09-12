@@ -48,7 +48,7 @@ export class CertificatesService {
   // e.g. "Learning Management System" → LMS-A3F7B2D1E9C4
   private async generateCertCode(): Promise<string> {
     const { general_site_name } = await this.systemSettings.getByKeys(['general_site_name']);
-    const prefix = deriveCertPrefix(general_site_name || 'Skillkoro');
+    const prefix = deriveCertPrefix(general_site_name || 'Leerney');
     const hex = randomUUID().replace(/-/g, '').toUpperCase().substring(0, 12);
     return `${prefix}-${hex}`;
   }

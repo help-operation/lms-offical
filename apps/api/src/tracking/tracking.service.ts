@@ -68,7 +68,7 @@ function classifySource(referrer: string | null | undefined): VisitSource {
   if (host.includes('linkedin.com')) return 'linkedin';
   if (host.includes('twitter.com') || host.includes('x.com') || host.includes('t.co')) return 'twitter';
   if (host.includes('instagram.com') || host.includes('l.instagram.com')) return 'instagram';
-  if (host.includes('skillkoro.com')) return 'website';
+  if (host.includes('leerney.com')) return 'website';
   return 'other';
 }
 

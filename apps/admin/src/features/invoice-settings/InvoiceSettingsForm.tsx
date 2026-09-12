@@ -36,7 +36,7 @@ const SECTIONS: Section[] = [
       {
         key: "invoice_website",
         label: "Website",
-        placeholder: "www.skillkoro.com",
+        placeholder: "www.leerney.com",
         hint: "Shown at the top of the invoice contact block.",
         icon: Globe,
         iconColor: "text-purple-600 dark:text-purple-400",
@@ -54,7 +54,7 @@ const SECTIONS: Section[] = [
       {
         key: "invoice_email",
         label: "Support Email",
-        placeholder: "support@skillkoro.com",
+        placeholder: "support@leerney.com",
         hint: "Shown in the invoice contact block.",
         icon: Envelope,
         iconColor: "text-purple-600 dark:text-purple-400",
@@ -68,7 +68,7 @@ const SECTIONS: Section[] = [
       {
         key: "invoice_footer_tagline",
         label: "Bottom Banner Tagline",
-        placeholder: "SkillKoro – Empowering You With Skills For A Better Tomorrow.",
+        placeholder: "Leerney – Empowering You With Skills For A Better Tomorrow.",
         hint: "Shown in the dark banner strip at the very bottom of the invoice.",
         icon: Megaphone,
         iconColor: "text-purple-600 dark:text-purple-400",

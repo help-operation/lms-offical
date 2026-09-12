@@ -102,7 +102,7 @@ export function AuthShell({
               <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-pink-500 shadow-lg shadow-brand-200 dark:shadow-brand-900/40">
                 <GraduationCap className="h-7 w-7 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Skillkoro</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Leerney</h2>
             </div>
             {content}
           </div>

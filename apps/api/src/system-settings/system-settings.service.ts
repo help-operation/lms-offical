@@ -20,18 +20,18 @@ const DEFAULTS: Record<string, string> = {
   sms_auto_notifications_enabled: 'false',
 
   // ─── General ──────────────────────────────────────────────────────────────
-  general_site_name: 'Skillkoro',
+  general_site_name: 'Leerney',
   general_tagline: 'Learn. Grow. Succeed.',
   general_meta_description: 'Join 56K+ learners. 200+ expert-led courses across development, design, marketing and more.',
   general_logo_url: '',
   general_logo_url_dark: '',
   general_favicon_url: '',
-  general_contact_email: 'hello@skillkoro.com',
+  general_contact_email: 'hello@leerney.com',
   general_contact_phone: '+880 1700-000000',
   general_contact_phone2: '+880 1700-000000',
   general_support_whatsapp: '',
   general_address: 'Dhaka, Bangladesh',
-  general_copyright: `© ${new Date().getFullYear()} Skillkoro. All rights reserved.`,
+  general_copyright: `© ${new Date().getFullYear()} Leerney. All rights reserved.`,
   general_trade_license: '',
 
   // ─── Business Info ────────────────────────────────────────────────────────
@@ -60,14 +60,14 @@ const DEFAULTS: Record<string, string> = {
   general_time_format: '12h', // 12h | 24h
 
   // ─── Invoice Template ─────────────────────────────────────────────────────
-  invoice_company_name: 'Skillkoro',
+  invoice_company_name: 'Leerney',
   invoice_tagline: 'Online Learning Platform',
   invoice_logo_url: '',
   invoice_address: '',
-  invoice_website: 'www.skillkoro.com',
+  invoice_website: 'www.leerney.com',
   invoice_phone: '',
   invoice_email: '',
-  invoice_footer_tagline: 'SkillKoro – Empowering You With Skills For A Better Tomorrow.',
+  invoice_footer_tagline: 'Leerney – Empowering You With Skills For A Better Tomorrow.',
   // JSON-encoded Record<templateId, StyleOverrides> — one override set per
   // template design, produced by the click-to-style editor at
   // /admin/invoice-settings/design.
@@ -104,7 +104,7 @@ const DEFAULTS: Record<string, string> = {
   footer_copyright: '© 2024 LearnHub. All rights reserved.',
 
   // ─── Contact ──────────────────────────────────────────────────────────────
-  contact_email: 'hello@skillkoro.com',
+  contact_email: 'hello@leerney.com',
   contact_phone: '+880 1700-000000',
   contact_address: '123 Learning Street, Dhaka',
   contact_hours_days: 'Saturday – Thursday',
@@ -118,7 +118,7 @@ const DEFAULTS: Record<string, string> = {
   about_mission_text: 'To help every learner reach their fullest potential. We aim to make education easy, engaging, and effective through world-class courses, experienced instructors, and modern technology.',
   about_vision_text: 'To create a world where anyone, from anywhere, at any time, can access world-class courses. We want to remove barriers to education and create equal opportunities for all.',
   about_cta_title: 'Join Our Growing Community',
-  about_cta_subtitle: 'Be part of 56,000+ learners transforming their careers with Skillkoro.',
+  about_cta_subtitle: 'Be part of 56,000+ learners transforming their careers with Leerney.',
   about_team_members: JSON.stringify([
     { name: 'Dr. Aminul Islam', role: 'Founder & CEO', desc: 'EdTech visionary with 15+ years in education technology.', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face' },
     { name: 'Fatima Rahman', role: 'Head of Curriculum', desc: 'Curriculum design expert, passionate about accessible education.', image: 'https://images.unsplash.com/photo-1494790108755-2616b332906c?w=200&h=200&fit=crop&crop=face' },
@@ -131,9 +131,9 @@ const DEFAULTS: Record<string, string> = {
     {
       id: 'general', title: 'General',
       questions: [
-        { q: 'What is Skillkoro?', a: 'Skillkoro is one of the leading online learning platforms, committed to making quality education accessible to everyone. We offer 200+ expert-led courses across development, design, marketing, and more.' },
+        { q: 'What is Leerney?', a: 'Leerney is one of the leading online learning platforms, committed to making quality education accessible to everyone. We offer 200+ expert-led courses across development, design, marketing, and more.' },
         { q: 'How do I create an account?', a: "Click the 'Get Started' button at the top of the page. Fill in your name, email, and password to create a free account in under a minute." },
-        { q: 'Is Skillkoro free?', a: 'We offer both free and paid courses. Our Basic plan gives you access to all free courses. Upgrade to Pro to unlock the full library, certificates, and priority support.' },
+        { q: 'Is Leerney free?', a: 'We offer both free and paid courses. Our Basic plan gives you access to all free courses. Upgrade to Pro to unlock the full library, certificates, and priority support.' },
       ],
     },
     {
@@ -141,7 +141,7 @@ const DEFAULTS: Record<string, string> = {
       questions: [
         { q: 'Do I get lifetime access to courses?', a: 'Yes! Once enrolled in a course, you get lifetime access including all future updates. Study at your own pace and revisit the material whenever you need.' },
         { q: 'Are there certificates upon completion?', a: 'Absolutely. Every completed course earns you a verified digital certificate that you can download, share on LinkedIn, or add to your resume.' },
-        { q: 'Can I access courses on mobile?', a: 'Yes, Skillkoro is fully responsive and works on all modern browsers on desktop, tablet, and mobile.' },
+        { q: 'Can I access courses on mobile?', a: 'Yes, Leerney is fully responsive and works on all modern browsers on desktop, tablet, and mobile.' },
         { q: 'How long do I have to complete a course?', a: 'There are no deadlines. You can complete courses at your own pace. Most learners finish within 4–8 weeks while studying part-time.' },
       ],
     },

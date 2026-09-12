@@ -5,10 +5,10 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data.json();
   } catch {
-    data = { title: 'Skillkoro', body: event.data.text() };
+    data = { title: 'Leerney', body: event.data.text() };
   }
 
-  const { title = 'Skillkoro', body = '', url = '/' } = data;
+  const { title = 'Leerney', body = '', url = '/' } = data;
 
   event.waitUntil(
     self.registration.showNotification(title, {

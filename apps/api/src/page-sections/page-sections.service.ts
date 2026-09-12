@@ -162,7 +162,7 @@ const HOME_SECTIONS: SeedSection[] = [
     order: 7,
     content: {
       eyebrow: 'Testimonials',
-      title: "SkillKoro through professionals' eyes",
+      title: "Leerney through professionals' eyes",
       subtitle:
         'Join thousands of successful learners who have transformed their careers with us.',
       items: [
@@ -261,8 +261,8 @@ const HOME_SECTIONS: SeedSection[] = [
       see_all_label: 'See all',
       see_all_link: '/courses',
       reviews: [
-        { id: 1, name: 'HM Rifat Hossain', batch: 'FC2501', rating: 5, text: "It was a nice learning journey with SkillKoro. Our mentor's way of teaching is much better than many others." },
-        { id: 2, name: 'Md. Mahfuzul Islam', batch: 'FC2501', rating: 5, text: 'It was a nice learning journey with SkillKoro. Our mentor is a brilliant mentor and touched every step.' },
+        { id: 1, name: 'HM Rifat Hossain', batch: 'FC2501', rating: 5, text: "It was a nice learning journey with Leerney. Our mentor's way of teaching is much better than many others." },
+        { id: 2, name: 'Md. Mahfuzul Islam', batch: 'FC2501', rating: 5, text: 'It was a nice learning journey with Leerney. Our mentor is a brilliant mentor and touched every step.' },
         { id: 3, name: 'Tania Akter', batch: 'FC2412', rating: 5, text: 'The course content was practical and up to date. Support from the community group was excellent.' },
         { id: 4, name: 'Sajid Rahman', batch: 'FC2410', rating: 5, text: 'Highly recommended for anyone serious about freelancing. The job placement guidance genuinely helped me start earning.' },
         { id: 5, name: 'Nusrat Jahan', batch: 'FC2409', rating: 5, text: 'Great mentors and well structured lessons. The recorded classes made it easy to revisit topics whenever I needed.' },
@@ -582,14 +582,14 @@ const SEEDS: { page: string; sections: SeedSection[] }[] = [
         type: 'footer_info',
         order: 0,
         content: {
-          site_name: 'Skillkoro',
+          site_name: 'Leerney',
           description: 'One of the leading online learning platforms, committed to making quality education accessible to everyone.',
           address: '123 Learning Street, Dhaka, Bangladesh',
           phone: '+880 1700-000000',
-          email: 'hello@skillkoro.com',
+          email: 'hello@leerney.com',
           students_count: '56K+',
           courses_count: '200+',
-          copyright: `© ${new Date().getFullYear()} Skillkoro. All rights reserved.`,
+          copyright: `© ${new Date().getFullYear()} Leerney. All rights reserved.`,
         },
       },
     ],
@@ -616,7 +616,7 @@ const SEEDS: { page: string; sections: SeedSection[] }[] = [
         type: 'contact_info',
         order: 1,
         content: {
-          email: 'support@skillkoro.com',
+          email: 'support@leerney.com',
           phone: '+880 1321-204263',
           address: 'House 90/2, Gulshan Badda Link Rd, Dhaka 1212, Bangladesh',
           hours_days: 'Saturday – Thursday',
@@ -638,15 +638,15 @@ const SEEDS: { page: string; sections: SeedSection[] }[] = [
         content: {
           title: 'About Us',
           intro_lead: "One of today's most popular online learning platforms — ",
-          intro_link_text: 'SkillKoro.com',
+          intro_link_text: 'Leerney.com',
           intro_link_url: '/',
           intro_paragraph:
-            "SkillKoro.com's journey began in 2018. Although it started primarily with domain-hosting and bulk SMS marketing, in 2024 — under the leadership of Majadur Rahaman Robin — SkillKoro was re-established with a single goal: to make IT education simple and accessible for everyone worldwide and to help them develop their careers.",
+            "Leerney.com's journey began in 2018. Although it started primarily with domain-hosting and bulk SMS marketing, in 2024 — under the leadership of Majadur Rahaman Robin — Leerney was re-established with a single goal: to make IT education simple and accessible for everyone worldwide and to help them develop their careers.",
           subsections: [
             {
               title: 'Our Founders',
               paragraphs: [
-                'Founded by angel investor and entrepreneur Mr. Rafid Ahsan Noor, alongside co-founder Mr. Arif M Rajon who joined in June 2024, SkillKoro.com formally began its journey with government approval and has steadily moved forward, earning growing trust. Through modern skill-development courses, real-life projects and industry-expert mentors, we are preparing the next generation for tomorrow\'s job and freelancing markets.',
+                'Founded by angel investor and entrepreneur Mr. Rafid Ahsan Noor, alongside co-founder Mr. Arif M Rajon who joined in June 2024, Leerney.com formally began its journey with government approval and has steadily moved forward, earning growing trust. Through modern skill-development courses, real-life projects and industry-expert mentors, we are preparing the next generation for tomorrow\'s job and freelancing markets.',
               ],
             },
             {
@@ -684,7 +684,7 @@ const SEEDS: { page: string; sections: SeedSection[] }[] = [
         order: 2,
         content: {
           eyebrow: 'Testimonials',
-          title: "SkillKoro through professionals' eyes",
+          title: "Leerney through professionals' eyes",
           subtitle: 'Join thousands of successful learners who have transformed their careers with us.',
           items: [
             { name: 'Shamim Parvez Himel', role: 'Tech Content Creator, AFR Technology', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=160&h=160&fit=crop&crop=face', rating: 5, amount: '', text: 'When it comes to building technology-driven skills, this is a brilliant initiative.' },
@@ -705,11 +705,11 @@ const SEEDS: { page: string; sections: SeedSection[] }[] = [
       },
       {
         slug: 'why_ict',
-        label: 'Why SkillKoro',
+        label: 'Why Leerney',
         type: 'why_ict',
         order: 4,
         content: {
-          title: 'The skill journey — why SkillKoro?',
+          title: 'The skill journey — why Leerney?',
           reasons: [
             { title: "Guidance from the country's best entrepreneurs", desc: 'Direct guidance and hands-on skill assurance from experienced, real-world instructors.' },
             { title: 'Corporate or freelancing-demand courses', desc: 'Project-based skill development built to match the demands of the job market or freelancing platforms.' },
@@ -739,11 +739,11 @@ const SEEDS: { page: string; sections: SeedSection[] }[] = [
         type: 'media',
         order: 6,
         content: {
-          title: 'SkillKoro in Media',
+          title: 'Leerney in Media',
           articles: [
-            { id: 1, outlet: 'THE BUSINESS STANDARD', date: '25th Nov 2025', image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=360&fit=crop', title: 'SkillKoro launches idea innovation 5.0', link: '/blog' },
-            { id: 2, outlet: 'THE BUSINESS STANDARD', date: '25th Nov 2025', image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=360&fit=crop', title: 'SkillKoro launches idea innovation 5.0', link: '/blog' },
-            { id: 3, outlet: 'THE BUSINESS STANDARD', date: '25th Nov 2025', image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&h=360&fit=crop', title: 'SkillKoro launches idea innovation 5.0', link: '/blog' },
+            { id: 1, outlet: 'THE BUSINESS STANDARD', date: '25th Nov 2025', image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=360&fit=crop', title: 'Leerney launches idea innovation 5.0', link: '/blog' },
+            { id: 2, outlet: 'THE BUSINESS STANDARD', date: '25th Nov 2025', image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=360&fit=crop', title: 'Leerney launches idea innovation 5.0', link: '/blog' },
+            { id: 3, outlet: 'THE BUSINESS STANDARD', date: '25th Nov 2025', image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&h=360&fit=crop', title: 'Leerney launches idea innovation 5.0', link: '/blog' },
           ],
         },
       },
@@ -754,7 +754,7 @@ const SEEDS: { page: string; sections: SeedSection[] }[] = [
         order: 7,
         content: {
           title: "How far we've come",
-          subtitle: 'The biggest achievement at SkillKoro is including you as a true companion of time.',
+          subtitle: 'The biggest achievement at Leerney is including you as a true companion of time.',
           milestones: [
             { date: '26 December, 2019', desc: 'Participated in the BYLC Youth Carnival 2019.' },
             { date: '26 December, 2019', desc: 'Participated in the BYLC Youth Carnival 2019.' },
@@ -1074,7 +1074,7 @@ const SEEDS: { page: string; sections: SeedSection[] }[] = [
         type: 'login_panel',
         order: 0,
         content: {
-          title: 'Welcome to SkillKoro',
+          title: 'Welcome to Leerney',
           image: 'https://images.unsplash.com/photo-1531497865144-0464ef8fb9a9?w=800&h=1000&fit=crop',
         },
       },

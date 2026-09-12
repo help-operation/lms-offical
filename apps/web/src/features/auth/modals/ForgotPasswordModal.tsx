@@ -42,7 +42,7 @@ export function ForgotPasswordModal() {
           <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-gradient-to-br from-brand-600 to-pink-500 mb-3 shadow-lg shadow-brand-200 dark:shadow-brand-900/40">
             <GraduationCap className="h-7 w-7 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Skillkoro</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Leerney</h2>
           <p className="text-sm text-gray-500 mt-0.5 dark:text-gray-400">Reset your password</p>
         </div>
 

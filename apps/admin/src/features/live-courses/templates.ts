@@ -82,7 +82,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     dbTemplate: "5",
     name: "Masterclass Style",
     description:
-      "Green Bangladeshi masterclass landing page — offer countdown strip, hero with 5 stat cards + batch bar + sticky purchase card, tools, demo video, lead instructors, what-you-get grid, who-it's-for, real-life projects, grouped curriculum accordion, zig-zag roadmap timeline, certificate, FAQ, and sticky enrol bar. Inspired by SkillKoro.",
+      "Green Bangladeshi masterclass landing page — offer countdown strip, hero with 5 stat cards + batch bar + sticky purchase card, tools, demo video, lead instructors, what-you-get grid, who-it's-for, real-life projects, grouped curriculum accordion, zig-zag roadmap timeline, certificate, FAQ, and sticky enrol bar. Inspired by Leerney.",
     thumbnail: "",
     tags: ["New", "Full-featured"],
     previewSections: [

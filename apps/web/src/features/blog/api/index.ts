@@ -7,6 +7,9 @@ export interface BlogPost {
   excerpt: string | null;
   thumbnail: string | null;
   publishedAt: string | null;
+  publishAt: string | null;
+  isFeatured: boolean;
+  readingTime: number | null;
   authorFirstName: string;
   authorLastName: string;
   categoryId: number | null;
@@ -14,6 +17,10 @@ export interface BlogPost {
   categorySlug: string | null;
   likeCount?: number;
   commentCount?: number;
+  tags?: BlogTag[];
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  ogImage?: string | null;
 }
 
 export interface BlogPostDetail extends BlogPost {
@@ -21,9 +28,16 @@ export interface BlogPostDetail extends BlogPost {
   excerpt: string | null;
   createdAt: string | null;
   authorId: number;
+  readingTime: number | null;
 }
 
 export interface BlogCategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface BlogTag {
   id: number;
   name: string;
   slug: string;

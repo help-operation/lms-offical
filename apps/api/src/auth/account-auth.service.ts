@@ -20,6 +20,7 @@ import type {
   AccountLoginDto,
   AccountSignupDto,
   AccountResetDto,
+  AccountVerifyEmailDto,
 } from './dto/account-auth.dto';
 
 type Identity = { type: 'email' | 'phone'; value: string };
@@ -62,7 +63,7 @@ export class AccountAuthService {
     return user;
   }
 
-  async sendOtp(rawIdentifier: string, purpose: 'signup' | 'reset' = 'signup') {
+  async sendOtp(rawIdentifier: string, purpose: 'signup' | 'reset' | 'verify' = 'signup') {
     const id = this.parse(rawIdentifier);
     const existing = await this.findUser(id);
 
@@ -75,6 +76,14 @@ export class AccountAuthService {
 
     // Reset: the account must exist — otherwise there's nothing to reset.
     if (purpose === 'reset' && !existing)
+      throw new NotFoundException(
+        `No account found for this ${id.type === 'email' ? 'email' : 'phone number'}`,
+      );
+
+    // Verify: the account must exist (for contact verification of existing users
+    // like Google OAuth). If no account exists, fall through — the OTP will be
+    // sent but verification will fail at the verify-email step.
+    if (purpose === 'verify' && !existing)
       throw new NotFoundException(
         `No account found for this ${id.type === 'email' ? 'email' : 'phone number'}`,
       );
@@ -103,6 +112,9 @@ export class AccountAuthService {
         role: 'GUEST',
         status: 'active',
         gender: dto.gender,
+        // OTP was verified at signup — mark the corresponding contact as verified
+        emailVerified: id.type === 'email',
+        phoneVerified: id.type === 'phone',
       })
       .returning();
 
@@ -190,6 +202,27 @@ export class AccountAuthService {
     return this.authService.login(updated, 'user');
   }
 
+  /** Verify email via OTP — marks emailVerified=true for the matched account */
+  async verifyEmail(dto: AccountVerifyEmailDto) {
+    const email = dto.email.toLowerCase().trim();
+    await this.otpService.verifyOtpFor(email, dto.code);
+
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user) throw new NotFoundException('No account found for this email');
+
+    await this.db
+      .update(users)
+      .set({ emailVerified: true, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+
+    return { success: true };
+  }
+
   /** Google OAuth — find existing user by email or create a new guest */
   async findOrCreateGoogleUser(
     profile: {
@@ -210,7 +243,8 @@ export class AccountAuthService {
     if (existing) {
       if (existing.status === 'suspended')
         throw new UnauthorizedException('Your account has been suspended');
-      return this.authService.login(existing, 'user', { awaitSideEffects });
+      const tokens = await this.authService.login(existing, 'user', { awaitSideEffects });
+      return { ...tokens, emailVerified: existing.emailVerified };
     }
 
     const [user] = await this.db
@@ -222,9 +256,11 @@ export class AccountAuthService {
         avatar: profile.avatar ?? null,
         role: 'GUEST',
         status: 'active',
+        emailVerified: false,
       })
       .returning();
 
-    return this.authService.login(user, 'user', { awaitSideEffects });
+    const tokens = await this.authService.login(user, 'user', { awaitSideEffects });
+    return { ...tokens, emailVerified: false };
   }
 }
