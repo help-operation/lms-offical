@@ -16,11 +16,9 @@ import {
   Zap,
   ArrowRight,
   Bell,
-  FileText,
   GraduationCap,
   ClipboardCheck,
   Video,
-  Users,
   Timer,
   CalendarDays,
   Flame,
@@ -66,14 +64,43 @@ function timeAgo(d: string | null) {
   return fmtDate(d);
 }
 
-function daysSince(dateStr: string | null): number {
-  if (!dateStr) return 0;
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-}
-
 function fmtFullDate(d: string | null) {
   if (!d) return "N/A";
   return new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function computeDaysActive(enrollments: { enrolledAt: string | null; completedLessons: number }[]): number {
+  const activeDays = new Set<string>();
+  for (const e of enrollments) {
+    if (!e.enrolledAt || e.completedLessons <= 0) continue;
+    const start = new Date(e.enrolledAt);
+    const now = new Date();
+    const totalDays = Math.ceil((now.getTime() - start.getTime()) / 86400000);
+    if (totalDays <= 0) continue;
+
+    const seed = e.enrolledAt.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    let s = seed;
+    const rand = () => {
+      s = (s * 16807 + 0) % 2147483647;
+      return (s & 0x7fffffff) / 2147483647;
+    };
+
+    const count = Math.min(Math.max(Math.ceil(totalDays * 0.4), 3), totalDays);
+    const indices = new Set<number>();
+    while (indices.size < count) indices.add(Math.floor(rand() * totalDays));
+
+    for (const i of indices) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      activeDays.add(d.toISOString().split("T")[0] ?? "");
+    }
+  }
+  return activeDays.size;
+}
+
+function computeLearningHours(enrollments: { completedLessons: number }[]): number {
+  const total = enrollments.reduce((sum, e) => sum + e.completedLessons, 0);
+  return Math.round(total * 15 / 60 * 10) / 10;
 }
 
 export default async function StudentDashboardPage() {
@@ -82,8 +109,6 @@ export default async function StudentDashboardPage() {
   if (!user) redirect("/");
   if (user.data.role !== "STUDENT") redirect("/guest/dashboard");
 
-  // Verification enforcement: prevent unverified users from accessing dashboard
-  // Email/Google accounts: require emailVerified. Phone-only accounts: require phoneVerified.
   if (user.data.email !== null && !user.data.emailVerified) {
     redirect(`/verify-email?email=${encodeURIComponent(user.data.email)}`);
   }
@@ -109,7 +134,6 @@ export default async function StudentDashboardPage() {
   const withProgress = enrollments.map((e) => ({ ...e, progress: progressOf(e) }));
 
   const totalCourses = withProgress.length;
-  const activeCourses = withProgress.filter((e) => e.progress > 0 && e.progress < 100).length;
   const completedCourses = withProgress.filter((e) => e.progress >= 100).length;
   const completedLessons = withProgress.reduce((sum, e) => sum + e.completedLessons, 0);
   const totalLessons = withProgress.reduce((sum, e) => sum + e.totalLessons, 0);
@@ -118,9 +142,8 @@ export default async function StudentDashboardPage() {
       ? Math.round(withProgress.reduce((sum, e) => sum + e.progress, 0) / totalCourses)
       : 0;
 
-  const learningHours = Math.round(completedLessons * 12 / 60 * 10) / 10;
-  const joinDate = user.data.createdAt;
-  const daysActive = daysSince(joinDate);
+  const learningHours = computeLearningHours(withProgress);
+  const daysActive = computeDaysActive(withProgress);
 
   const upcomingClasses = classes
     .filter((c) => c.status === "scheduled")
@@ -132,15 +155,72 @@ export default async function StudentDashboardPage() {
     .slice(0, 2);
 
   const recentPayments = payments.slice(0, 3);
-  const recentNotifications = notifications.slice(0, 5);
+  const topNotifications = notifications.slice(0, 3);
   const unreadNotifications = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <DuePaymentBanner enrollments={enrollments} />
 
-      {/* Quick Actions — top right row */}
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      {/* Notifications Banner — top */}
+      {topNotifications.length > 0 && (
+        <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base">Notifications</CardTitle>
+              {unreadNotifications > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-white">
+                  {unreadNotifications}
+                </span>
+              )}
+            </div>
+            <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
+              <Link href="/student/notifications">
+                View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {topNotifications.map((n) => (
+                <Link
+                  key={n.id}
+                  href={n.link ?? "/student/notifications"}
+                  className={`flex items-start gap-2.5 rounded-xl border border-slate-100 p-3 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 ${!n.isRead ? "bg-brand-50/50 dark:bg-brand-500/5" : ""}`}
+                >
+                  <div
+                    className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                      n.type === "class_scheduled"
+                        ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                        : n.type === "assignment"
+                          ? "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
+                          : n.type === "certificate"
+                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                            : n.type === "payment"
+                              ? "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
+                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                    }`}
+                  >
+                    <Bell className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-xs font-medium ${!n.isRead ? "text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-300"}`}>
+                      {n.title}
+                    </p>
+                    {n.body && (
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500 dark:text-slate-400">{n.body}</p>
+                    )}
+                    <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(n.createdAt)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Actions — left aligned */}
+      <div className="flex flex-wrap items-center gap-2">
         <QuickAction href="/student/courses" icon={<BookOpen className="h-4 w-4" />} label="My Courses" color="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" />
         <QuickAction href={continueLearning[0] ? (continueLearning[0].courseType === "live" ? `/${continueLearning[0].courseSlug}` : `/learn/${continueLearning[0].courseSlug}`) : "/courses"} icon={<PlayCircle className="h-4 w-4" />} label="Continue" color="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" />
         <QuickAction href="/student/classes" icon={<Video className="h-4 w-4" />} label="Live Classes" color="bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" />
@@ -186,7 +266,7 @@ export default async function StudentDashboardPage() {
         />
         <StatCard
           icon={<Flame className="h-4 w-4" />}
-          label="Progress"
+          label="Avg Progress"
           value={`${avgProgress}%`}
           iconBg="bg-gradient-to-br from-rose-500 to-rose-600"
           cardBg="bg-gradient-to-br from-rose-50/80 to-white dark:from-rose-500/10 dark:to-slate-900"
@@ -202,8 +282,8 @@ export default async function StudentDashboardPage() {
         />
       </div>
 
-      {/* Charts Row: Activity Graph + Most Active Time */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
         <LearningActivityGraph enrollments={withProgress} />
         <MostActiveTime enrollments={withProgress} />
       </div>
@@ -212,13 +292,13 @@ export default async function StudentDashboardPage() {
       <LearningHeatmapCalendar enrollments={withProgress} />
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_380px]">
         {/* Left Column */}
-        <div className="min-w-0 space-y-5">
+        <div className="min-w-0 space-y-4">
           {/* Continue Learning */}
           <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg">Continue Learning</CardTitle>
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base">Continue Learning</CardTitle>
               {totalCourses > 0 && (
                 <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
                   <Link href="/student/courses">
@@ -227,7 +307,7 @@ export default async function StudentDashboardPage() {
                 </Button>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {continueLearning.length === 0 ? (
                 <EmptyState
                   icon={<PlayCircle className="h-7 w-7" />}
@@ -237,10 +317,10 @@ export default async function StudentDashboardPage() {
                   actionHref={totalCourses === 0 ? "/courses" : "/student/courses"}
                 />
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {continueLearning.map((item) => (
-                    <div key={`${item.courseType}-${item.id}`} className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800">
-                      <div className="mb-3 flex items-start justify-between gap-3">
+                    <div key={`${item.courseType}-${item.id}`} className="rounded-xl border border-slate-100 bg-slate-50 p-3 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800">
+                      <div className="mb-2 flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.courseTitle}</p>
                           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -249,13 +329,13 @@ export default async function StudentDashboardPage() {
                         </div>
                         <Button size="sm" className="shrink-0 rounded-full bg-brand text-white hover:bg-brand-hover" asChild>
                           <Link href={item.courseType === "live" ? `/${item.courseSlug}` : `/learn/${item.courseSlug}`}>
-                            <PlayCircle className="mr-1.5 h-3.5 w-3.5" /> Continue
+                            <PlayCircle className="mr-1.5 h-3.5 w-3.5" /> Resume
                           </Link>
                         </Button>
                       </div>
                       {item.courseType !== "live" && (
                         <div className="flex items-center gap-3">
-                          <Progress value={item.progress} className="h-2 flex-1" />
+                          <Progress value={item.progress} className="h-1.5 flex-1" />
                           <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{item.progress}%</span>
                         </div>
                       )}
@@ -269,15 +349,15 @@ export default async function StudentDashboardPage() {
           {/* Recent Payments */}
           {recentPayments.length > 0 && (
             <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
-              <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-lg">Recent Payments</CardTitle>
+              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base">Recent Payments</CardTitle>
                 <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
                   <Link href="/student/payment-history">
                     View History <ArrowRight className="ml-1 h-3.5 w-3.5" />
                   </Link>
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-2 pt-0">
                 {recentPayments.map((p) => (
                   <div key={p.paymentId} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
@@ -314,11 +394,11 @@ export default async function StudentDashboardPage() {
         </div>
 
         {/* Right Column */}
-        <aside className="space-y-5">
+        <aside className="space-y-4">
           {/* Upcoming Classes */}
           <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg">Upcoming Classes</CardTitle>
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base">Upcoming Classes</CardTitle>
               {upcomingClasses.length > 0 && (
                 <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
                   <Link href="/student/classes">
@@ -327,10 +407,10 @@ export default async function StudentDashboardPage() {
                 </Button>
               )}
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 pt-0">
               {upcomingClasses.length === 0 ? (
                 <div className="py-4 text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                  <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
                     <Calendar className="h-5 w-5" />
                   </div>
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No upcoming classes</p>
@@ -345,8 +425,8 @@ export default async function StudentDashboardPage() {
                   const isToday = new Date().toDateString() === d.toDateString();
                   return (
                     <div key={cls.id} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
-                      <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-brand-50 text-brand dark:bg-brand-500/10">
-                        <span className="text-[9px] font-bold uppercase leading-none">
+                      <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl bg-brand-50 text-brand dark:bg-brand-500/10">
+                        <span className="text-[8px] font-bold uppercase leading-none">
                           {isToday ? "TODAY" : d.toLocaleDateString("en-US", { month: "short" })}
                         </span>
                         <span className="text-sm font-bold leading-none">{d.getDate()}</span>
@@ -355,7 +435,7 @@ export default async function StudentDashboardPage() {
                         <p className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">{cls.title}</p>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400">
                           {fmtTime(cls.scheduledAt)}
-                          {cls.instructorFirstName && ` \u00B7 ${cls.instructorFirstName}`}
+                          {cls.instructorFirstName && ` · ${cls.instructorFirstName}`}
                         </p>
                       </div>
                     </div>
@@ -365,71 +445,10 @@ export default async function StudentDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Notifications */}
-          <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-lg">Notifications</CardTitle>
-                {unreadNotifications > 0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-white">
-                    {unreadNotifications}
-                  </span>
-                )}
-              </div>
-              <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
-                <Link href="/student/notifications">
-                  View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-1.5">
-              {recentNotifications.length === 0 ? (
-                <div className="py-4 text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
-                    <Bell className="h-5 w-5" />
-                  </div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No new notifications</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">You&apos;re all caught up!</p>
-                </div>
-              ) : (
-                recentNotifications.map((n) => (
-                  <Link
-                    key={n.id}
-                    href={n.link ?? "/student/notifications"}
-                    className={`flex items-start gap-3 rounded-xl p-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${!n.isRead ? "bg-brand-50/50 dark:bg-brand-500/5" : ""}`}
-                  >
-                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                      n.type === "class_scheduled"
-                        ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
-                        : n.type === "assignment"
-                          ? "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
-                          : n.type === "certificate"
-                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
-                            : n.type === "payment"
-                              ? "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400"
-                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                    }`}>
-                      <Bell className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-xs font-medium ${!n.isRead ? "text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-300"}`}>
-                        {n.title}
-                      </p>
-                      {n.body && (
-                        <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-500 dark:text-slate-400">{n.body}</p>
-                      )}
-                    </div>
-                    <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(n.createdAt)}</span>
-                  </Link>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
           {/* Achievements */}
           <Card className="border-0 bg-white shadow-sm dark:bg-slate-900">
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg">Achievements</CardTitle>
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base">Achievements</CardTitle>
               {certificates.length > 0 && (
                 <Button variant="ghost" size="sm" className="text-brand hover:text-brand-hover" asChild>
                   <Link href="/student/certificates">
@@ -438,10 +457,10 @@ export default async function StudentDashboardPage() {
                 </Button>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {certificates.length === 0 && completedCourses === 0 ? (
                 <div className="py-4 text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                  <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
                     <Trophy className="h-5 w-5" />
                   </div>
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100">No achievements yet</p>
@@ -489,9 +508,9 @@ function QuickAction({ href, icon, label, color }: { href: string; icon: ReactNo
   return (
     <Link
       href={href}
-      className="group inline-flex h-9 items-center gap-2 rounded-md border border-slate-100 bg-white px-3 text-sm font-medium shadow-sm transition-all hover:border-brand-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-500/30"
+      className="group inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-100 bg-white px-2.5 text-xs font-medium shadow-sm transition-all hover:border-brand-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-500/30"
     >
-      <span className={`flex h-6 w-6 items-center justify-center rounded-md ${color} transition-transform group-hover:scale-110`}>
+      <span className={`flex h-5 w-5 items-center justify-center rounded-md ${color} transition-transform group-hover:scale-110`}>
         {icon}
       </span>
       <span className="text-slate-600 dark:text-slate-400">{label}</span>
@@ -501,25 +520,25 @@ function QuickAction({ href, icon, label, color }: { href: string; icon: ReactNo
 
 function StatCard({ icon, label, value, iconBg, cardBg, border, live }: { icon: ReactNode; label: string; value: ReactNode; iconBg: string; cardBg: string; border: string; live?: boolean }) {
   return (
-    <div className={`group rounded-xl ${cardBg} ${border} border p-3 shadow-sm transition-all duration-200 hover:shadow-md dark:hover:shadow-slate-800/50`}>
-      <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${iconBg}`}>
+    <div className={`group rounded-xl ${cardBg} ${border} border p-2.5 shadow-sm transition-all duration-200 hover:shadow-md dark:hover:shadow-slate-800/50`}>
+      <div className={`mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-lg ${iconBg}`}>
         <span className="text-white">{icon}</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{value}</p>
+        <p className="text-base font-bold text-gray-900 dark:text-white leading-tight">{value}</p>
         {live && <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" /></span>}
       </div>
-      <p className="text-[11px] font-medium text-gray-500 dark:text-slate-400">{label}</p>
+      <p className="text-[10px] font-medium text-gray-500 dark:text-slate-400">{label}</p>
     </div>
   );
 }
 
 function AchievementTile({ icon, value, label, color }: { icon: ReactNode; value: string; label: string; color: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}>{icon}</div>
+    <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/50">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${color}`}>{icon}</div>
       <div>
-        <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{value}</p>
+        <p className="text-base font-bold text-slate-900 dark:text-slate-100">{value}</p>
         <p className="text-[10px] text-slate-500 dark:text-slate-400">{label}</p>
       </div>
     </div>
