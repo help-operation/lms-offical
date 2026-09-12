@@ -96,7 +96,7 @@ export function LearningActivityGraph({
         <div>
           <CardTitle className="text-lg">Learning Time</CardTitle>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            {Math.round(totalMinutes / 60)}h total \u00B7 {activeDays} active days \u00B7 avg {avgMinutes}min/day
+            {Math.round(totalMinutes / 60)}h total · {activeDays} active days · avg {avgMinutes}min/day
           </p>
         </div>
         <div className="flex rounded-lg border border-slate-200 dark:border-slate-700">
