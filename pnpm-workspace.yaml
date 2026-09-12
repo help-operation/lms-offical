@@ -1,6 +1,3 @@
 packages:
   - "apps/*"
   - "packages/*"
-
-overrides:
-  "webidl-conversions": "7.0.0"
