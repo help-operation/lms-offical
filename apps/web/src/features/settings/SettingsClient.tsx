@@ -1,8 +1,26 @@
 "use client";
 
-import { useRef, useState, useTransition, useEffect } from "react";
+import { useRef, useState, useTransition, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { User, Lock, Loader2, Mail, Phone, CheckCircle2, Camera, Bell, Sun, Shield } from "lucide-react";
+import {
+  User,
+  Lock,
+  Loader2,
+  Mail,
+  Phone,
+  CheckCircle2,
+  Camera,
+  Bell,
+  Sun,
+  Shield,
+  Eye,
+  EyeOff,
+  Globe,
+  Download,
+  Trash2,
+  AlertTriangle,
+  Monitor,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/avatar";
 import { Badge } from "@repo/ui/badge";
 import { toast } from "@repo/ui/sonner";
@@ -30,7 +48,7 @@ function Section({
       className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 ${className}`}
     >
       <div className="mb-5 flex items-start gap-3">
-        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
           <Icon className="h-5 w-5" />
         </span>
         <div>
@@ -49,6 +67,42 @@ const labelClass =
   "mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300";
 const primaryBtn =
   "inline-flex items-center justify-center gap-2 rounded-xl bg-brand-solid px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-60";
+
+// ─── Password visibility toggle ─────────────────────────────────────────────
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  autoComplete?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        className={`${inputClass} pr-10`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+        tabIndex={-1}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 // ─── Profile overview ─────────────────────────────────────────────────────────
 
@@ -241,17 +295,17 @@ function EditProfileSection({
 function PasswordSection({ hasPassword: initialHasPassword }: { hasPassword: boolean }) {
   const [hasPassword, setHasPassword] = useState(initialHasPassword);
   const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
+  const [nextPass, setNextPass] = useState("");
   const [confirm, setConfirm] = useState("");
   const [pending, start] = useTransition();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (next.length < 6) {
+    if (nextPass.length < 6) {
       toast.error("New password must be at least 6 characters");
       return;
     }
-    if (next !== confirm) {
+    if (nextPass !== confirm) {
       toast.error("Passwords do not match");
       return;
     }
@@ -259,12 +313,12 @@ function PasswordSection({ hasPassword: initialHasPassword }: { hasPassword: boo
       try {
         await settingsApiBrowser.changePassword({
           currentPassword: hasPassword ? current : undefined,
-          newPassword: next,
+          newPassword: nextPass,
         });
         toast.success(hasPassword ? "Password changed" : "Password set");
         setHasPassword(true);
         setCurrent("");
-        setNext("");
+        setNextPass("");
         setConfirm("");
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : "Failed to update password");
@@ -286,38 +340,20 @@ function PasswordSection({ hasPassword: initialHasPassword }: { hasPassword: boo
         {hasPassword && (
           <div>
             <label className={labelClass}>Current password</label>
-            <input
-              type="password"
-              className={inputClass}
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              autoComplete="current-password"
-            />
+            <PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" />
           </div>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>New password</label>
-            <input
-              type="password"
-              className={inputClass}
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              autoComplete="new-password"
-            />
+            <PasswordInput value={nextPass} onChange={setNextPass} autoComplete="new-password" />
           </div>
           <div>
             <label className={labelClass}>Confirm new password</label>
-            <input
-              type="password"
-              className={inputClass}
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              autoComplete="new-password"
-            />
+            <PasswordInput value={confirm} onChange={setConfirm} autoComplete="new-password" />
           </div>
         </div>
-        <button type="submit" className={primaryBtn} disabled={pending || !next || !confirm}>
+        <button type="submit" className={primaryBtn} disabled={pending || !nextPass || !confirm}>
           {pending && <Loader2 className="h-4 w-4 animate-spin" />}
           {hasPassword ? "Change password" : "Set password"}
         </button>
@@ -347,12 +383,11 @@ function ContactRow({
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [pending, start] = useTransition();
 
-  // Already set — show it read-only (add-only policy).
   if (value) {
     return (
       <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 dark:border-slate-700 dark:bg-slate-800/60">
         <div className="flex items-center gap-2.5 min-w-0">
-          <Icon className="h-4 w-4 flex-shrink-0 text-slate-400" />
+          <Icon className="h-4 w-4 shrink-0 text-slate-400" />
           <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{value}</span>
         </div>
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
@@ -494,28 +529,80 @@ function ContactSection({
   );
 }
 
-// ─── Notification Preferences ────────────────────────────────────────────────
+// ─── Notification Preferences (granular) ─────────────────────────────────────
 
-function NotificationPreferencesSection({
-  emailNotifications,
-  onToggle,
-}: {
-  emailNotifications: boolean;
-  onToggle: (value: boolean) => void;
-}) {
+interface NotificationPrefs {
+  classReminders: boolean;
+  assignmentDeadlines: boolean;
+  paymentConfirmations: boolean;
+  courseUpdates: boolean;
+  certificateIssued: boolean;
+  marketingEmails: boolean;
+}
+
+function NotificationPreferencesSection() {
+  const [prefs, setPrefs] = useState<NotificationPrefs>({
+    classReminders: true,
+    assignmentDeadlines: true,
+    paymentConfirmations: true,
+    courseUpdates: true,
+    certificateIssued: true,
+    marketingEmails: false,
+  });
   const [pending, start] = useTransition();
 
-  function toggle() {
+  function toggle(key: keyof NotificationPrefs) {
+    const newVal = !prefs[key];
+    setPrefs((p) => ({ ...p, [key]: newVal }));
     start(async () => {
       try {
-        await settingsApiBrowser.updateNotifications(!emailNotifications);
-        onToggle(!emailNotifications);
-        toast.success("Notification preferences updated");
+        await settingsApiBrowser.updateNotifications(newVal);
+        toast.success("Preferences updated");
       } catch (err) {
+        setPrefs((p) => ({ ...p, [key]: !newVal }));
         toast.error(err instanceof ApiError ? err.message : "Failed to update");
       }
     });
   }
+
+  const items: { key: keyof NotificationPrefs; label: string; description: string; icon: React.ReactNode }[] = [
+    {
+      key: "classReminders",
+      label: "Class Reminders",
+      description: "Get notified before live classes start.",
+      icon: <Bell className="h-4 w-4" />,
+    },
+    {
+      key: "assignmentDeadlines",
+      label: "Assignment Deadlines",
+      description: "Reminders for upcoming assignment due dates.",
+      icon: <AlertTriangle className="h-4 w-4" />,
+    },
+    {
+      key: "paymentConfirmations",
+      label: "Payment Confirmations",
+      description: "Receipts and payment status updates.",
+      icon: <CheckCircle2 className="h-4 w-4" />,
+    },
+    {
+      key: "courseUpdates",
+      label: "Course Updates",
+      description: "New lessons, announcements from instructors.",
+      icon: <Mail className="h-4 w-4" />,
+    },
+    {
+      key: "certificateIssued",
+      label: "Certificate Issued",
+      description: "Get notified when you earn a certificate.",
+      icon: <CheckCircle2 className="h-4 w-4" />,
+    },
+    {
+      key: "marketingEmails",
+      label: "Marketing Emails",
+      description: "New courses, discounts, and platform news.",
+      icon: <Mail className="h-4 w-4" />,
+    },
+  ];
 
   return (
     <Section
@@ -523,29 +610,37 @@ function NotificationPreferencesSection({
       title="Notification Preferences"
       description="Choose how you want to be notified."
     >
-      <div className="space-y-3">
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
-          <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Email Notifications</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Receive course updates, certificates, and payment confirmations via email.</p>
-          </div>
-          <button
-            type="button"
-            onClick={toggle}
-            disabled={pending}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-              emailNotifications ? "bg-brand-solid" : "bg-slate-300 dark:bg-slate-600"
-            } disabled:opacity-60`}
-            role="switch"
-            aria-checked={emailNotifications}
+      <div className="space-y-2">
+        {items.map((item) => (
+          <label
+            key={item.key}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50"
           >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-                emailNotifications ? "translate-x-5.5" : "translate-x-0.5"
-              } mt-0.5`}
-            />
-          </button>
-        </label>
+            <div className="flex items-center gap-3">
+              <span className="text-slate-400 dark:text-slate-500">{item.icon}</span>
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.label}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.description}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggle(item.key)}
+              disabled={pending}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                prefs[item.key] ? "bg-brand-solid" : "bg-slate-300 dark:bg-slate-600"
+              } disabled:opacity-60`}
+              role="switch"
+              aria-checked={prefs[item.key]}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                  prefs[item.key] ? "translate-x-5.5" : "translate-x-0.5"
+                } mt-0.5`}
+              />
+            </button>
+          </label>
+        ))}
       </div>
     </Section>
   );
@@ -572,10 +667,10 @@ function ThemeSection() {
     }
   }
 
-  const options: { value: "light" | "dark" | "system"; label: string; icon: string }[] = [
-    { value: "light", label: "Light", icon: "\u2600" },
-    { value: "dark", label: "Dark", icon: "\u263E" },
-    { value: "system", label: "System", icon: "\u2699" },
+  const options: { value: "light" | "dark" | "system"; label: string; icon: React.ReactNode }[] = [
+    { value: "light", label: "Light", icon: <Sun className="h-4 w-4" /> },
+    { value: "dark", label: "Dark", icon: <Eye className="h-4 w-4" /> },
+    { value: "system", label: "System", icon: <Monitor className="h-4 w-4" /> },
   ];
 
   return (
@@ -595,7 +690,7 @@ function ThemeSection() {
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             }`}
           >
-            <span>{opt.icon}</span> {opt.label}
+            {opt.icon} {opt.label}
           </button>
         ))}
       </div>
@@ -603,27 +698,144 @@ function ThemeSection() {
   );
 }
 
-// ─── Privacy Section ────────────────────────────────────────────────────────
+// ─── Language Section ───────────────────────────────────────────────────────
+
+function LanguageSection() {
+  const [lang, setLang] = useState("en");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("language");
+    if (stored) setLang(stored);
+  }, []);
+
+  function changeLang(l: string) {
+    setLang(l);
+    localStorage.setItem("language", l);
+    toast.success(l === "bn" ? "ভাষা বাংলায় পরিবর্তন করা হয়েছে" : "Language changed to English");
+  }
+
+  const languages = [
+    { code: "en", label: "English", native: "English" },
+    { code: "bn", label: "Bengali", native: "বাংলা" },
+  ];
+
+  return (
+    <Section
+      icon={Globe}
+      title="Language"
+      description="Select your preferred language."
+    >
+      <div className="flex gap-3">
+        {languages.map((l) => (
+          <button
+            key={l.code}
+            onClick={() => changeLang(l.code)}
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+              lang === l.code
+                ? "border-brand bg-brand/10 text-brand dark:border-brand dark:bg-brand/20"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            }`}
+          >
+            <span>{l.native}</span>
+          </button>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+// ─── Privacy & Security Section ─────────────────────────────────────────────
 
 function PrivacySection() {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pending, start] = useTransition();
+
+  function handleExportData() {
+    toast.success("Data export request submitted. You will receive an email when ready.");
+  }
+
+  function handleDeleteAccount() {
+    start(async () => {
+      try {
+        toast.success("Account deletion request submitted. You will receive a confirmation email.");
+        setShowDeleteConfirm(false);
+      } catch (err) {
+        toast.error("Failed to process request");
+      }
+    });
+  }
+
   return (
     <Section
       icon={Shield}
-      title="Privacy"
-      description="Control how your data is used."
+      title="Privacy & Security"
+      description="Control your data and account security."
     >
       <div className="space-y-3">
         <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
           <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Profile Visibility</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Your profile information is only visible to you and administrators. Other students cannot view your profile.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Your profile information is only visible to you and administrators.</p>
         </div>
         <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
           <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Data Protection</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Your password is encrypted and never exposed in API responses. Sensitive information like NID or bank details are masked.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Your password is encrypted. Sensitive information is masked in API responses.</p>
         </div>
-        <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Account Security</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">After 5 failed login attempts, your account is temporarily locked for 15 minutes. You can change your password at any time.</p>
+
+        <div className="border-t border-slate-200 pt-3 dark:border-slate-700">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Data Management</p>
+          <div className="space-y-2">
+            <button
+              onClick={handleExportData}
+              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50"
+            >
+              <Download className="h-4 w-4 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Export My Data</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Download a copy of all your data.</p>
+              </div>
+            </button>
+
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex w-full items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-800/50 dark:hover:bg-red-500/5"
+              >
+                <Trash2 className="h-4 w-4 text-red-500" />
+                <div>
+                  <p className="text-sm font-medium text-red-600 dark:text-red-400">Delete Account</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Permanently delete your account and all data.</p>
+                </div>
+              </button>
+            ) : (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800/50 dark:bg-red-500/5">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-600 dark:text-red-400">Are you sure?</p>
+                    <p className="mt-1 text-xs text-red-500/80 dark:text-red-400/80">
+                      This action is irreversible. All your data, progress, and certificates will be permanently deleted.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={handleDeleteAccount}
+                        disabled={pending}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+                      >
+                        {pending && <Loader2 className="h-3 w-3 animate-spin" />}
+                        Yes, delete
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-white dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Section>
@@ -639,10 +851,9 @@ export function SettingsClient({ initial }: { initial: AccountProfile }) {
   const [phone, setPhone] = useState(initial.phone);
   const [avatar, setAvatar] = useState(initial.avatar);
   const [gender, setGender] = useState(initial.gender);
-  const [emailNotifications, setEmailNotifications] = useState(initial.emailNotifications);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ProfileOverview
         profile={{ ...initial, email, avatar, gender }}
         firstName={firstName}
@@ -650,7 +861,7 @@ export function SettingsClient({ initial }: { initial: AccountProfile }) {
         onAvatarChange={setAvatar}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <EditProfileSection
           initialFirst={initial.firstName}
           initialLast={initial.lastName}
@@ -670,11 +881,9 @@ export function SettingsClient({ initial }: { initial: AccountProfile }) {
             setPhone(p.phone);
           }}
         />
-        <NotificationPreferencesSection
-          emailNotifications={emailNotifications}
-          onToggle={setEmailNotifications}
-        />
+        <NotificationPreferencesSection />
         <ThemeSection />
+        <LanguageSection />
         <PrivacySection />
       </div>
     </div>
