@@ -51,8 +51,9 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
       setAddingCategory(false);
       setNewCategoryName("");
       toast.success(`Category "${name}" created`);
-    } catch {
-      toast.error("Failed to create category");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create category";
+      toast.error(msg);
     } finally {
       setCategoryPending(false);
     }
@@ -186,7 +187,7 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
   const isScheduled = post?.status === "scheduled";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
 
       {/* ── Top bar ────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 px-6 py-3 bg-white border-b border-gray-200 shrink-0">
@@ -275,7 +276,7 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
         </div>
 
         {/* Right — Sidebar */}
-        <div className="w-72 shrink-0 flex flex-col gap-4 overflow-y-auto">
+        <div className="w-72 shrink-0 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-140px)]">
 
           {/* Status */}
           <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">

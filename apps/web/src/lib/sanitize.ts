@@ -32,7 +32,7 @@ const SANITIZE_CONFIG = {
     "ul", "ol", "li",
     "img", "iframe",
     "a",
-    "div", "span", "hr",
+    "div", "span", "hr", "mark",
     "figure", "figcaption",
   ],
   ALLOWED_ATTR: [

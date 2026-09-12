@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Globe, FileEdit, Pencil, Heart, MessageSquare, Share2, Tag, Star, Clock } from "lucide-react";
 import { toast } from "@repo/ui/sonner";
@@ -79,6 +79,18 @@ export function BlogPostsClient({ initialData }: Props) {
   const [toggleTarget, setToggleTarget] = useState<BlogPost | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BlogPost | null>(null);
   const [visibleCols, setVisibleCols] = useState<Set<string>>(DEFAULT_VISIBLE);
+
+  useEffect(() => {
+    setPosts(initialData.data);
+    setPagination(initialData.pagination);
+  }, [initialData]);
+
+  // Always fetch fresh data on mount so posts appear even if the server-side
+  // initialData fetch failed silently (auth timeout, network hiccup, etc.)
+  useEffect(() => {
+    fetchPosts({ page: 1, per_page: 20 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function fetchPosts(params: TableQueryParams) {
     setIsLoading(true);

@@ -53,7 +53,7 @@ export class BlogService {
         commentCount: sql<number>`(SELECT COUNT(*) FROM ${blogPostComments} WHERE ${blogPostComments.postId} = ${blogPosts.id})`.mapWith(Number),
         shareCount:   blogPosts.shareCount,
         readingTime: sql<number>`GREATEST(1, CEIL(LENGTH(REGEXP_REPLACE(COALESCE(${blogPosts.content}, ''), '<[^>]*>', ' ', 'g')) / 8.0 / 200.0))`.mapWith(Number),
-        tags: sql<string[]>`COALESCE((SELECT array_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '{}')`.mapWith(JSON.parse),
+        tags: sql<string[]>`COALESCE((SELECT json_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '[]'::json)`,
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -84,7 +84,7 @@ export class BlogService {
         ogImage: blogPosts.ogImage,
         isFeatured: blogPosts.isFeatured,
         readingTime: sql<number>`GREATEST(1, CEIL(LENGTH(REGEXP_REPLACE(COALESCE(${blogPosts.content}, ''), '<[^>]*>', ' ', 'g')) / 8.0 / 200.0))`.mapWith(Number),
-        tags: sql<string[]>`COALESCE((SELECT array_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '{}')`.mapWith(JSON.parse),
+        tags: sql<string[]>`COALESCE((SELECT json_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '[]'::json)`,
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -141,7 +141,7 @@ export class BlogService {
           metaTitle: blogPosts.metaTitle,
           metaDescription: blogPosts.metaDescription,
           ogImage: blogPosts.ogImage,
-          tags: sql<string[]>`COALESCE((SELECT array_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '{}')`.mapWith(JSON.parse),
+          tags: sql<string[]>`COALESCE((SELECT json_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '[]'::json)`,
         })
         .from(blogPosts)
         .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
@@ -183,7 +183,7 @@ export class BlogService {
         metaTitle: blogPosts.metaTitle,
         metaDescription: blogPosts.metaDescription,
         ogImage: blogPosts.ogImage,
-        tags: sql<string[]>`COALESCE((SELECT array_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '{}')`.mapWith(JSON.parse),
+        tags: sql<string[]>`COALESCE((SELECT json_agg(json_build_object('id', bt.id, 'name', bt.name, 'slug', bt.slug) ORDER BY bt.name) FROM ${blogPostTags} bpt INNER JOIN ${blogTagsTable} bt ON bt.id = bpt.tag_id WHERE bpt.post_id = ${blogPosts.id}), '[]'::json)`,
       })
       .from(blogPosts)
       .innerJoin(adminUsers, eq(blogPosts.authorId, adminUsers.id))
