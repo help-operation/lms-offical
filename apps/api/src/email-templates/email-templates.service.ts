@@ -653,6 +653,19 @@ export class EmailTemplatesService implements OnModuleInit {
         this.logger.log(`Rebranded default template "${tpl.eventType}" to brand purple`);
       }
     }
+
+    // ── Startup SMTP verification ──────────────────────────────────────────
+    const transporter = this.transporter();
+    if (transporter) {
+      try {
+        await transporter.verify();
+        this.logger.log('[SMTP] Connection verified — email delivery is operational');
+      } catch (err) {
+        this.logger.error(`[SMTP] Connection FAILED — emails will not be delivered: ${(err as Error).message}`);
+      }
+    } else {
+      this.logger.warn('[SMTP] EMAIL_USER/EMAIL_PASS not set — email delivery is disabled');
+    }
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
