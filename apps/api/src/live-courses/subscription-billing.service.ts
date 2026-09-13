@@ -84,7 +84,7 @@ export class SubscriptionBillingService {
         agreementId: subscription.gatewaySubscriptionId,
         amount: parseFloat(String(subscription.monthlyPrice)),
         invoiceNumber,
-        callbackUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/live-courses/${subscription.liveCourseId}/subscription-callback/bkash`,
+        callbackUrl: `${process.env.API_URL || 'http://localhost:3000'}/live-courses/${subscription.liveCourseId}/subscription-callback/bkash`,
       });
 
       // Record pending payment
