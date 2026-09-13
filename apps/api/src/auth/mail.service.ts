@@ -38,10 +38,9 @@ export class MailService {
         );
       }
     } catch (err) {
-      this.logger.error('OTP email send failed', err as Error);
-      throw new InternalServerErrorException(
-        'Failed to send verification email. Please try again.',
-      );
+      // Do NOT throw — OTP is already stored in DB and logged to console.
+      // Throwing here would block the redirect to /verify-email, trapping the user.
+      this.logger.error(`[OTP] Email send failed for ${to}: ${(err as Error).message}`);
     }
   }
 
