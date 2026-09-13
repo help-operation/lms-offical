@@ -115,6 +115,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Forward genuine server faults (5xx) to monitoring with request context.
     // Client errors (4xx) are deliberately not reported to avoid noise.
     if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logger.error(
+        `[EXCEPTION FILTER] ${request.method} ${request.url} ${statusCode}\n${exception instanceof Error ? exception.stack : String(exception)}`,
+      );
       captureException(exception, {
         method: request.method,
         path: request.url,

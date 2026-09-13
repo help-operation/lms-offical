@@ -95,8 +95,11 @@ export const blogApi = {
  * Cached public fetch for the blog index. Posts change occasionally → cache for
  * hours; tagged so publishing can invalidate it via `updateTag('blog')`.
  */
-export async function getCachedBlogList(): Promise<BlogPost[]> {
-  const res = await publicApiRequest<BlogPost[]>(`/blog`, {
+export async function getCachedBlogList(categoryId?: string): Promise<BlogPost[]> {
+  const params = new URLSearchParams();
+  if (categoryId) params.set("categoryId", categoryId);
+  const q = params.toString() ? `?${params.toString()}` : "";
+  const res = await publicApiRequest<BlogPost[]>(`/blog${q}`, {
     next: { revalidate: 3600, tags: ["blog"] },
   }).catch(() => null);
   return res?.data ?? [];
