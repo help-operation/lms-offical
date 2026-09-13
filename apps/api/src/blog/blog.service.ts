@@ -44,6 +44,7 @@ export class BlogService {
         thumbnail: blogPosts.thumbnail,
         publishedAt: blogPosts.publishedAt,
         isFeatured: blogPosts.isFeatured,
+        publishAt: blogPosts.publishAt,
         authorFirstName: adminUsers.firstName,
         authorLastName: adminUsers.lastName,
         categoryId: blogPosts.categoryId,
@@ -538,6 +539,13 @@ export class BlogService {
   async createTag(name: string) {
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const [row] = await this.db.insert(blogTagsTable).values({ name, slug }).returning();
+    this.revalidation.revalidate([CacheTag.blog]);
+    return row;
+  }
+
+  async updateTag(id: number, name: string) {
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const [row] = await this.db.update(blogTagsTable).set({ name, slug }).where(eq(blogTagsTable.id, id)).returning();
     this.revalidation.revalidate([CacheTag.blog]);
     return row;
   }

@@ -76,6 +76,16 @@ export class BlogController {
     return this.svc.createTag(body.name);
   }
 
+  @Put('tags/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('update_blog_categories')
+  updateTag(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { name: string },
+  ) {
+    return this.svc.updateTag(id, body.name);
+  }
+
   @Delete('tags/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('delete_blog_categories')

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ThumbsUp, MessageCircle, Clock, ArrowRight, Star } from "lucide-react";
-import { getCachedBlogList, type BlogPost } from "@/features/blog/api";
+import { ThumbsUp, MessageCircle, Clock, ArrowRight } from "lucide-react";
+import { getCachedBlogList, blogApi, type BlogPost, type BlogCategory } from "@/features/blog/api";
 import TopCoursesSection from "@/features/landing/components/TopCoursesSection";
 import { getPublicPageSections } from "@/features/cms/api/page-sections";
 import { ContentContext } from "@/shared/components/ContentContext";
@@ -79,12 +79,20 @@ function BlogCard({ post }: { post: BlogPost }) {
   );
 }
 
-export default async function BlogPage() {
-  const [posts, sections] = await Promise.all([
-    getCachedBlogList().catch(() => []),
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category: categoryId } = await searchParams;
+
+  const [posts, categories, sections] = await Promise.all([
+    getCachedBlogList(categoryId).catch(() => []),
+    blogApi.categories().catch(() => ({ data: [] })),
     getPublicPageSections("blog"),
   ]);
 
+  const categoryList = categories?.data ?? [];
   const heroSection = sections.find((s) => s.type === "simple_hero");
   const heroTitle = (heroSection?.content?.title as string) || "Blogs";
   const heroSubtitle = (heroSection?.content?.subtitle as string) ||
@@ -92,7 +100,6 @@ export default async function BlogPage() {
 
   return (
     <main className="min-h-screen bg-white transition-colors duration-300 animate-content-in dark:bg-gray-950">
-      {/* This listing has no pagination or category filter, so page count == total count. */}
       <ContentContext type="blog_list" pageCount={posts.length} totalCount={posts.length} />
       {/* Hero banner */}
       <section className="relative overflow-hidden bg-gradient-to-b from-surface-hero to-white transition-colors duration-300 dark:bg-gradient-to-br dark:from-gray-950 dark:via-[#160f2e] dark:to-gray-900">
@@ -104,12 +111,42 @@ export default async function BlogPage() {
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft dark:text-gray-400 md:text-base">
             {heroSubtitle}
           </p>
-          
         </div>
       </section>
 
+      {/* Category filter */}
+      {categoryList.length > 0 && (
+        <div className="container mx-auto px-4 pt-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/blog"
+              className={`inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                !categoryId
+                  ? "bg-brand-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+              }`}
+            >
+              All
+            </Link>
+            {categoryList.map((cat) => (
+              <Link
+                key={cat.id}
+                href={`/blog?category=${cat.id}`}
+                className={`inline-flex items-center rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                  categoryId === String(cat.id)
+                    ? "bg-brand-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                }`}
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Grid */}
-      <div className="container mx-auto px-4 py-14">
+      <div className="container mx-auto px-4 py-10">
         {posts.length === 0 ? (
           <div className="py-24 text-center text-gray-400 dark:text-gray-500">No articles found</div>
         ) : (

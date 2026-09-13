@@ -72,6 +72,8 @@ export class GoogleController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
+    this.logger.log('[GOOGLE] callback entered');
+
     const profile = req.user as {
       email: string;
       firstName: string;
@@ -79,32 +81,60 @@ export class GoogleController {
       avatar: string | null;
     };
 
-    this.logger.log(`Google callback profile: email=${profile?.email}, firstName=${profile?.firstName}, lastName=${profile?.lastName}`);
+    this.logger.log(`[GOOGLE] Google profile received: email=${profile?.email}, firstName=${profile?.firstName}, lastName=${profile?.lastName}, avatar=${profile?.avatar}`);
 
     if (!profile?.email) {
-      this.logger.warn('Google callback: no email in profile, redirecting to login');
+      this.logger.warn('[GOOGLE] no email in profile, redirecting to login');
       return res.redirect(`${FRONTEND_URL}/login?error=google`);
     }
 
     try {
+      this.logger.log(`[GOOGLE] before findOrCreateGoogleUser for ${profile.email}`);
       const { access_token, refresh_token, emailVerified } =
         await this.accountAuthService.findOrCreateGoogleUser(profile, {
           awaitSideEffects: true,
         });
+      this.logger.log(`[GOOGLE] after findOrCreateGoogleUser`);
+      this.logger.log(`[GOOGLE] user id=${(req as any).user?.id}, email=${profile.email}, emailVerified=${emailVerified}`);
+
+      this.logger.log('[GOOGLE] before access token cookie');
       res.cookie('access_token', access_token, ACCESS_TOKEN_COOKIE);
+      this.logger.log('[GOOGLE] after access token cookie');
+
+      this.logger.log('[GOOGLE] before refresh token cookie');
       res.cookie('refresh_token', refresh_token, REFRESH_TOKEN_COOKIE);
+      this.logger.log('[GOOGLE] after refresh token cookie');
 
       if (!emailVerified) {
-        this.logger.log(`Google login for unverified email ${profile.email}, sending OTP and redirecting to verification`);
-        // Send email OTP using the existing OTP infrastructure
-        await this.otpService.sendOtpTo(profile.email);
-        return res.redirect(`${FRONTEND_URL}/verify-email?email=${encodeURIComponent(profile.email)}`);
+        this.logger.log(`[GOOGLE] before OTP for ${profile.email}`);
+        try {
+          await this.otpService.sendOtpTo(profile.email);
+          this.logger.log('[GOOGLE] after OTP');
+        } catch (otpErr) {
+          this.logger.error(`[GOOGLE ERROR] name: ${(otpErr as any).name}`);
+          this.logger.error(`[GOOGLE ERROR] message: ${(otpErr as Error).message}`);
+          this.logger.error(`[GOOGLE ERROR] stack: ${(otpErr as Error).stack}`);
+          this.logger.error(`[GOOGLE ERROR] response: ${JSON.stringify((otpErr as any).response)}`);
+          this.logger.error(`[GOOGLE ERROR] cause: ${(otpErr as any).cause}`);
+          throw otpErr;
+        }
+        const verifyEmailUrl = `${FRONTEND_URL}/verify-email?email=${encodeURIComponent(profile.email)}`;
+        this.logger.log(`[GOOGLE] redirect URL = ${verifyEmailUrl}`);
+        this.logger.log(`[GOOGLE] FRONTEND_URL = ${FRONTEND_URL}`);
+        this.logger.log(`[GOOGLE] res.headersSent = ${res.headersSent}`);
+        const redirectResult = res.redirect(verifyEmailUrl);
+        this.logger.log('[GOOGLE] redirect completed');
+        return redirectResult;
       }
 
-      this.logger.log(`Google login successful for ${profile.email}, redirecting to dashboard`);
+      this.logger.log('[GOOGLE] before redirect to dashboard');
       return res.redirect(`${FRONTEND_URL}/guest/dashboard`);
     } catch (err) {
-      this.logger.error(`Google OAuth callback failed for ${profile.email}: ${(err as Error).message}`, (err as Error).stack);
+      this.logger.error(`[GOOGLE ERROR] name: ${(err as any).name}`);
+      this.logger.error(`[GOOGLE ERROR] message: ${(err as Error).message}`);
+      this.logger.error(`[GOOGLE ERROR] stack: ${(err as Error).stack}`);
+      this.logger.error(`[GOOGLE ERROR] response: ${JSON.stringify((err as any).response)}`);
+      this.logger.error(`[GOOGLE ERROR] cause: ${(err as any).cause}`);
       return res.redirect(`${FRONTEND_URL}/login?error=google`);
     }
   }
