@@ -29,6 +29,25 @@ function toSlugPreview(title: string) {
 
 export function BlogPostForm({ mode, post, categories: initialCategories }: Props) {
   const router   = useRouter();
+
+  // Lock dashboard <main> scroll and make it a flex column so the editor
+  // fills the remaining viewport height and handles its own scrolling.
+  useEffect(() => {
+    const main = document.querySelector<HTMLElement>("main");
+    if (!main) return;
+    const prevOverflow = main.style.overflowY;
+    const prevDisplay  = main.style.display;
+    const prevFlexDir  = main.style.flexDirection;
+    main.style.overflowY    = "hidden";
+    main.style.display      = "flex";
+    main.style.flexDirection = "column";
+    return () => {
+      main.style.overflowY    = prevOverflow;
+      main.style.display      = prevDisplay;
+      main.style.flexDirection = prevFlexDir;
+    };
+  }, []);
+
   const [isPending, startTransition] = useTransition();
   const [error, setError]     = useState<string | null>(null);
   const [categories, setCategories] = useState(initialCategories);
@@ -187,7 +206,7 @@ export function BlogPostForm({ mode, post, categories: initialCategories }: Prop
   const isScheduled = post?.status === "scheduled";
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 
       {/* ── Top bar ────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 px-6 py-3 bg-white border-b border-gray-200 shrink-0">
