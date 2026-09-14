@@ -50,6 +50,24 @@ const DEFAULTS: Record<string, string> = {
   // Templates with no entry here fall back to the base purple palette.
   general_home_template_colors: JSON.stringify({ 'home-v1': '#10b981' }),
 
+  // ─── Course & Dashboard CTA Labels ──────────────────────────────────────
+  // Button labels consumed by the student-facing web app. Frontend falls back
+  // to hardcoded defaults when these are empty, but seeding them makes the
+  // admin form's "Reset" behaviour consistent and documents the defaults.
+  general_cta_enroll: '',
+  general_cta_enroll_free: '',
+  general_cta_continue: '',
+  general_dash_go_to_class: '',
+  general_dash_start_learning: '',
+  general_dash_continue: '',
+  general_dash_review: '',
+
+  // ─── Fonts ────────────────────────────────────────────────────────────────
+  // Google Fonts families applied via CSS custom properties in both the web
+  // and admin layouts. Frontend falls back to "Poppins" / "Hind Siliguri".
+  general_english_font: 'Poppins',
+  general_bangla_font: 'Hind Siliguri',
+
   // ─── Admin Dashboard Appearance & Localization ───────────────────────────
   // Admin-app-only — never applied to the student-facing web app.
   general_admin_accent_color: '#a64dff',
