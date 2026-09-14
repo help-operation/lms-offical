@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import {
   fetchGuestsAction,
@@ -62,8 +62,10 @@ function CopyableField({ icon: Icon, value }: { icon: typeof Mail; value: string
   );
 }
 
+const EMPTY_PAGINATION: TablePagination = { total: 0, per_page: 20, current_page: 1, last_page: 1, from: 0, to: 0 };
+
 interface Props {
-  initialData: PaginatedResponse<Student>;
+  initialData?: PaginatedResponse<Student>;
   initialStats?: {
     total: number;
     active: number;
@@ -71,16 +73,24 @@ interface Props {
     newThisMonth: number;
     newThisWeek: number;
   };
+  onTabChange?: (tab: "students" | "guests") => void;
 }
 
-export function GuestsClient({ initialData, initialStats }: Props) {
+export function GuestsClient({ initialData, initialStats, onTabChange }: Props) {
   const { formatDate } = useLocalization();
-  const [guests, setGuests] = useState<Student[]>(initialData.data);
-  const [pagination, setPagination] = useState<TablePagination>(initialData.pagination);
-  const [isLoading, setIsLoading] = useState(false);
+  const [guests, setGuests] = useState<Student[]>(initialData?.data ?? []);
+  const [pagination, setPagination] = useState<TablePagination>(initialData?.pagination ?? EMPTY_PAGINATION);
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, newThisWeek: 0 });
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  useEffect(() => {
+    if (!initialData) {
+      fetchGuests({ page: 1, per_page: 20 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function fetchGuests(params: TableQueryParams) {
     setIsLoading(true);
@@ -282,12 +292,12 @@ export function GuestsClient({ initialData, initialStats }: Props) {
             <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Manage students and guests</p>
           </div>
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
-            <a href="/admin/students?tab=students" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <button type="button" onClick={() => onTabChange?.("students")} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
               Students
-            </a>
-            <a href="/admin/students?tab=guests" className="px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm transition-colors">
+            </button>
+            <button type="button" className="px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm transition-colors">
               Guests
-            </a>
+            </button>
           </div>
         </div>
       </div>

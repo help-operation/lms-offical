@@ -22,6 +22,7 @@ interface Props {
     newThisMonth: number;
     onlineNow: number;
   };
+  onTabChange?: (tab: "students" | "guests") => void;
 }
 
 function getAllCols(formatDate: (value: Date | string | null | undefined) => string): ColDef<Student>[] {
@@ -142,7 +143,7 @@ function EnrollmentsCell({ s }: { s: Student }) {
   );
 }
 
-export function StudentsClient({ initialData, initialStats }: Props) {
+export function StudentsClient({ initialData, initialStats, onTabChange }: Props) {
   const { formatDate } = useLocalization();
   const ALL_COLS = getAllCols(formatDate);
   const [students, setStudents] = useState(initialData.data);
@@ -295,12 +296,12 @@ export function StudentsClient({ initialData, initialStats }: Props) {
             <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Manage students and guests</p>
           </div>
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
-            <a href="/admin/students?tab=students" className="px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm transition-colors">
+            <button type="button" className="px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm transition-colors">
               Students
-            </a>
-            <a href="/admin/students?tab=guests" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+            </button>
+            <button type="button" onClick={() => onTabChange?.("guests")} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
               Guests
-            </a>
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
