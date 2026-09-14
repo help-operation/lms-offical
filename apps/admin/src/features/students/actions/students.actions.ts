@@ -92,3 +92,31 @@ export async function fetchGuestsAction(params: TableQueryParams) {
     return { success: false as const, message: extractMessage(err) };
   }
 }
+
+export async function bulkToggleStudentStatusAction(ids: number[], targetStatus: "active" | "suspended") {
+  try {
+    const results = await Promise.allSettled(
+      ids.map((id) => studentsApi.toggle(id)),
+    );
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.length - succeeded;
+    revalidatePath("/admin/students");
+    return { success: true as const, data: { succeeded, failed, total: ids.length } };
+  } catch (err) {
+    return { success: false as const, message: extractMessage(err) };
+  }
+}
+
+export async function bulkDeleteStudentsAction(ids: number[]) {
+  try {
+    const results = await Promise.allSettled(
+      ids.map((id) => studentsApi.delete(id)),
+    );
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.length - succeeded;
+    revalidatePath("/admin/students");
+    return { success: true as const, data: { succeeded, failed, total: ids.length } };
+  } catch (err) {
+    return { success: false as const, message: extractMessage(err) };
+  }
+}
