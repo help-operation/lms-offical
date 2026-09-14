@@ -424,19 +424,18 @@ export function DataTable<T extends object>({
       )}
 
       {/* Table */}
-      <div className="relative border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="relative max-h-[600px] overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
 
         {/* Refetch spinner — shown over existing rows in server-side mode */}
         {serverSide && isLoading && pagedData.length > 0 && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[1px] dark:bg-slate-900/60">
+          <div className="sticky left-0 top-0 z-20 flex h-full items-center justify-center bg-white/60 backdrop-blur-[1px] dark:bg-slate-900/60">
             <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left dark:border-slate-800 dark:bg-slate-800/60">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-gray-100 bg-gray-50 text-left dark:border-slate-800 dark:bg-slate-800/60">
                 {columns.map((col) => (
                   <th
                     key={String(col.key)}
@@ -518,7 +517,6 @@ export function DataTable<T extends object>({
               )}
             </tbody>
           </table>
-        </div>
       </div>
 
       {/* Pagination */}

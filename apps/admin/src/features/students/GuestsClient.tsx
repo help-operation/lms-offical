@@ -1,15 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { fetchGuestsAction } from "@/features/students/actions/students.actions";
+import {
+  fetchGuestsAction,
+  toggleStudentStatusAction,
+  deleteStudentAction,
+  bulkToggleStudentStatusAction,
+  bulkDeleteStudentsAction,
+} from "@/features/students/actions/students.actions";
 import type { Student } from "@/features/students/types";
 import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
 import {
-  Users, UserCheck, UserX, CalendarClock, Calendar, Eye, Phone, Mail, Copy, Check,
+  Users, UserCheck, UserX, CalendarClock, Calendar, Eye, Pencil, Trash2,
+  Phone, Mail, Copy, Check, Square, CheckSquare, Shield, ShieldOff,
 } from "lucide-react";
 import { useLocalization } from "@/shared/context/LocalizationContext";
+import { toast } from "@repo/ui/sonner";
 
 const avatarColors = [
   "bg-blue-400", "bg-violet-400", "bg-emerald-400",
@@ -54,8 +62,10 @@ function CopyableField({ icon: Icon, value }: { icon: typeof Mail; value: string
   );
 }
 
+const EMPTY_PAGINATION: TablePagination = { total: 0, per_page: 20, current_page: 1, last_page: 1, from: 0, to: 0 };
+
 interface Props {
-  initialData: PaginatedResponse<Student>;
+  initialData?: PaginatedResponse<Student>;
   initialStats?: {
     total: number;
     active: number;
@@ -63,14 +73,24 @@ interface Props {
     newThisMonth: number;
     newThisWeek: number;
   };
+  onTabChange?: (tab: "students" | "guests") => void;
 }
 
-export function GuestsClient({ initialData, initialStats }: Props) {
+export function GuestsClient({ initialData, initialStats, onTabChange }: Props) {
   const { formatDate } = useLocalization();
-  const [guests, setGuests] = useState<Student[]>(initialData.data);
-  const [pagination, setPagination] = useState<TablePagination>(initialData.pagination);
-  const [isLoading, setIsLoading] = useState(false);
+  const [guests, setGuests] = useState<Student[]>(initialData?.data ?? []);
+  const [pagination, setPagination] = useState<TablePagination>(initialData?.pagination ?? EMPTY_PAGINATION);
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, newThisWeek: 0 });
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  useEffect(() => {
+    if (!initialData) {
+      fetchGuests({ page: 1, per_page: 20 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function fetchGuests(params: TableQueryParams) {
     setIsLoading(true);
@@ -85,6 +105,73 @@ export function GuestsClient({ initialData, initialStats }: Props) {
     }
   }
 
+  const toggleSelect = useCallback((id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelected((prev) => {
+      if (prev.size === guests.length) return new Set();
+      return new Set(guests.map((g) => g.id));
+    });
+  }, [guests]);
+
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  async function handleBulkAction(action: "activate" | "suspend" | "delete") {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+
+    const label = action === "delete" ? "Delete" : action === "activate" ? "Activate" : "Suspend";
+    if (action === "delete" && !window.confirm(`Delete ${ids.length} guest(s)? This cannot be undone.`)) return;
+
+    setBulkLoading(true);
+    try {
+      let res;
+      if (action === "delete") {
+        res = await bulkDeleteStudentsAction(ids);
+      } else {
+        res = await bulkToggleStudentStatusAction(ids, action === "activate" ? "active" : "suspended");
+      }
+      if (res.success) {
+        const { succeeded, failed } = res.data;
+        toast.success(`${label}d ${succeeded} guest(s)${failed ? ` (${failed} failed)` : ""}`);
+        clearSelection();
+        fetchGuests({ page: pagination.current_page, per_page: pagination.per_page });
+      } else {
+        toast.error(res.message ?? `Failed to ${label} guests`);
+      }
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
+  async function handleSingleToggle(id: number) {
+    const res = await toggleStudentStatusAction(id);
+    if (res.success) {
+      toast.success("Status updated");
+      fetchGuests({ page: pagination.current_page, per_page: pagination.per_page });
+    } else {
+      toast.error(res.message ?? "Failed to update status");
+    }
+  }
+
+  async function handleSingleDelete(id: number) {
+    if (!window.confirm("Delete this guest? This cannot be undone.")) return;
+    const res = await deleteStudentAction(id);
+    if (res.success) {
+      toast.success("Guest deleted");
+      fetchGuests({ page: pagination.current_page, per_page: pagination.per_page });
+    } else {
+      toast.error(res.message ?? "Failed to delete guest");
+    }
+  }
+
   const columns: Column<Student>[] = [
     {
       key: "firstName" as const,
@@ -92,6 +179,15 @@ export function GuestsClient({ initialData, initialStats }: Props) {
       sortable: true,
       render: (s: Student, i: number) => (
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleSelect(s.id); }}
+            className="shrink-0 text-gray-400 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand transition-colors"
+          >
+            {selected.has(s.id)
+              ? <CheckSquare className="h-4 w-4 text-brand-600" />
+              : <Square className="h-4 w-4" />}
+          </button>
           {s.avatar ? (
             <img src={s.avatar} alt={s.firstName} className="h-10 w-10 rounded-full object-cover shrink-0" />
           ) : (
@@ -136,7 +232,7 @@ export function GuestsClient({ initialData, initialStats }: Props) {
       key: "id" as const,
       header: "Actions",
       render: (s: Student) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <Link
             href={`/admin/students/${s.id}`}
             title="View"
@@ -144,6 +240,33 @@ export function GuestsClient({ initialData, initialStats }: Props) {
           >
             <Eye className="h-3.5 w-3.5" />
           </Link>
+          <Link
+            href={`/admin/students/${s.id}`}
+            title="Edit"
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Link>
+          <button
+            type="button"
+            title={s.status === "active" ? "Suspend" : "Activate"}
+            onClick={() => handleSingleToggle(s.id)}
+            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${
+              s.status === "active"
+                ? "bg-gray-50 text-gray-500 hover:bg-amber-50 hover:text-amber-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-400"
+                : "bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-green-500/10 dark:hover:text-green-400"
+            }`}
+          >
+            {s.status === "active" ? <ShieldOff className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            title="Delete"
+            onClick={() => handleSingleDelete(s.id)}
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       ),
     },
@@ -157,6 +280,8 @@ export function GuestsClient({ initialData, initialStats }: Props) {
     { label: "New This Month", value: stats.newThisMonth, icon: CalendarClock, iconBg: "bg-gradient-to-br from-amber-500 to-amber-600", cardBg: "bg-gradient-to-br from-amber-50/80 to-white dark:from-amber-500/10 dark:to-slate-900" },
   ];
 
+  const allSelected = selected.size === guests.length && guests.length > 0;
+
   return (
     <div className="space-y-5">
       {/* Single Header Row: Title + Tabs */}
@@ -167,12 +292,12 @@ export function GuestsClient({ initialData, initialStats }: Props) {
             <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5">Manage students and guests</p>
           </div>
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
-            <a href="/admin/students?tab=students" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <button type="button" onClick={() => onTabChange?.("students")} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
               Students
-            </a>
-            <a href="/admin/students?tab=guests" className="px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm transition-colors">
+            </button>
+            <button type="button" className="px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm transition-colors">
               Guests
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -195,15 +320,76 @@ export function GuestsClient({ initialData, initialStats }: Props) {
         ))}
       </div>
 
+      {/* Bulk Action Bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/20 rounded-xl px-4 py-3">
+          <span className="text-sm font-semibold text-brand-700 dark:text-brand-400">
+            {selected.size} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={bulkLoading}
+              onClick={() => handleBulkAction("activate")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors disabled:opacity-50"
+            >
+              <Shield className="h-3.5 w-3.5" />
+              Activate
+            </button>
+            <button
+              type="button"
+              disabled={bulkLoading}
+              onClick={() => handleBulkAction("suspend")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+            >
+              <ShieldOff className="h-3.5 w-3.5" />
+              Suspend
+            </button>
+            <button
+              type="button"
+              disabled={bulkLoading}
+              onClick={() => handleBulkAction("delete")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="ml-1 text-xs text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none">
         <div className="px-6 pt-5 pb-6">
+          {/* Select All Header */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="text-gray-400 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand transition-colors"
+            >
+              {allSelected
+                ? <CheckSquare className="h-4 w-4 text-brand-600" />
+                : <Square className="h-4 w-4" />}
+            </button>
+            <span className="text-xs text-gray-400 dark:text-slate-500">
+              {selected.size > 0 ? `${selected.size} of ${guests.length} selected` : `Select all (${guests.length})`}
+            </span>
+          </div>
+
           <DataTable
             data={guests}
             columns={columns}
             serverSide
             pagination={pagination}
-            onQueryChange={fetchGuests}
+            onQueryChange={(params) => { clearSelection(); fetchGuests(params); }}
             dateRangeKey="createdAt"
             portalContainer={typeof document !== "undefined" ? document.getElementById("admin-dashboard-root") : undefined}
             isLoading={isLoading}

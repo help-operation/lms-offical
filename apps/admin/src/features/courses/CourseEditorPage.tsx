@@ -67,7 +67,6 @@ export function CourseEditorPage({ course, categories, modules: initialModules, 
   const [tab, setTab] = useState<Tab>("basics");
   const [showPreview, setShowPreview] = useState(true);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
-  const [isPending, startTransition] = useState<false | (() => void)>(false);
   const [saving, setSaving] = useState(false);
   const creatingRef = useRef(false);
   const [styleOverrides, setStyleOverrides] = useState<StyleOverrides>(
@@ -380,35 +379,33 @@ export function CourseEditorPage({ course, categories, modules: initialModules, 
     router.push("/admin/courses");
   }
 
-  function handleSaveStyles() {
+  async function handleSaveStyles() {
     if (isMastery && courseType === "bundle" && bundledCourseIds.length === 0) {
       toast.error("A bundle must include at least one course");
       return;
     }
     setSaving(true);
-    startTransition(async () => {
-      const res = await updateCourseAction(course.id, {
-        ...editableFields,
-        ...(isMastery ? { courseType, bundledCourseIds, bundleCurriculum, bundleCurriculumHeader, masteryCheckoutImage, masterySectionOrder } as any : {}),
-        styleOverrides: styleOverrides as any,
-        batchInfo: batchInfo as any,
-        toolsInfo: toolsInfo as any,
-        toolsTitle: toolsTitle as any,
-        whyDifferentInfo: { title: whyDifferentTitle, features: whyFeatures, stats: whyStats } as any,
-        instructorsInfo: { title: instructorsTitle, instructors } as any,
-        benefitsInfo: { title: benefitsTitle, subtitle: benefitsSubtitle, items: benefitsItems } as any,
-        videoTestimonialsInfo: { title: videoTestimonialsTitle, items: videoTestimonialsItems } as any,
-        testimonialsInfo: { title: testimonialsTitle, items: testimonialsItems } as any,
-        valueBreakdownInfo: { title: valueBreakdownTitle, highlightWords: valueBreakdownHighlight, items: valueBreakdownItems, offerTitle: valueBreakdownOfferTitle, offerHighlight: valueBreakdownOfferHighlight, offerSubtitle1: valueBreakdownOfferSubtitle1, offerSubtitle2: valueBreakdownOfferSubtitle2, ctaText: valueBreakdownCtaText, offerLabel: valueBreakdownOfferLabel, paymentButtonText: valueBreakdownPaymentButtonText, timerHours: valueBreakdownTimerHours, timerMinutes: valueBreakdownTimerMinutes, timerSeconds: valueBreakdownTimerSeconds } as any,
-      });
-      setSaving(false);
-      if (res.success) {
-        toast.success("Course saved successfully");
-        router.refresh();
-      } else {
-        toast.error(res.message ?? "Failed to save course");
-      }
+    const res = await updateCourseAction(course.id, {
+      ...editableFields,
+      ...(isMastery ? { courseType, bundledCourseIds, bundleCurriculum, bundleCurriculumHeader, masteryCheckoutImage, masterySectionOrder } as any : {}),
+      styleOverrides: styleOverrides as any,
+      batchInfo: batchInfo as any,
+      toolsInfo: toolsInfo as any,
+      toolsTitle: toolsTitle as any,
+      whyDifferentInfo: { title: whyDifferentTitle, features: whyFeatures, stats: whyStats } as any,
+      instructorsInfo: { title: instructorsTitle, instructors } as any,
+      benefitsInfo: { title: benefitsTitle, subtitle: benefitsSubtitle, items: benefitsItems } as any,
+      videoTestimonialsInfo: { title: videoTestimonialsTitle, items: videoTestimonialsItems } as any,
+      testimonialsInfo: { title: testimonialsTitle, items: testimonialsItems } as any,
+      valueBreakdownInfo: { title: valueBreakdownTitle, highlightWords: valueBreakdownHighlight, items: valueBreakdownItems, offerTitle: valueBreakdownOfferTitle, offerHighlight: valueBreakdownOfferHighlight, offerSubtitle1: valueBreakdownOfferSubtitle1, offerSubtitle2: valueBreakdownOfferSubtitle2, ctaText: valueBreakdownCtaText, offerLabel: valueBreakdownOfferLabel, paymentButtonText: valueBreakdownPaymentButtonText, timerHours: valueBreakdownTimerHours, timerMinutes: valueBreakdownTimerMinutes, timerSeconds: valueBreakdownTimerSeconds } as any,
     });
+    setSaving(false);
+    if (res.success) {
+      toast.success("Course saved successfully");
+      router.refresh();
+    } else {
+      toast.error(res.message ?? "Failed to save course");
+    }
   }
 
   // Mastery section content renderers (used by the reorderable loop below)
