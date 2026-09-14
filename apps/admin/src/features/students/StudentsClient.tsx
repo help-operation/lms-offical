@@ -2,16 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { fetchStudentsAction, fetchStudentsStatsAction } from "@/features/students/actions/students.actions";
+import {
+  fetchStudentsAction,
+  fetchStudentsStatsAction,
+  toggleStudentStatusAction,
+  deleteStudentAction,
+} from "@/features/students/actions/students.actions";
 import type { Student } from "./types";
 import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
 import {
-  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Phone, Mail, Copy, Check, UserPlus, Video, Radio, BookOpen,
+  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Pencil, Trash2, Shield, ShieldOff,
+  Phone, Mail, Copy, Check, UserPlus, Video, Radio, BookOpen,
 } from "lucide-react";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import { useLocalization } from "@/shared/context/LocalizationContext";
 import { CreateUserModal } from "@/features/admin/CreateUserModal";
+import { toast } from "@repo/ui/sonner";
 
 interface Props {
   initialData: PaginatedResponse<Student>;
@@ -171,6 +178,27 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
     }
   }
 
+  async function handleSingleToggle(id: number) {
+    const res = await toggleStudentStatusAction(id);
+    if (res.success) {
+      toast.success("Status updated");
+      fetchStudents({ page: pagination.current_page, per_page: pagination.per_page });
+    } else {
+      toast.error(res.message ?? "Failed to update status");
+    }
+  }
+
+  async function handleSingleDelete(id: number) {
+    if (!window.confirm("Delete this student? This cannot be undone.")) return;
+    const res = await deleteStudentAction(id);
+    if (res.success) {
+      toast.success("Student deleted");
+      fetchStudents({ page: pagination.current_page, per_page: pagination.per_page });
+    } else {
+      toast.error(res.message ?? "Failed to delete student");
+    }
+  }
+
   const exportFields = ALL_COLS
     .filter((c) => visibleCols.has(c.key))
     .flatMap((c) => c.exportFields ?? []);
@@ -263,7 +291,7 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
       key: "id" as const,
       header: "Actions",
       render: (s: Student) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <Link
             href={`/admin/students/${s.id}`}
             title="View"
@@ -271,6 +299,33 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
           >
             <Eye className="h-3.5 w-3.5" />
           </Link>
+          <Link
+            href={`/admin/students/${s.id}`}
+            title="Edit"
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Link>
+          <button
+            type="button"
+            title={s.status === "active" ? "Suspend" : "Activate"}
+            onClick={() => handleSingleToggle(s.id)}
+            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${
+              s.status === "active"
+                ? "bg-gray-50 text-gray-500 hover:bg-amber-50 hover:text-amber-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-400"
+                : "bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-green-500/10 dark:hover:text-green-400"
+            }`}
+          >
+            {s.status === "active" ? <ShieldOff className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            title="Delete"
+            onClick={() => handleSingleDelete(s.id)}
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       ),
     },
