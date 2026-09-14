@@ -376,8 +376,8 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
   return (
     <div className="flex flex-col flex-1 min-h-0 rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-brand-500 focus-within:border-transparent">
 
-      {/* Toolbar â€” fixed at top of editor, never scrolls */}
-      <div className="shrink-0 flex flex-wrap items-center gap-0.5 border-b border-gray-100 bg-gray-50 px-3 py-1.5">
+      {/* Toolbar â€” sticky at top of editor, stays visible when scrolling */}
+      <div className="sticky top-0 z-10 shrink-0 flex flex-wrap items-center gap-0.5 border-b border-gray-100 bg-gray-50 px-3 py-1.5">
 
         {/* History */}
         <ToolbarBtn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo">
@@ -501,7 +501,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
       <div className="flex-1 overflow-y-auto min-h-0">
         <EditorContent
           editor={editor}
-          className="px-5 py-4 text-sm text-gray-800 leading-relaxed min-h-[500px]"
+          className="px-5 py-4 text-sm text-gray-800 leading-relaxed"
         />
       </div>
 
