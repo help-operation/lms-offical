@@ -52,6 +52,10 @@ function getAllCols(formatDate: (value: Date | string | null | undefined) => str
       ],
     },
     {
+      key: "gender", header: "Gender", defaultVisible: false,
+      exportFields: [{ header: "Gender", getValue: (s) => s.gender ?? "" }],
+    },
+    {
       key: "enrollments", header: "Enrollments", defaultVisible: true,
       exportFields: [
         { header: "Recorded", getValue: (s) => String(s.recordedCount ?? 0) },
@@ -310,6 +314,19 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
                 {s.phone && <CopyableField icon={Phone} value={s.phone} />}
                 {!s.email && !s.phone && <span className="text-xs text-gray-300 dark:text-slate-600">—</span>}
               </div>
+            ),
+          } as Column<Student>,
+        ]
+      : []),
+    ...(visibleCols.has("gender")
+      ? [
+          {
+            key: "gender" as const,
+            header: "Gender",
+            render: (s: Student) => (
+              <span className="text-xs text-gray-500 dark:text-slate-400 capitalize">
+                {s.gender ?? "—"}
+              </span>
             ),
           } as Column<Student>,
         ]

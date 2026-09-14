@@ -3017,6 +3017,7 @@ export class AdminService {
           lastName:      users.lastName,
           email:         users.email,
           phone:         users.phone,
+          gender:        users.gender,
           status:        users.status,
           avatar:        users.avatar,
           createdAt:     users.createdAt,
