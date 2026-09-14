@@ -356,7 +356,7 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none">
         <div className="px-6 pt-5 pb-6">
           <DataTable
             data={students}
