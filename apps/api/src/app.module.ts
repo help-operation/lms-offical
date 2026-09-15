@@ -64,6 +64,7 @@ import { FontsModule } from './fonts/fonts.module';
 import { EventsModule } from './events/events.module';
 import { RevenueGateway } from './events/revenue.gateway';
 import { DashboardGateway } from './events/dashboard.gateway';
+import { BackupModule } from './backup/backup.module';
 
 @Module({
   imports: [
@@ -131,6 +132,7 @@ import { DashboardGateway } from './events/dashboard.gateway';
     DashboardModule,
     FontsModule,
     EventsModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [
