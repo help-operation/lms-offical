@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users, Clock, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react";
+import { Users, Clock, CalendarBlank, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
 import type { Student } from "@/features/students/types";
 import type { SmsTemplate } from "@/features/sms-templates/types";
@@ -169,7 +169,7 @@ export function StudentFiltersClient({
           ["students", "Students", Users],
           ["send", "Send Message", PaperPlaneTilt],
           ["history", "Message History", Clock],
-          ["scheduled", "Scheduled", Clock],
+          ["scheduled", "Scheduled", CalendarBlank],
         ] as const).map(([key, label, Icon]) => (
           <button
             key={key}
@@ -293,6 +293,7 @@ function matches(s: EnrichedStudent, f: Filters) {
   if (f.paymentStatus && s.paymentStatus !== f.paymentStatus) return false;
   if (f.activeStatus && s.activeStatus !== f.activeStatus) return false;
   if (f.enrollmentStatus && s.enrollmentStatus !== f.enrollmentStatus) return false;
+  if (f.hasPhone === "true" && !s.phone) return false;
   const registeredAt = s.createdAt ?? "";
   if (f.registeredFrom && registeredAt < f.registeredFrom) return false;
   if (f.registeredTo && registeredAt > f.registeredTo) return false;

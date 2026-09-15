@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import {
   EnvelopeSimple, PencilSimple, SpinnerGap, CheckCircle,
   FloppyDisk, X, Eye, PaperPlaneTilt, ToggleLeft, ToggleRight,
-  Warning, Lock, Info,
+  Warning, Lock, Info, MagnifyingGlass,
 } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
 import {
@@ -293,6 +293,21 @@ function TemplateCard({
 export function EmailTemplatesClient({ initial }: { initial: EmailTemplate[] }) {
   const [templates, setTemplates] = useState(initial);
   const [editing,   setEditing]   = useState<EmailTemplate | null>(null);
+  const [search,    setSearch]    = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return templates;
+    return templates.filter((t) => {
+      const meta = EVENT_META[t.eventType];
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.eventType.toLowerCase().includes(q) ||
+        t.subject.toLowerCase().includes(q) ||
+        (meta?.description ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [templates, search]);
 
   function handleToggled(updated: EmailTemplate) {
     setTemplates((prev) => prev.map((t) => t.eventType === updated.eventType ? updated : t));
@@ -349,15 +364,29 @@ export function EmailTemplatesClient({ initial }: { initial: EmailTemplate[] }) 
         </div>
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <MagnifyingGlass size={16} weight="bold" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search templates by name, event type, or subject..."
+          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm transition-all placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+        />
+      </div>
+
       {/* Template cards */}
       <div className="space-y-3">
-        {templates.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-gray-200 py-16 text-center">
             <EnvelopeSimple size={40} weight="thin" className="text-gray-300" />
-            <p className="text-sm text-gray-400">No templates found. They will be seeded on next API restart.</p>
+            <p className="text-sm text-gray-400">
+              {search ? `No templates match "${search}"` : "No templates found. They will be seeded on next API restart."}
+            </p>
           </div>
         ) : (
-          templates.map((tpl) => (
+          filtered.map((tpl) => (
             <TemplateCard
               key={tpl.eventType}
               template={tpl}

@@ -114,18 +114,14 @@ export function SendMessagePage({
   const recipientCount = selectedStudents.length + csvRecipients.length;
 
   function toggleStudent(id: number) {
-    setSelectedStudents((prev) => {
-      const exists = prev.some((s) => s.id === id);
-      if (exists) {
-        const student = prev.find((s) => s.id === id);
-        if (student) onRemoveFromParent(student.id);
-        return prev.filter((s) => s.id !== id);
-      } else {
-        const student = allStudents.find((s) => s.id === id);
-        if (student) return [...prev, student];
-        return prev;
-      }
-    });
+    const exists = selectedStudents.some((s) => s.id === id);
+    if (exists) {
+      onRemoveFromParent(id);
+      setSelectedStudents((prev) => prev.filter((s) => s.id !== id));
+    } else {
+      const student = allStudents.find((s) => s.id === id);
+      if (student) setSelectedStudents((prev) => [...prev, student]);
+    }
   }
 
   function selectAll(ids: number[]) {
@@ -178,13 +174,15 @@ export function SendMessagePage({
     ]);
 
     setIsSending(false);
-    setSent(true);
+
+    const anySuccess =
+      (smsRes?.success ?? false) || (emailRes?.success ?? false);
+    setSent(anySuccess);
 
     if (smsRes) {
       if (smsRes.success) {
         setSmsJobId(smsRes.data.jobId);
         setSmsProgress({ total: smsRes.data.total, sent: 0, failed: 0, status: "pending" });
-        setRightTab("preview");
       } else {
         toast.error(smsRes.message ?? "Failed to send SMS");
       }
@@ -193,11 +191,11 @@ export function SendMessagePage({
       if (emailRes.success) {
         setEmailJobId(emailRes.data.jobId);
         setEmailProgress({ total: emailRes.data.total, sent: 0, failed: 0, status: "pending" });
-        setRightTab("preview");
       } else {
         toast.error(emailRes.message ?? "Failed to send email");
       }
     }
+    if (anySuccess) setRightTab("preview");
   }
 
   useEffect(() => {

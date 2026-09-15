@@ -30,6 +30,7 @@ export function SignupForm({
   const [showPass, setShowPass] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [emailWarning, setEmailWarning] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -59,11 +60,19 @@ export function SignupForm({
     setSending(true);
     setOtpError("");
     setOtpSuccess(false);
+    setEmailWarning("");
     try {
-      await apiRequestBrowser<null>("/auth/account/send-otp", {
+      const result = await apiRequestBrowser<{ sent: boolean }>("/auth/account/send-otp", {
         method: "POST",
         body: JSON.stringify({ identifier: identifier.trim() }),
       });
+      if (result.data && !result.data.sent) {
+        setEmailWarning(
+          isEmail
+            ? "Email could not be delivered. Please check your email configuration."
+            : "SMS could not be delivered. Please try again later."
+        );
+      }
       setStep(2);
       setTimer(RESEND_SECONDS);
       setOtp(Array(OTP_LENGTH).fill(""));
@@ -80,12 +89,20 @@ export function SignupForm({
     setOtp(Array(OTP_LENGTH).fill(""));
     setOtpError("");
     setOtpSuccess(false);
+    setEmailWarning("");
     setSending(true);
     try {
-      await apiRequestBrowser<null>("/auth/account/send-otp", {
+      const result = await apiRequestBrowser<{ sent: boolean }>("/auth/account/send-otp", {
         method: "POST",
         body: JSON.stringify({ identifier: identifier.trim() }),
       });
+      if (result.data && !result.data.sent) {
+        setEmailWarning(
+          isEmail
+            ? "Email could not be delivered. Please check your email configuration."
+            : "SMS could not be delivered. Please try again later."
+        );
+      }
       setTimer(RESEND_SECONDS);
       otpRefs.current[0]?.focus();
     } catch (err: any) {
@@ -262,6 +279,7 @@ export function SignupForm({
                 setStep(1);
                 setOtpError("");
                 setOtpSuccess(false);
+                setEmailWarning("");
               }}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
               aria-label="Go back"
@@ -275,6 +293,13 @@ export function SignupForm({
               </span>
             </p>
           </div>
+
+          {/* Email delivery warning */}
+          {emailWarning && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+              {emailWarning}
+            </div>
+          )}
 
           {/* OTP digit boxes */}
           <div className="flex items-center justify-center gap-3">

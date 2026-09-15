@@ -63,7 +63,7 @@ export class AccountAuthService {
     return user;
   }
 
-  async sendOtp(rawIdentifier: string, purpose: 'signup' | 'reset' | 'verify' = 'signup') {
+  async sendOtp(rawIdentifier: string, purpose: 'signup' | 'reset' | 'verify' = 'signup'): Promise<{ sent: boolean }> {
     const id = this.parse(rawIdentifier);
     const existing = await this.findUser(id);
 
@@ -88,7 +88,7 @@ export class AccountAuthService {
         `No account found for this ${id.type === 'email' ? 'email' : 'phone number'}`,
       );
 
-    await this.otpService.sendOtpTo(id.value);
+    return this.otpService.sendOtpTo(id.value);
   }
 
   async signup(dto: AccountSignupDto) {

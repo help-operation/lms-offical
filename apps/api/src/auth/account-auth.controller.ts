@@ -51,8 +51,8 @@ export class AccountAuthController {
   @HttpCode(HttpStatus.OK)
   @Message('OTP sent successfully')
   async sendOtp(@Body() dto: AccountSendOtpDto) {
-    await this.accountAuthService.sendOtp(dto.identifier, dto.purpose);
-    return null;
+    const result = await this.accountAuthService.sendOtp(dto.identifier, dto.purpose);
+    return { sent: result.sent };
   }
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })

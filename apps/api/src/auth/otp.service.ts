@@ -29,11 +29,12 @@ export class OtpService {
 
   // ── Identifier (email OR phone) helpers ──────────────────────────────────
 
-  async sendOtpTo(identifier: string): Promise<void> {
+  async sendOtpTo(identifier: string): Promise<{ sent: boolean }> {
     if (identifier.includes('@')) {
-      await this.sendEmailOtp(identifier);
+      return this.sendEmailOtp(identifier);
     } else {
       await this.sendOtp(identifier);
+      return { sent: true };
     }
   }
 
@@ -45,7 +46,7 @@ export class OtpService {
     }
   }
 
-  private async sendEmailOtp(email: string): Promise<void> {
+  private async sendEmailOtp(email: string): Promise<{ sent: boolean }> {
     const code = this.generate();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
@@ -56,7 +57,8 @@ export class OtpService {
 
     await this.db.insert(otpVerifications).values({ email, code, expiresAt });
 
-    await this.mailService.sendOtpEmail(email, code);
+    const { sent } = await this.mailService.sendOtpEmail(email, code);
+    return { sent };
   }
 
   private async verifyEmailOtp(email: string, code: string): Promise<void> {
