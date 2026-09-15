@@ -82,7 +82,9 @@ export class BackupService {
       t.replace('public.', ''),
     );
 
-    // Query information_schema for actual column names
+    // Query information_schema for actual column names in the public schema.
+    // We intentionally omit the IN clause to avoid Drizzle parameter-count
+    // issues with 90+ tables; allowlist filtering happens below.
     const result = await this.db.execute<{
       table_name: string;
       column_name: string;
@@ -90,7 +92,6 @@ export class BackupService {
       SELECT table_name, column_name
       FROM information_schema.columns
       WHERE table_schema = 'public'
-        AND table_name IN ${sql.join(tableNames.map((t) => sql`${t}`), sql`, `)}
       ORDER BY table_name, ordinal_position
     `);
 
@@ -982,7 +983,7 @@ export class BackupService {
       const pkValues = batch.map((r) => r[pkColumns[0]]).filter((v) => v != null);
       if (pkValues.length > 0) {
         const result = await tx.execute(
-          sql`SELECT ${sql.raw(`"${pkColumns[0]}"`)} AS pk FROM ${sql.raw(table)} WHERE ${sql.raw(`"${pkColumns[0]}"`)} IN ${sql.join(pkValues.map((v) => sql`${v}`), sql`, `)}`,
+          sql`SELECT ${sql.raw(`"${pkColumns[0]}"`)} AS pk FROM ${sql.raw(table)} WHERE ${sql.raw(`"${pkColumns[0]}"`)} IN (${sql.join(pkValues.map((v) => sql`${v}`), sql`, `)})`,
         );
         for (const row of result.rows) {
           existingIds.add((row as any).pk);
@@ -1073,16 +1074,18 @@ export class BackupService {
     pkColumns: string[],
     row: Record<string, unknown>,
   ): Promise<void> {
-    const colIdentifiers = columns.map((c) => sql.raw(`"${c}"`)).join(', ');
     const values = columns.map((c) => this.sqlValue(row[c]));
-
     const nonPkCols = columns.filter((c) => !pkColumns.includes(c));
-    const updateSet = nonPkCols.map((c) => sql.raw(`"${c}" = EXCLUDED."${c}"`)).join(', ');
-    const conflictTarget = pkColumns.map((c) => sql.raw(`"${c}"`)).join(', ');
+
+    const colList = columns.map((c) => `"${c}"`).join(', ');
+    const pkList = pkColumns.map((c) => `"${c}"`).join(', ');
+    const updateList = nonPkCols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(', ');
+
+    const valueList = sql.join(values as any[], sql`, `);
 
     await tx.execute(
-      sql`INSERT INTO ${sql.raw(table)} (${sql.raw(colIdentifiers)}) VALUES (${values})
-          ON CONFLICT (${conflictTarget}) DO UPDATE SET ${sql.raw(updateSet)}`,
+      sql`INSERT INTO ${sql.raw(table)} (${sql.raw(colList)}) VALUES (${valueList})
+          ON CONFLICT (${sql.raw(pkList)}) DO UPDATE SET ${sql.raw(updateList)}`,
     );
   }
 
