@@ -152,7 +152,10 @@ export function SendMessageModal({
         : Promise.resolve(null),
     ]);
     setIsSending(false);
-    setSent(true);
+
+    const anySuccess =
+      (smsRes?.success ?? false) || (emailRes?.success ?? false);
+    setSent(anySuccess);
 
     if (smsRes) {
       if (smsRes.success) {

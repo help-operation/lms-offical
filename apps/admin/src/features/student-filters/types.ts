@@ -32,6 +32,7 @@ export type Filters = {
   paymentStatus: PaymentStatus | "";
   activeStatus: ActiveStatus | "";
   enrollmentStatus: EnrollmentStatus | "";
+  hasPhone: string; // "true" = has phone number
   registeredFrom: string;
   registeredTo: string;
   lastLoginFrom: string;
@@ -46,6 +47,7 @@ export const EMPTY_FILTERS: Filters = {
   paymentStatus: "",
   activeStatus: "",
   enrollmentStatus: "",
+  hasPhone: "",
   registeredFrom: "",
   registeredTo: "",
   lastLoginFrom: "",

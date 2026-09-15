@@ -17,7 +17,7 @@ const QUICK_FILTERS: { label: string; key: string; value: string }[] = [
   { label: "New Students", key: "enrollmentStatus", value: "none" },
   { label: "Payment Due", key: "paymentStatus", value: "due" },
   { label: "Inactive", key: "activeStatus", value: "inactive" },
-  { label: "No Enrollment", key: "enrollmentStatus", value: "none" },
+  { label: "Has Phone", key: "hasPhone", value: "true" },
   { label: "Never Logged In", key: "lastLoginFrom", value: "__never__" },
 ];
 
