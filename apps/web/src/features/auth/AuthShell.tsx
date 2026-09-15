@@ -16,12 +16,14 @@ export function AuthShell({
   image,
   title,
   onClose,
+  authError,
 }: {
   mode: "modal" | "page";
   initialTab: AuthTab;
   image?: string;
   title?: string;
   onClose?: () => void;
+  authError?: string | null;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<AuthTab>(initialTab);
@@ -65,6 +67,7 @@ export function AuthShell({
           defaultIdentifier={defaultIdentifier}
           onSuccess={mode === "modal" ? onClose : undefined}
           onCreateAccount={handleCreateAccount}
+          authError={authError}
         />
       ) : (
         <SignupForm key="signup" defaultIdentifier={defaultIdentifier} onRegistered={handleRegistered} />

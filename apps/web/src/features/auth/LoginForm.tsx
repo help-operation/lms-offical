@@ -15,16 +15,22 @@ export function LoginForm({
   onSuccess,
   onForgotPassword,
   onCreateAccount,
+  authError,
 }: {
   defaultIdentifier?: string;
   onSuccess?: () => void;
   onForgotPassword?: () => void;
   onCreateAccount?: (identifier: string) => void;
+  authError?: string | null;
 } = {}) {
   const router = useRouter();
   const [showPass, setShowPass] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [noAccountFor, setNoAccountFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authError) setServerError(authError);
+  }, [authError]);
 
   const {
     register,
