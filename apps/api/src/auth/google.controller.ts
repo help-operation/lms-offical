@@ -82,8 +82,8 @@ export class GoogleController {
     this.logger.log(`Google callback profile: email=${profile?.email}, firstName=${profile?.firstName}, lastName=${profile?.lastName}`);
 
     if (!profile?.email) {
-      this.logger.warn('Google callback: no email in profile, redirecting to login');
-      return res.redirect(`${FRONTEND_URL}/login?error=google`);
+      this.logger.warn('Google callback: no email in profile. Full profile object: ' + JSON.stringify(profile));
+      return res.redirect(`${FRONTEND_URL}/login?error=google_no_email`);
     }
 
     try {
@@ -97,14 +97,24 @@ export class GoogleController {
 
       if (!emailVerified) {
         this.logger.log(`Google login for unverified email ${profile.email}, sending OTP and redirecting to verification`);
-        await this.otpService.sendOtpTo(profile.email);
+        try {
+          await this.otpService.sendOtpTo(profile.email);
+        } catch (otpErr) {
+          this.logger.warn(`Failed to send OTP for ${profile.email}: ${(otpErr as Error).message}. Redirecting to verify-email anyway.`);
+        }
         return res.redirect(`${FRONTEND_URL}/verify-email?email=${encodeURIComponent(profile.email)}`);
       }
 
       this.logger.log(`Google login successful for ${profile.email}, redirecting to dashboard`);
       return res.redirect(`${FRONTEND_URL}/guest/dashboard`);
     } catch (err) {
-      this.logger.error(`Google OAuth callback failed for ${profile.email}: ${(err as Error).message}`, (err as Error).stack);
+      const error = err as Error;
+      this.logger.error(
+        `Google OAuth callback failed for ${profile.email}: ${error.message}\n` +
+        `Error name: ${error.name}\n` +
+        `Full error: ${JSON.stringify(err, Object.getOwnPropertyNames(err), 2)}`,
+        error.stack,
+      );
       return res.redirect(`${FRONTEND_URL}/login?error=google`);
     }
   }

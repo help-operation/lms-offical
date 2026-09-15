@@ -24,6 +24,37 @@ function validateEnv(): void {
     console.error('');
     process.exit(1);
   }
+
+  // Production warnings for optional but important services
+  if (process.env.NODE_ENV === 'production') {
+    const warnings: string[] = [];
+
+    if (!process.env.FRONTEND_URL) {
+      warnings.push('FRONTEND_URL not set — Google OAuth post-login redirects will go to localhost');
+    } else if (process.env.FRONTEND_URL.includes('localhost')) {
+      warnings.push(`FRONTEND_URL=${process.env.FRONTEND_URL} — should be https://leerney.com in production`);
+    }
+
+    if (!process.env.CORS_ORIGINS) {
+      warnings.push('CORS_ORIGINS not set — defaults to localhost dev ports, cross-origin requests will be blocked');
+    }
+
+    if (!process.env.COOKIE_DOMAIN) {
+      warnings.push('COOKIE_DOMAIN not set — cookies may not work correctly across subdomains (api.leerney.com → leerney.com)');
+    }
+
+    if (warnings.length > 0) {
+      console.warn('');
+      console.warn('═══════════════════════════════════════════════════════════════');
+      console.warn('  PRODUCTION ENVIRONMENT WARNINGS');
+      console.warn('═══════════════════════════════════════════════════════════════');
+      for (const w of warnings) {
+        console.warn(`  ⚠ ${w}`);
+      }
+      console.warn('═══════════════════════════════════════════════════════════════');
+      console.warn('');
+    }
+  }
 }
 
 async function bootstrap() {
