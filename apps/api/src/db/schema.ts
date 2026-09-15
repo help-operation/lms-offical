@@ -2804,3 +2804,29 @@ export const communicationBalances = pgTable('communication_balances', {
 
 export type CommunicationBalance    = typeof communicationBalances.$inferSelect;
 export type NewCommunicationBalance = typeof communicationBalances.$inferInsert;
+
+// ─── Backup Jobs ─────────────────────────────────────────────────────────────
+
+export const backupJobs = pgTable('backup_jobs', {
+  id:               serial('id').primaryKey(),
+  type:             varchar('type', { length: 20 }).notNull(),        // 'full' | 'selective' | 'category'
+  format:           varchar('format', { length: 10 }).notNull(),      // 'sql' | 'json'
+  status:           varchar('status', { length: 20 }).notNull().default('pending'), // pending|running|completed|failed
+  category:         varchar('category', { length: 50 }),              // category ID if type=category
+  tables:           jsonb('tables').$type<string[] | null>(),         // null = full, array = selective/category
+  manifest:         jsonb('manifest'),                                // BackupManifest JSON
+  importStatus:     varchar('import_status', { length: 20 }),         // validating|dry_run|importing|completed|failed|rolled_back
+  conflictStrategy: varchar('conflict_strategy', { length: 20 }),     // skip|overwrite|merge
+  importedTables:   jsonb('imported_tables').$type<string[] | null>(),// tables successfully imported
+  fileUrl:          text('file_url'),
+  fileSize:         integer('file_size'),                             // bytes
+  preview:          jsonb('preview'),                                 // ImportPreview JSON (dry-run results)
+  errorMessage:     text('error_message'),
+  startedAt:        timestamp('started_at'),
+  completedAt:      timestamp('completed_at'),
+  createdBy:        integer('created_by'),                            // FK → admin_users.id
+  createdAt:        timestamp('created_at').defaultNow(),
+});
+
+export type BackupJob    = typeof backupJobs.$inferSelect;
+export type NewBackupJob = typeof backupJobs.$inferInsert;

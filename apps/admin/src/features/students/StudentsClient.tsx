@@ -1,17 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { fetchStudentsAction, fetchStudentsStatsAction } from "@/features/students/actions/students.actions";
+import {
+  fetchStudentsAction,
+  fetchStudentsStatsAction,
+  toggleStudentStatusAction,
+  deleteStudentAction,
+  bulkToggleStudentStatusAction,
+  bulkDeleteStudentsAction,
+} from "@/features/students/actions/students.actions";
 import type { Student } from "./types";
 import type { PaginatedResponse, TableQueryParams } from "@/features/admin/api";
 import { DataTable, type Column, type TablePagination } from "@repo/ui/data-table";
 import {
-  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Phone, Mail, Copy, Check, UserPlus, Video, Radio, BookOpen,
+  Users, UserCheck, UserX, CalendarClock, Wifi, Eye, Pencil, Trash2, Shield, ShieldOff,
+  Phone, Mail, Copy, Check, Square, CheckSquare, UserPlus, Video, Radio, BookOpen,
 } from "lucide-react";
 import { ColumnsDropdown, ExportDropdown, type ColDef } from "@/shared/components/TableControls";
 import { useLocalization } from "@/shared/context/LocalizationContext";
 import { CreateUserModal } from "@/features/admin/CreateUserModal";
+import { toast } from "@repo/ui/sonner";
 
 interface Props {
   initialData: PaginatedResponse<Student>;
@@ -41,6 +50,10 @@ function getAllCols(formatDate: (value: Date | string | null | undefined) => str
         { header: "Email", getValue: (s) => s.email ?? "" },
         { header: "Phone", getValue: (s) => s.phone ?? "" },
       ],
+    },
+    {
+      key: "gender", header: "Gender", defaultVisible: false,
+      exportFields: [{ header: "Gender", getValue: (s) => s.gender ?? "" }],
     },
     {
       key: "enrollments", header: "Enrollments", defaultVisible: true,
@@ -151,6 +164,8 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
   const [isLoading, setIsLoading] = useState(false);
   const [visibleCols, setVisibleCols] = useState<Set<string>>(DEFAULT_VISIBLE);
   const [stats, setStats] = useState(initialStats ?? { total: 0, active: 0, suspended: 0, newThisMonth: 0, onlineNow: 0 });
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     fetchStudentsStatsAction().then((res) => {
@@ -168,6 +183,73 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
       }
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelected((prev) => {
+      if (prev.size === students.length) return new Set();
+      return new Set(students.map((s) => s.id));
+    });
+  }, [students]);
+
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  async function handleBulkAction(action: "activate" | "suspend" | "delete") {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+
+    const label = action === "delete" ? "Delete" : action === "activate" ? "Activate" : "Suspend";
+    if (action === "delete" && !window.confirm(`Delete ${ids.length} student(s)? This cannot be undone.`)) return;
+
+    setBulkLoading(true);
+    try {
+      let res;
+      if (action === "delete") {
+        res = await bulkDeleteStudentsAction(ids);
+      } else {
+        res = await bulkToggleStudentStatusAction(ids, action === "activate" ? "active" : "suspended");
+      }
+      if (res.success) {
+        const { succeeded, failed } = res.data;
+        toast.success(`${label}d ${succeeded} student(s)${failed ? ` (${failed} failed)` : ""}`);
+        clearSelection();
+        fetchStudents({ page: pagination.current_page, per_page: pagination.per_page });
+      } else {
+        toast.error(res.message ?? `Failed to ${label} students`);
+      }
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
+  async function handleSingleToggle(id: number) {
+    const res = await toggleStudentStatusAction(id);
+    if (res.success) {
+      toast.success("Status updated");
+      fetchStudents({ page: pagination.current_page, per_page: pagination.per_page });
+    } else {
+      toast.error(res.message ?? "Failed to update status");
+    }
+  }
+
+  async function handleSingleDelete(id: number) {
+    if (!window.confirm("Delete this student? This cannot be undone.")) return;
+    const res = await deleteStudentAction(id);
+    if (res.success) {
+      toast.success("Student deleted");
+      fetchStudents({ page: pagination.current_page, per_page: pagination.per_page });
+    } else {
+      toast.error(res.message ?? "Failed to delete student");
     }
   }
 
@@ -189,6 +271,15 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
             sortable: true,
             render: (s: Student, i: number) => (
               <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleSelect(s.id); }}
+                  className="shrink-0 text-gray-400 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand transition-colors"
+                >
+                  {selected.has(s.id)
+                    ? <CheckSquare className="h-4 w-4 text-brand-600" />
+                    : <Square className="h-4 w-4" />}
+                </button>
                 {s.avatar ? (
                   <img src={s.avatar} alt={s.firstName} className="h-10 w-10 rounded-full object-cover shrink-0" />
                 ) : (
@@ -223,6 +314,19 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
                 {s.phone && <CopyableField icon={Phone} value={s.phone} />}
                 {!s.email && !s.phone && <span className="text-xs text-gray-300 dark:text-slate-600">—</span>}
               </div>
+            ),
+          } as Column<Student>,
+        ]
+      : []),
+    ...(visibleCols.has("gender")
+      ? [
+          {
+            key: "gender" as const,
+            header: "Gender",
+            render: (s: Student) => (
+              <span className="text-xs text-gray-500 dark:text-slate-400 capitalize">
+                {s.gender ?? "—"}
+              </span>
             ),
           } as Column<Student>,
         ]
@@ -263,7 +367,7 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
       key: "id" as const,
       header: "Actions",
       render: (s: Student) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <Link
             href={`/admin/students/${s.id}`}
             title="View"
@@ -271,6 +375,33 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
           >
             <Eye className="h-3.5 w-3.5" />
           </Link>
+          <Link
+            href={`/admin/students/${s.id}`}
+            title="Edit"
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Link>
+          <button
+            type="button"
+            title={s.status === "active" ? "Suspend" : "Activate"}
+            onClick={() => handleSingleToggle(s.id)}
+            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${
+              s.status === "active"
+                ? "bg-gray-50 text-gray-500 hover:bg-amber-50 hover:text-amber-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-400"
+                : "bg-gray-50 text-gray-500 hover:bg-green-50 hover:text-green-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-green-500/10 dark:hover:text-green-400"
+            }`}
+          >
+            {s.status === "active" ? <ShieldOff className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            title="Delete"
+            onClick={() => handleSingleDelete(s.id)}
+            className="h-7 w-7 rounded-lg flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       ),
     },
@@ -355,15 +486,76 @@ export function StudentsClient({ initialData, initialStats, onTabChange }: Props
         ))}
       </div>
 
+      {/* Bulk Action Bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/20 rounded-xl px-4 py-3">
+          <span className="text-sm font-semibold text-brand-700 dark:text-brand-400">
+            {selected.size} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={bulkLoading}
+              onClick={() => handleBulkAction("activate")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors disabled:opacity-50"
+            >
+              <Shield className="h-3.5 w-3.5" />
+              Activate
+            </button>
+            <button
+              type="button"
+              disabled={bulkLoading}
+              onClick={() => handleBulkAction("suspend")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+            >
+              <ShieldOff className="h-3.5 w-3.5" />
+              Suspend
+            </button>
+            <button
+              type="button"
+              disabled={bulkLoading}
+              onClick={() => handleBulkAction("delete")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="ml-1 text-xs text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm dark:shadow-none">
         <div className="px-6 pt-5 pb-6">
+          {/* Select All Header */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="text-gray-400 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand transition-colors"
+            >
+              {selected.size === students.length && students.length > 0
+                ? <CheckSquare className="h-4 w-4 text-brand-600" />
+                : <Square className="h-4 w-4" />}
+            </button>
+            <span className="text-xs text-gray-400 dark:text-slate-500">
+              {selected.size > 0 ? `${selected.size} of ${students.length} selected` : `Select all (${students.length})`}
+            </span>
+          </div>
+
           <DataTable
             data={students}
             columns={visibleColumns}
             serverSide
             pagination={pagination}
-            onQueryChange={fetchStudents}
+            onQueryChange={(params) => { clearSelection(); fetchStudents(params); }}
             dateRangeKey="createdAt"
             portalContainer={typeof document !== "undefined" ? document.getElementById("admin-dashboard-root") : undefined}
             isLoading={isLoading}

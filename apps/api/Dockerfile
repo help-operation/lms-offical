@@ -16,6 +16,7 @@ RUN pnpm --filter api exec nest build
 
 # ---- Runtime stage ----
 FROM node:20-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client && rm -rf /var/lib/apt/lists/*
 RUN npm i -g pnpm@9
 ENV NODE_ENV=production
 WORKDIR /repo

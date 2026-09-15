@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -12,21 +12,31 @@ const IV_LENGTH = 12; // recommended for GCM
  * the admin manages day-to-day.
  */
 @Injectable()
-export class CredentialEncryptionService {
+export class CredentialEncryptionService implements OnModuleInit {
   private readonly logger = new Logger(CredentialEncryptionService.name);
   private key: Buffer | null = null;
+
+  onModuleInit() {
+    const secret = process.env.PAYMENT_CREDENTIALS_ENCRYPTION_KEY;
+    if (!secret) {
+      this.logger.error(
+        'PAYMENT_CREDENTIALS_ENCRYPTION_KEY is not set. Payment credential encryption/decryption will fail. ' +
+        'Set this environment variable before deploying.',
+      );
+    }
+  }
 
   private getKey(): Buffer {
     if (this.key) return this.key;
 
     const secret = process.env.PAYMENT_CREDENTIALS_ENCRYPTION_KEY;
     if (!secret) {
-      this.logger.warn(
-        'PAYMENT_CREDENTIALS_ENCRYPTION_KEY is not set — falling back to JWT_SECRET. Set a dedicated key in production.',
+      throw new Error(
+        'PAYMENT_CREDENTIALS_ENCRYPTION_KEY environment variable is required. ' +
+        'Set it to a strong random string before deploying.',
       );
     }
-    const material = secret || process.env.JWT_SECRET || 'insecure-default-key-change-me';
-    this.key = crypto.scryptSync(material, 'payment-gateway-credentials', 32);
+    this.key = crypto.scryptSync(secret, 'payment-gateway-credentials', 32);
     return this.key;
   }
 

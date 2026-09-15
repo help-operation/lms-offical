@@ -16,6 +16,7 @@ export interface Student {
   lastName: string;
   email: string | null;
   phone: string | null;
+  gender: string | null;
   status: string;
   avatar: string | null;
   createdAt: string | null;
