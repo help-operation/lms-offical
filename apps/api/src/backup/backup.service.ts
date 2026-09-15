@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { eq, desc } from 'drizzle-orm';
@@ -6,7 +6,106 @@ import type { DB } from 'src/db';
 import { DB_TOKEN } from 'src/db/db.module';
 import { backupJobs } from 'src/db/schema';
 import { UploadService } from '../upload/upload.service';
-import { spawn } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
+
+// ─── Allowed tables for selective export (allowlist, not blocklist) ─────────
+// Only user-facing application tables. Internal/system tables, PII-heavy
+// tables (admin_users credentials), and migration tables are excluded.
+const ALLOWED_BACKUP_TABLES = new Set([
+  // General settings
+  'public.system_settings',
+  // Payment
+  'public.payment_gateway_configs',
+  // Tracking
+  'public.tracking_items',
+  'public.tracking_settings',
+  // Courses
+  'public.courses',
+  'public.course_modules',
+  'public.course_lessons',
+  'public.course_categories',
+  'public.course_tags',
+  'public.course_sections',
+  'public.course_overviews',
+  'public.course_features',
+  'public.course_benefits',
+  'public.course_faqs',
+  'public.course_curriculums',
+  'public.course_includes',
+  'public.course_styles',
+  'public.course_requirements',
+  'public.course_target_audiences',
+  'public.course_reviews',
+  // Enrollments
+  'public.enrollments',
+  'public.enrollment_status_history',
+  // Students
+  'public.students',
+  'public.student_interests',
+  'public.student_progress',
+  'public.student_course_access',
+  'public.student_certificates',
+  // Instructors
+  'public.instructors',
+  'public.instructor_applications',
+  // Orders & payments
+  'public.orders',
+  'public.payments',
+  'public.refunds',
+  'public.coupons',
+  'public.coupon_usages',
+  // Live courses
+  'public.live_classes',
+  'public.live_class_recordings',
+  'public.live_class_registrations',
+  // Blog
+  'public.blog_posts',
+  'public.blog_tags',
+  // Pages / CMS
+  'public.pages',
+  'public.page_sections',
+  // Support
+  'public.support_tickets',
+  'public.support_messages',
+  // Newsletter / leads
+  'public.newsletter_subscribers',
+  'public.leads',
+  // Success stories
+  'public.success_stories',
+  // Team members
+  'public.team_members',
+  // FAQs
+  'public.faqs',
+  // Menus
+  'public.menus',
+  'public.menu_items',
+  // Social links
+  'public.social_links',
+  // Media
+  'public.media',
+  // Notifications
+  'public.notifications',
+  'public.notification_recipients',
+  // SMS / email
+  'public.sms_templates',
+  'public.email_templates',
+  'public.message_history',
+  // Communication
+  'public.communication_balances',
+  // Roles & permissions
+  'public.admin_roles',
+  'public.admin_role_permissions',
+  'public.staff_profiles',
+  'public.staff_extended_profiles',
+  // Interests
+  'public.interests',
+  // Subscriptions
+  'public.subscriptions',
+  // Code snippets
+  'public.code_snippets',
+  // Backup jobs (meta only — not data)
+  // 'public.backup_jobs',  // excluded: backup metadata, not app data
+]);
 
 export interface BackupJobRow {
   id: number;
@@ -63,10 +162,12 @@ export class BackupService {
       FROM pg_stat_user_tables
       ORDER BY n_live_tup DESC
     `);
-    return result.rows.map((r) => ({
-      name: r.table_name,
-      rowCount: parseInt(r.row_count ?? '0', 10),
-    }));
+    return result.rows
+      .filter((r) => ALLOWED_BACKUP_TABLES.has(r.table_name))
+      .map((r) => ({
+        name: r.table_name,
+        rowCount: parseInt(r.row_count ?? '0', 10),
+      }));
   }
 
   // ─── Trigger full pg_dump backup ─────────────────────────────────────────
@@ -90,6 +191,13 @@ export class BackupService {
 
   private async runFullDump(jobId: number): Promise<void> {
     try {
+      // Verify pg_dump is available before attempting backup
+      try {
+        execFileSync('pg_dump', ['--version'], { stdio: 'ignore' });
+      } catch {
+        throw new Error('pg_dump is not installed. Install postgresql-client in the runtime container.');
+      }
+
       const databaseUrl = process.env.DATABASE_URL;
       if (!databaseUrl) throw new Error('DATABASE_URL not set');
 
@@ -129,7 +237,7 @@ export class BackupService {
         '--username', url.username,
         '--no-owner',
         '--no-privileges',
-        '--format=custom',
+        '--format=plain',
         url.pathname.replace('/', ''),
       ];
 
@@ -144,7 +252,7 @@ export class BackupService {
 
       proc.on('close', (code) => {
         if (code === 0) resolve(Buffer.concat(chunks));
-        else reject(new Error(`pg_dump exited with code ${code}: ${stderr}`));
+        else reject(new Error(`pg_dump exited with code ${code}`));
       });
 
       proc.on('error', reject);
@@ -166,7 +274,15 @@ export class BackupService {
   // ─── Trigger selective JSON backup ───────────────────────────────────────
 
   async triggerSelectiveBackup(tables: string[], adminId: number | null): Promise<BackupJobRow> {
-    if (!tables.length) throw new Error('At least one table is required');
+    if (!tables.length) throw new BadRequestException('At least one table is required');
+
+    // Validate against allowlist — reject unknown tables
+    const invalid = tables.filter((t) => !ALLOWED_BACKUP_TABLES.has(t));
+    if (invalid.length > 0) {
+      throw new BadRequestException(
+        `Rejected table(s): ${invalid.join(', ')}. Only pre-approved application tables can be exported.`,
+      );
+    }
 
     const [job] = await this.db.insert(backupJobs).values({
       type: 'selective',
@@ -194,7 +310,7 @@ export class BackupService {
           exportData[table] = result.rows;
         } catch (err: any) {
           this.logger.warn(`Failed to export table ${table}: ${err.message}`);
-          exportData[table] = [{ _error: err.message }];
+          exportData[table] = [{ _error: 'Export failed for this table' }];
         }
       }
 

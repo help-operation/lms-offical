@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { BackupService } from './backup.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
@@ -38,15 +38,17 @@ export class BackupController {
   @RequirePermissions('update_settings_configaction')
   @Message('Full backup started')
   triggerFull() {
-    // createdBy will be set from JWT in a real implementation
     return this.backupService.triggerFullBackup(null);
   }
 
   @Post('selective')
   @RequirePermissions('update_settings_configaction')
   @Message('Selective backup started')
-  triggerSelective(@Body() body: { tables: string[] }) {
-    return this.backupService.triggerSelectiveBackup(body.tables ?? [], null);
+  triggerSelective(@Body('tables') tables: unknown) {
+    if (!Array.isArray(tables) || tables.length === 0 || !tables.every((t) => typeof t === 'string')) {
+      throw new BadRequestException('tables must be a non-empty array of strings');
+    }
+    return this.backupService.triggerSelectiveBackup(tables as string[], null);
   }
 
   @Delete(':id')
