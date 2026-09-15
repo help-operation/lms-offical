@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { eq, desc, sql, inArray } from 'drizzle-orm';
 import { createHash } from 'crypto';
@@ -7,6 +8,7 @@ import type { DB } from 'src/db';
 import { DB_TOKEN } from 'src/db/db.module';
 import { backupJobs } from 'src/db/schema';
 import { UploadService } from '../upload/upload.service';
+import { StorageConfigService } from '../storage-config/storage-config.service';
 import { spawn, execFileSync } from 'child_process';
 import {
   BACKUP_CATEGORIES,
@@ -64,6 +66,8 @@ export class BackupService {
   constructor(
     @Inject(DB_TOKEN) private readonly db: DB,
     private readonly uploadService: UploadService,
+    private readonly storageConfig: StorageConfigService,
+    private readonly config: ConfigService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1229,15 +1233,21 @@ export class BackupService {
     });
   }
 
-  private async uploadToR2(key: string, body: Buffer, contentType: string): Promise<string> {
-    const endpoint = process.env.R2_ENDPOINT;
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-    const bucket = process.env.R2_BUCKET;
-    const publicUrl = process.env.R2_URL;
+  /**
+   * Build R2 credentials using the same resolution order as UploadService:
+   * DB (storage_provider_configs via Admin UI) → env var fallback.
+   */
+  private async getR2Config(): Promise<{ s3: S3Client; bucket: string; publicUrl: string }> {
+    const creds = await this.storageConfig.getDecryptedCredentials('r2');
+
+    const endpoint      = creds.endpoint?.trim()      || this.config.get<string>('R2_ENDPOINT');
+    const accessKeyId   = creds.accessKeyId?.trim()    || this.config.get<string>('R2_ACCESS_KEY_ID');
+    const secretAccessKey = creds.secretAccessKey?.trim() || this.config.get<string>('R2_SECRET_ACCESS_KEY');
+    const bucket        = creds.bucket?.trim()         || this.config.get<string>('R2_BUCKET');
+    const publicUrl     = creds.url?.trim()            || this.config.get<string>('R2_URL');
 
     if (!endpoint || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
-      throw new Error('R2 storage not configured. Set R2_* env vars or configure in Admin → Settings → Configaction.');
+      throw new Error('R2 storage not configured. Set R2_* env vars or configure in Admin \u2192 Settings \u2192 Configaction.');
     }
 
     const s3 = new S3Client({
@@ -1247,6 +1257,12 @@ export class BackupService {
       forcePathStyle: true,
       requestChecksumCalculation: 'WHEN_REQUIRED',
     });
+
+    return { s3, bucket, publicUrl };
+  }
+
+  private async uploadToR2(key: string, body: Buffer, contentType: string): Promise<string> {
+    const { s3, bucket, publicUrl } = await this.getR2Config();
 
     await s3.send(new PutObjectCommand({
       Bucket: bucket,
