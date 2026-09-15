@@ -554,6 +554,13 @@
       "when": 1789400000000,
       "tag": "0079_backup_restore_center",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1789500000000,
+      "tag": "0080_backup_hardening",
+      "breakpoints": true
     }
   ]
 }

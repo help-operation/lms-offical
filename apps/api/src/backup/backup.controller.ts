@@ -7,6 +7,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/require-permissions.decorator';
 import { Message } from 'src/common/decorators/message.decorator';
+import { CurrentUser, type RequestUser } from 'src/common/decorators/current-user.decorator';
 import type { ConflictStrategy } from './backup-categories';
 
 @Controller('admin/backup')
@@ -58,8 +59,8 @@ export class BackupController {
   @Post('full')
   @RequirePermissions('update_settings_configaction')
   @Message('Full backup started')
-  triggerFull() {
-    return this.backupService.triggerFullBackup(null);
+  triggerFull(@CurrentUser() actor: RequestUser) {
+    return this.backupService.triggerFullBackup(actor.userId);
   }
 
   // ─── Trigger category backup ───────────────────────────────────────────────
@@ -67,11 +68,14 @@ export class BackupController {
   @Post('category')
   @RequirePermissions('update_settings_configaction')
   @Message('Category backup started')
-  triggerCategory(@Body('categoryId') categoryId: unknown) {
+  triggerCategory(
+    @Body('categoryId') categoryId: unknown,
+    @CurrentUser() actor: RequestUser,
+  ) {
     if (typeof categoryId !== 'string' || !categoryId) {
       throw new BadRequestException('categoryId must be a non-empty string');
     }
-    return this.backupService.triggerCategoryBackup(categoryId, null);
+    return this.backupService.triggerCategoryBackup(categoryId, actor.userId);
   }
 
   // ─── Trigger selective backup ──────────────────────────────────────────────
@@ -79,11 +83,14 @@ export class BackupController {
   @Post('selective')
   @RequirePermissions('update_settings_configaction')
   @Message('Selective backup started')
-  triggerSelective(@Body('tables') tables: unknown) {
+  triggerSelective(
+    @Body('tables') tables: unknown,
+    @CurrentUser() actor: RequestUser,
+  ) {
     if (!Array.isArray(tables) || tables.length === 0 || !tables.every((t) => typeof t === 'string')) {
       throw new BadRequestException('tables must be a non-empty array of strings');
     }
-    return this.backupService.triggerSelectiveBackup(tables as string[], null);
+    return this.backupService.triggerSelectiveBackup(tables as string[], actor.userId);
   }
 
   // ─── Import: dry-run preview ───────────────────────────────────────────────
@@ -103,11 +110,12 @@ export class BackupController {
   importBackup(
     @Param('id', ParseIntPipe) id: number,
     @Body('conflictStrategy') strategy: unknown,
+    @CurrentUser() actor: RequestUser,
   ) {
     if (!strategy || !['skip', 'overwrite', 'merge'].includes(strategy as string)) {
       throw new BadRequestException('conflictStrategy must be skip, overwrite, or merge');
     }
-    return this.backupService.importBackup(id, strategy as ConflictStrategy, null);
+    return this.backupService.importBackup(id, strategy as ConflictStrategy, actor.userId);
   }
 
   // ─── Delete ────────────────────────────────────────────────────────────────

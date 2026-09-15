@@ -2,6 +2,7 @@
 // All table names are verified against apps/api/src/db/schema.ts pgTable definitions.
 
 export const MANIFEST_VERSION = 1;
+export const SUPPORTED_MANIFEST_VERSIONS = [1];
 
 export interface BackupCategoryDef {
   id: string;

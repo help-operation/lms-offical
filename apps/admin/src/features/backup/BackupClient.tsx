@@ -8,6 +8,7 @@ import {
   FileArrowUp, SealCheck, Warning, ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
+import { ConfirmModal } from "@/shared/components/ConfirmModal";
 import type { BackupJob, BackupTable, BackupCategory, ImportPreview } from "./api";
 import {
   triggerFullBackupAction,
@@ -142,6 +143,7 @@ export function BackupClient({
         isOpen={expanded.history ?? false}
         onToggle={() => toggle("history")}
         onRefresh={refreshHistory}
+        categories={initialCategories}
       />
     </div>
   );
@@ -683,17 +685,26 @@ function HistorySection({
   isOpen,
   onToggle,
   onRefresh,
+  categories,
 }: {
   backups: BackupJob[];
   total: number;
   isOpen: boolean;
   onToggle: () => void;
   onRefresh: () => void;
+  categories: BackupCategory[];
 }) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  async function handleDelete(id: number) {
-    if (!confirm("Delete this backup? This cannot be undone.")) return;
+  const categoryLabelMap = Object.fromEntries(
+    categories.map((c) => [c.id, c.label]),
+  );
+
+  async function handleDelete() {
+    if (confirmDeleteId == null) return;
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
     setDeletingId(id);
     const res = await deleteBackupAction(id);
     if (res.success) {
@@ -712,6 +723,16 @@ function HistorySection({
       transition={{ duration: 0.25, delay: 0.03, ease: "easeOut" }}
       className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
+      <ConfirmModal
+        open={confirmDeleteId != null}
+        title="Delete Backup"
+        message="Delete this backup? This cannot be undone."
+        confirmLabel="Yes, Delete"
+        variant="danger"
+        isPending={deletingId === confirmDeleteId}
+        onConfirm={handleDelete}
+        onClose={() => setConfirmDeleteId(null)}
+      />
       <button
         onClick={onToggle}
         className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
@@ -762,7 +783,7 @@ function HistorySection({
                           <td className="px-5 py-3">
                             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${TYPE_BADGE[b.type] ?? TYPE_BADGE.selective}`}>
                               {b.type === "full" && "Full"}
-                              {b.type === "category" && (b.category ?? "Category")}
+                              {b.type === "category" && (categoryLabelMap[b.category ?? ""] ?? b.category ?? "Category")}
                               {b.type === "selective" && "Selective"}
                               {b.type === "import" && "Import"}
                             </span>
@@ -795,7 +816,7 @@ function HistorySection({
                                 </a>
                               )}
                               <button
-                                onClick={() => handleDelete(b.id)}
+                                onClick={() => setConfirmDeleteId(b.id)}
                                 disabled={deletingId === b.id}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-gray-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 disabled:opacity-50"
                                 title="Delete"
