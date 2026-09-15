@@ -24,7 +24,7 @@ export class MailService {
     private templates: EmailTemplatesService,
   ) {}
 
-  async sendOtpEmail(to: string, code: string): Promise<void> {
+  async sendOtpEmail(to: string, code: string): Promise<{ sent: boolean }> {
     // Always log the OTP so it's visible in dev terminal even if SMTP fails.
     this.logger.log(`[OTP] Verification code for ${to}: ${code}`);
     try {
@@ -37,10 +37,12 @@ export class MailService {
           `[OTP] Email not sent (SMTP not configured). Use this code: ${code}`,
         );
       }
+      return { sent: result.sent };
     } catch (err) {
       // Do NOT throw — OTP is already stored in DB and logged to console.
       // Throwing here would block the redirect to /verify-email, trapping the user.
       this.logger.error(`[OTP] Email send failed for ${to}: ${(err as Error).message}`);
+      return { sent: false };
     }
   }
 

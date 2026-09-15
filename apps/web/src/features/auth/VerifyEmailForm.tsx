@@ -19,6 +19,7 @@ export function VerifyEmailForm() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [emailWarning, setEmailWarning] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -98,11 +99,15 @@ export function VerifyEmailForm() {
   const handleResend = async () => {
     if (cooldown > 0) return;
     setError("");
+    setEmailWarning("");
     try {
-      await apiRequestBrowser("/auth/account/send-otp", {
+      const result = await apiRequestBrowser<{ sent: boolean }>("/auth/account/send-otp", {
         method: "POST",
         body: JSON.stringify({ identifier: email, purpose: "verify" }),
       });
+      if (result.data && !result.data.sent) {
+        setEmailWarning("Email could not be delivered. Please check your email configuration.");
+      }
       setCooldown(RESEND_COOLDOWN);
       setOtp(Array(OTP_LENGTH).fill(""));
       otpRefs.current[0]?.focus();
@@ -168,6 +173,12 @@ export function VerifyEmailForm() {
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
             {error}
+          </div>
+        )}
+
+        {emailWarning && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+            {emailWarning}
           </div>
         )}
 

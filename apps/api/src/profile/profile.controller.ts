@@ -120,8 +120,8 @@ export class ProfileController {
       dto.type,
       value,
     );
-    await this.otpService.sendOtpTo(value);
-    return null;
+    const result = await this.otpService.sendOtpTo(value);
+    return { sent: result.sent };
   }
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
