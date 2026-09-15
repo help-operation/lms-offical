@@ -1,18 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Database, SpinnerGap, CheckCircle, WarningCircle, Trash,
-  CaretDown, ArrowLineUp, ListChecks, Download,
+  CaretDown, ArrowLineUp, ListChecks, Download, ArrowDown,
+  FileArrowUp, SealCheck, Warning, ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { toast } from "@repo/ui/sonner";
-import type { BackupJob, BackupTable } from "./api";
+import type { BackupJob, BackupTable, BackupCategory, ImportPreview } from "./api";
 import {
   triggerFullBackupAction,
+  triggerCategoryBackupAction,
   triggerSelectiveBackupAction,
   deleteBackupAction,
   getBackupHistoryAction,
+  dryRunImportAction,
+  importBackupAction,
 } from "./actions";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -41,42 +45,97 @@ const STATUS_BADGE: Record<string, string> = {
   failed: "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300",
 };
 
+const TYPE_BADGE: Record<string, string> = {
+  full: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+  category: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
+  selective: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
+  import: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+};
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 interface Props {
   initialBackups: BackupJob[];
   initialTotal: number;
   initialTables: BackupTable[];
+  initialCategories: BackupCategory[];
 }
 
-export function BackupClient({ initialBackups, initialTotal, initialTables }: Props) {
+export function BackupClient({
+  initialBackups,
+  initialTotal,
+  initialTables,
+  initialCategories,
+}: Props) {
   const [backups, setBackups] = useState(initialBackups);
   const [total, setTotal] = useState(initialTotal);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ new: true, history: true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    categories: true,
+    full: false,
+    custom: false,
+    restore: false,
+    history: true,
+  });
 
   function toggle(section: string) {
     setExpanded((p) => ({ ...p, [section]: !p[section] }));
   }
 
-  async function refreshHistory() {
+  const refreshHistory = useCallback(async () => {
     const res = await getBackupHistoryAction();
     if (res.success) {
       setBackups(res.data.data);
       setTotal(res.data.total);
     }
-  }
+  }, []);
 
   return (
     <div className="space-y-4">
-      {/* New Backup section */}
-      <NewBackupSection
-        tables={initialTables}
-        isOpen={expanded.new ?? false}
-        onToggle={() => toggle("new")}
+      {/* Category-based backup */}
+      <CategoryBackupSection
+        categories={initialCategories}
+        isOpen={expanded.categories ?? false}
+        onToggle={() => toggle("categories")}
         onBackupStarted={refreshHistory}
       />
 
-      {/* History section */}
+      {/* Full backup */}
+      <CollapsibleSection
+        title="Full Database Backup"
+        subtitle="Complete SQL dump for disaster recovery"
+        icon={<Database size={18} weight="fill" />}
+        iconBg="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"
+        isOpen={expanded.full ?? false}
+        onToggle={() => toggle("full")}
+      >
+        <FullBackupPanel onBackupStarted={refreshHistory} />
+      </CollapsibleSection>
+
+      {/* Custom / selective backup */}
+      <CollapsibleSection
+        title="Custom Backup"
+        subtitle="Pick specific tables for export"
+        icon={<ListChecks size={18} weight="fill" />}
+        iconBg="bg-purple-100 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300"
+        isOpen={expanded.custom ?? false}
+        onToggle={() => toggle("custom")}
+      >
+        <CustomBackupPanel tables={initialTables} onBackupStarted={refreshHistory} />
+      </CollapsibleSection>
+
+      {/* Restore */}
+      <CollapsibleSection
+        title="Restore from Backup"
+        subtitle="Import a previous backup into the database"
+        icon={<ArrowDown size={18} weight="fill" />}
+        iconBg="bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300"
+        isOpen={expanded.restore ?? false}
+        onToggle={() => toggle("restore")}
+      >
+        <RestorePanel backups={backups} onImportStarted={refreshHistory} />
+      </CollapsibleSection>
+
+      {/* History */}
       <HistorySection
         backups={backups}
         total={total}
@@ -88,22 +147,172 @@ export function BackupClient({ initialBackups, initialTotal, initialTables }: Pr
   );
 }
 
-// ─── New Backup Section ──────────────────────────────────────────────────────
+// ─── Collapsible Section Shell ───────────────────────────────────────────────
 
-function NewBackupSection({
-  tables,
+function CollapsibleSection({
+  title,
+  subtitle,
+  icon,
+  iconBg,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+    >
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
+      >
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-sm ring-1 ring-black/5 dark:ring-white/10 ${iconBg}`}>
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
+        </div>
+        <CaretDown
+          size={16} weight="bold"
+          className={`shrink-0 text-gray-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+          >
+            <div className="border-t border-gray-100 px-5 py-5 dark:border-slate-800">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// ─── Category Backup Section ─────────────────────────────────────────────────
+
+function CategoryBackupSection({
+  categories,
   isOpen,
   onToggle,
   onBackupStarted,
 }: {
-  tables: BackupTable[];
+  categories: BackupCategory[];
   isOpen: boolean;
   onToggle: () => void;
   onBackupStarted: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
-  const [showTablePicker, setShowTablePicker] = useState(false);
+
+  function handleBackup(categoryId: string) {
+    startTransition(async () => {
+      const res = await triggerCategoryBackupAction(categoryId);
+      if (res.success) {
+        toast.success("Category backup started — running in background");
+        onBackupStarted();
+      } else {
+        toast.error(res.message ?? "Failed to start backup");
+      }
+    });
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+    >
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-sm">
+          <ArrowsClockwise size={18} weight="fill" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Backup by Category</h3>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+            {categories.length} categories — pick what to back up
+          </p>
+        </div>
+        <CaretDown
+          size={16} weight="bold"
+          className={`shrink-0 text-gray-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+          >
+            <div className="border-t border-gray-100 px-5 py-5 dark:border-slate-800">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleBackup(cat.id)}
+                    disabled={isPending}
+                    className="group rounded-lg border border-gray-200 bg-gray-50 p-4 text-left transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/5 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                      {cat.label}
+                    </div>
+                    <p className="mb-3 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                      {cat.description}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-gray-400 dark:text-slate-500">
+                        {cat.tables.length} tables
+                      </span>
+                      {isPending ? (
+                        <SpinnerGap size={14} className="animate-spin text-blue-500" />
+                      ) : (
+                        <ArrowLineUp
+                          size={14}
+                          className="text-gray-300 transition-colors group-hover:text-blue-600 dark:text-slate-600 dark:group-hover:text-blue-400"
+                          weight="bold"
+                        />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// ─── Full Backup Panel ───────────────────────────────────────────────────────
+
+function FullBackupPanel({ onBackupStarted }: { onBackupStarted: () => void }) {
+  const [isPending, startTransition] = useTransition();
 
   function handleFullBackup() {
     startTransition(async () => {
@@ -116,6 +325,36 @@ function NewBackupSection({
       }
     });
   }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+      <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
+        Complete SQL dump of all tables. Best for disaster recovery. Downloads as a compressed .sql.gz file.
+      </p>
+      <button
+        onClick={handleFullBackup}
+        disabled={isPending}
+        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-emerald-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
+      >
+        {isPending ? <SpinnerGap size={15} className="animate-spin" /> : <ArrowLineUp size={15} weight="bold" />}
+        {isPending ? "Starting..." : "Start Full Backup"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Custom Backup Panel ─────────────────────────────────────────────────────
+
+function CustomBackupPanel({
+  tables,
+  onBackupStarted,
+}: {
+  tables: BackupTable[];
+  onBackupStarted: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
+  const [showTablePicker, setShowTablePicker] = useState(false);
 
   function handleSelectiveBackup() {
     if (selectedTables.size === 0) {
@@ -149,144 +388,290 @@ function NewBackupSection({
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
-    >
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
-      >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 shadow-sm ring-1 ring-black/5 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-white/10">
-          <ArrowLineUp size={18} weight="fill" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white">New Backup</h3>
-          <p className="truncate text-xs text-gray-500 dark:text-gray-400">Full SQL dump or selective JSON export</p>
-        </div>
-        <CaretDown
-          size={16} weight="bold"
-          className={`shrink-0 text-gray-400 transition-transform duration-200 dark:text-slate-500 ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
+    <div className="space-y-4">
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+        <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
+          Choose specific tables to export as JSON. Good for partial exports and data migration.
+        </p>
+        <button
+          onClick={() => setShowTablePicker(!showTablePicker)}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-150 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus-visible:ring-offset-slate-900"
+        >
+          <ListChecks size={15} weight="bold" />
+          {showTablePicker ? "Hide Tables" : "Select Tables"}
+          {selectedTables.size > 0 && (
+            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
+              {selectedTables.size}
+            </span>
+          )}
+        </button>
+      </div>
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
+      <AnimatePresence>
+        {showTablePicker && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
           >
-            <div className="border-t border-gray-100 px-5 py-5 dark:border-slate-800">
-              <div className="flex flex-col gap-4 sm:flex-row">
-                {/* Full Backup */}
-                <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Database size={16} weight="fill" className="text-emerald-600 dark:text-emerald-400" />
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Full Database Backup</h4>
-                  </div>
-                  <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
-                    Complete SQL dump of all tables. Best for disaster recovery. Downloads as a compressed .sql.gz file.
-                  </p>
-                  <button
-                    onClick={handleFullBackup}
-                    disabled={isPending}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-emerald-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
-                  >
-                    {isPending ? <SpinnerGap size={15} className="animate-spin" /> : <ArrowLineUp size={15} weight="bold" />}
-                    {isPending ? "Starting..." : "Start Full Backup"}
+            <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">
+                  {tables.length} tables available
+                </span>
+                <div className="flex gap-2">
+                  <button onClick={selectAll} className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">
+                    Select All
                   </button>
-                </div>
-
-                {/* Selective Backup */}
-                <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-                  <div className="mb-3 flex items-center gap-2">
-                    <ListChecks size={16} weight="fill" className="text-purple-600 dark:text-purple-400" />
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Selective Backup</h4>
-                  </div>
-                  <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
-                    Choose specific tables to export as JSON. Good for partial exports and data migration.
-                  </p>
-                  <button
-                    onClick={() => setShowTablePicker(!showTablePicker)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-150 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus-visible:ring-offset-slate-900"
-                  >
-                    <ListChecks size={15} weight="bold" />
-                    {showTablePicker ? "Hide Tables" : "Select Tables"}
-                    {selectedTables.size > 0 && (
-                      <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
-                        {selectedTables.size}
-                      </span>
-                    )}
+                  <button onClick={() => setSelectedTables(new Set())} className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-slate-400">
+                    Clear
                   </button>
                 </div>
               </div>
-
-              {/* Table Picker */}
-              <AnimatePresence>
-                {showTablePicker && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
+              <div className="max-h-64 space-y-1 overflow-y-auto">
+                {tables.map((t) => (
+                  <label
+                    key={t.name}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/50"
                   >
-                    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">
-                          {tables.length} tables available
-                        </span>
-                        <div className="flex gap-2">
-                          <button onClick={selectAll} className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">
-                            Select All
-                          </button>
-                          <button onClick={() => setSelectedTables(new Set())} className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-slate-400">
-                            Clear
-                          </button>
-                        </div>
-                      </div>
-                      <div className="max-h-64 space-y-1 overflow-y-auto">
-                        {tables.map((t) => (
-                          <label
-                            key={t.name}
-                            className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedTables.has(t.name)}
-                              onChange={() => toggleTable(t.name)}
-                              className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600"
-                            />
-                            <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">{t.name}</span>
-                            <span className="text-[11px] text-gray-400 dark:text-slate-500">{t.rowCount.toLocaleString()} rows</span>
-                          </label>
-                        ))}
-                      </div>
-                      {selectedTables.size > 0 && (
-                        <div className="mt-3 flex justify-end">
-                          <button
-                            onClick={handleSelectiveBackup}
-                            disabled={isPending}
-                            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-purple-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
-                          >
-                            {isPending ? <SpinnerGap size={15} className="animate-spin" /> : <ArrowLineUp size={15} weight="bold" />}
-                            {isPending ? "Starting..." : `Backup ${selectedTables.size} Tables`}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <input
+                      type="checkbox"
+                      checked={selectedTables.has(t.name)}
+                      onChange={() => toggleTable(t.name)}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600"
+                    />
+                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">{t.name}</span>
+                    <span className="text-[11px] text-gray-400 dark:text-slate-500">{t.rowCount.toLocaleString()} rows</span>
+                  </label>
+                ))}
+              </div>
+              {selectedTables.size > 0 && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    onClick={handleSelectiveBackup}
+                    disabled={isPending}
+                    className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-purple-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
+                  >
+                    {isPending ? <SpinnerGap size={15} className="animate-spin" /> : <ArrowLineUp size={15} weight="bold" />}
+                    {isPending ? "Starting..." : `Backup ${selectedTables.size} Tables`}
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
+  );
+}
+
+// ─── Restore Panel ───────────────────────────────────────────────────────────
+
+function RestorePanel({
+  backups,
+  onImportStarted,
+}: {
+  backups: BackupJob[];
+  onImportStarted: () => void;
+}) {
+  const [selectedBackupId, setSelectedBackupId] = useState<number | null>(null);
+  const [strategy, setStrategy] = useState<string>("skip");
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [isDryRunning, setIsDryRunning] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const completedBackups = backups.filter(
+    (b) => b.status === "completed" && b.format === "json" && b.type !== "import"
+  );
+
+  const selectedBackup = completedBackups.find((b) => b.id === selectedBackupId);
+
+  function handleDryRun() {
+    if (!selectedBackupId) return;
+    setIsDryRunning(true);
+    startTransition(async () => {
+      const res = await dryRunImportAction(selectedBackupId);
+      if (res.success) {
+        setPreview(res.data);
+        toast.success("Dry-run complete — review the preview below");
+      } else {
+        toast.error(res.message ?? "Dry-run failed");
+      }
+      setIsDryRunning(false);
+    });
+  }
+
+  function handleImport() {
+    if (!selectedBackupId || !preview) return;
+    setIsImporting(true);
+    startTransition(async () => {
+      const res = await importBackupAction(selectedBackupId, strategy);
+      if (res.success) {
+        toast.success("Import started — running in background");
+        setPreview(null);
+        setSelectedBackupId(null);
+        onImportStarted();
+      } else {
+        toast.error(res.message ?? "Import failed");
+      }
+      setIsImporting(false);
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        Select a previous JSON backup to restore. Run a dry-run first to preview conflicts before importing.
+      </p>
+
+      {/* Backup selector */}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+        <label className="mb-2 block text-xs font-semibold text-gray-500 dark:text-slate-400">
+          Select backup to restore
+        </label>
+        <select
+          value={selectedBackupId ?? ""}
+          onChange={(e) => {
+            setSelectedBackupId(e.target.value ? Number(e.target.value) : null);
+            setPreview(null);
+          }}
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+        >
+          <option value="">Choose a backup…</option>
+          {completedBackups.map((b) => (
+            <option key={b.id} value={b.id}>
+              #{b.id} — {b.category ?? b.type} — {formatDate(b.createdAt)} — {formatBytes(b.fileSize)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Conflict strategy selector */}
+      {selectedBackupId && (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/50"
+        >
+          <label className="mb-2 block text-xs font-semibold text-gray-500 dark:text-slate-400">
+            Conflict resolution strategy
+          </label>
+          <div className="flex flex-wrap gap-3">
+            {(["skip", "overwrite", "merge"] as const).map((s) => (
+              <label
+                key={s}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                  strategy === s
+                    ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-500/10 dark:text-blue-300"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="strategy"
+                  value={s}
+                  checked={strategy === s}
+                  onChange={() => setStrategy(s)}
+                  className="sr-only"
+                />
+                {s === "skip" && <SealCheck size={14} weight="bold" />}
+                {s === "overwrite" && <Warning size={14} weight="bold" />}
+                {s === "merge" && <ArrowsClockwise size={14} weight="bold" />}
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-gray-400 dark:text-slate-500">
+            {strategy === "skip" && "Skip rows that already exist (safe, no data loss)"}
+            {strategy === "overwrite" && "Replace existing rows with backup data (destructive)"}
+            {strategy === "merge" && "Update non-null fields from backup, insert new rows (conservative)"}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Dry-run & Import buttons */}
+      {selectedBackupId && (
+        <div className="flex gap-3">
+          <button
+            onClick={handleDryRun}
+            disabled={isDryRunning || isPending}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+          >
+            {isDryRunning ? <SpinnerGap size={15} className="animate-spin" /> : <FileArrowUp size={15} weight="bold" />}
+            {isDryRunning ? "Running..." : "Dry-Run Preview"}
+          </button>
+          {preview && (
+            <button
+              onClick={handleImport}
+              disabled={isImporting || isPending}
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
+            >
+              {isImporting ? <SpinnerGap size={15} className="animate-spin" /> : <ArrowDown size={15} weight="bold" />}
+              {isImporting ? "Importing..." : `Import with ${strategy} strategy`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Dry-run preview */}
+      {preview && (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+        >
+          <h4 className="mb-3 text-sm font-bold text-gray-900 dark:text-white">Dry-Run Preview</h4>
+          <div className="mb-3 grid grid-cols-3 gap-4 text-center">
+            <div className="rounded-lg bg-gray-50 p-3 dark:bg-slate-800/50">
+              <div className="text-lg font-bold text-gray-900 dark:text-white">{preview.totalRecords.toLocaleString()}</div>
+              <div className="text-[10px] text-gray-400 dark:text-slate-500">Total Records</div>
+            </div>
+            <div className="rounded-lg bg-gray-50 p-3 dark:bg-slate-800/50">
+              <div className="text-lg font-bold text-gray-900 dark:text-white">{preview.conflicts.length}</div>
+              <div className="text-[10px] text-gray-400 dark:text-slate-500">Tables</div>
+            </div>
+            <div className="rounded-lg bg-gray-50 p-3 dark:bg-slate-800/50">
+              <div className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                {preview.conflicts.filter((c) => c.existingCount > 0).length}
+              </div>
+              <div className="text-[10px] text-gray-400 dark:text-slate-500">Conflicts</div>
+            </div>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-slate-700">
+                  <th className="pb-2 font-semibold text-gray-500 dark:text-slate-400">Table</th>
+                  <th className="pb-2 text-right font-semibold text-gray-500 dark:text-slate-400">Existing</th>
+                  <th className="pb-2 text-right font-semibold text-gray-500 dark:text-slate-400">Incoming</th>
+                  <th className="pb-2 text-right font-semibold text-gray-500 dark:text-slate-400">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
+                {preview.conflicts.map((c) => (
+                  <tr key={c.table}>
+                    <td className="py-1.5 font-medium text-gray-700 dark:text-gray-300">{c.table}</td>
+                    <td className="py-1.5 text-right text-gray-500 dark:text-gray-400">{c.existingCount.toLocaleString()}</td>
+                    <td className="py-1.5 text-right text-gray-500 dark:text-gray-400">{c.incomingCount.toLocaleString()}</td>
+                    <td className="py-1.5 text-right">
+                      {c.existingCount > 0 ? (
+                        <span className="text-amber-600 dark:text-amber-400">conflict</span>
+                      ) : (
+                        <span className="text-green-600 dark:text-green-400">clean</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+    </div>
   );
 }
 
@@ -375,12 +760,11 @@ function HistorySection({
                       {backups.map((b) => (
                         <tr key={b.id} className="transition-colors hover:bg-gray-50/50 dark:hover:bg-slate-800/30">
                           <td className="px-5 py-3">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                              b.type === "full"
-                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                                : "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300"
-                            }`}>
-                              {b.type === "full" ? "Full" : "Selective"}
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${TYPE_BADGE[b.type] ?? TYPE_BADGE.selective}`}>
+                              {b.type === "full" && "Full"}
+                              {b.type === "category" && (b.category ?? "Category")}
+                              {b.type === "selective" && "Selective"}
+                              {b.type === "import" && "Import"}
                             </span>
                           </td>
                           <td className="px-5 py-3 text-xs font-medium text-gray-600 dark:text-gray-300 uppercase">{b.format}</td>

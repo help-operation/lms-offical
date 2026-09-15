@@ -206,7 +206,7 @@ export const menuGroups: MenuGroup[] = [
       { href: "/admin/settings/tracking", label: "Analytics / Tracking", icon: ChartBar, color: "bg-fuchsia-500", perm: "view_settings_tracking" },
       { href: "/admin/settings/code-snippets", label: "Code Snippets", icon: Code, color: "bg-slate-600", perm: "view_code_snippets" },
       { href: "/admin/settings/configaction", label: "Configuration", icon: CloudArrowUp, color: "bg-indigo-600", perm: "view_settings_configaction" },
-      { href: "/admin/settings/backup", label: "Backup & Export", icon: Database, color: "bg-emerald-600", perm: "view_settings_configaction" },
+      { href: "/admin/settings/backup", label: "Backup & Restore", icon: Database, color: "bg-emerald-600", perm: "view_settings_configaction" },
       { href: "/admin/settings/maintenance", label: "Maintenance Mode", icon: Wrench, color: "bg-gray-500", perm: "view_settings_maintenance" },
     ],
   },
